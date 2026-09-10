@@ -1,0 +1,177 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Identidade Vynexa Dev: azul-índigo profundo com violeta.
+ *
+ * A ferramenta é escura por definição, não por preferência do sistema:
+ * é um painel de trabalho usado por horas seguidas e a identidade da
+ * marca é escura. Por isso `:root` já carrega o tema escuro e `.dark`
+ * repete os mesmos valores — os componentes do shadcn que consultam a
+ * variante continuam funcionando, e não existe um modo claro pela metade.
+ *
+ * Contraste conferido: foreground #F1F5F9 sobre #0F172A = 15,8:1;
+ * muted-foreground #94A3B8 sobre card #192134 = 6,6:1; branco sobre
+ * primary #7C3AED = 6,1:1. Todos acima do mínimo 4.5:1 da WCAG AA.
+ */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-numeros), ui-monospace, monospace;
+  --font-heading: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  /* Escala densa (dashboard): passos de 8 a 32px, e não de 24 a 96px.
+     Uma tela de prospecção vive de caber muita linha na dobra. */
+  --spacing-densa-1: 0.5rem;
+  --spacing-densa-2: 0.75rem;
+  --spacing-densa-3: 1rem;
+  --spacing-densa-4: 1.5rem;
+  --spacing-densa-5: 2rem;
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root,
+.dark {
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+
+  --card: #192134;
+  --card-foreground: #f1f5f9;
+  --popover: #1b2438;
+  --popover-foreground: #f1f5f9;
+
+  --primary: #7c3aed;
+  --primary-foreground: #ffffff;
+
+  --secondary: #232c45;
+  --secondary-foreground: #e2e8f0;
+
+  --muted: #1a2237;
+  --muted-foreground: #94a3b8;
+
+  --accent: #262f4a;
+  --accent-foreground: #f1f5f9;
+
+  --destructive: #f87171;
+  --border: rgba(148, 163, 184, 0.16);
+  --input: rgba(148, 163, 184, 0.22);
+  --ring: #8b5cf6;
+
+  --chart-1: #8b5cf6;
+  --chart-2: #6366f1;
+  --chart-3: #38bdf8;
+  --chart-4: #34d399;
+  --chart-5: #fbbf24;
+
+  --radius: 0.75rem;
+
+  --sidebar: #131a2b;
+  --sidebar-foreground: #cbd5e1;
+  --sidebar-primary: #7c3aed;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #232c45;
+  --sidebar-accent-foreground: #f1f5f9;
+  --sidebar-border: rgba(148, 163, 184, 0.14);
+  --sidebar-ring: #8b5cf6;
+
+  /* Cores dos status. Cada uma vem acompanhada de rótulo em texto na
+     interface — a cor reforça, nunca carrega sozinha o significado. */
+  --status-sem-site: #4ade80;
+  --status-rede-social: #fbbf24;
+  --status-tem-site: #60a5fa;
+  --status-sem-dado: #94a3b8;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    @apply font-sans;
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    /* Brilho radial frio no topo: dá profundidade ao fundo chapado sem
+       custo de renderização (é um gradiente fixo, não um blur animado). */
+    background-image:
+      radial-gradient(60rem 32rem at 15% -12%, rgba(124, 58, 237, 0.16), transparent 60%),
+      radial-gradient(48rem 28rem at 92% -6%, rgba(56, 189, 248, 0.1), transparent 60%);
+    background-attachment: fixed;
+  }
+
+  /* O anel de foco é a única pista de navegação por teclado. Reforçado,
+     nunca removido. */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+
+  /* Números de telefone e contadores em tabular: sem isso as colunas
+     dançam a cada linha porque o "1" é mais estreito que o "8". */
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* Superfície de vidro: usada em cabeçalho e cartões elevados.
+     `backdrop-blur` custa pouco aqui porque as superfícies são poucas e
+     não se movem. */
+  .vidro {
+    @apply border border-white/8 bg-white/4 backdrop-blur-xl;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

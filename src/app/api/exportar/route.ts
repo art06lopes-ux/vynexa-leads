@@ -1,0 +1,94 @@
+import { listarEmpresasParaExportar, type Filtros } from "@/db/consultas";
+import { gerarCsv } from "@/lib/leads/csv";
+import { formatarTelefone, normalizarTelefone } from "@/lib/leads/whatsapp";
+import { nomeDoPais } from "@/lib/geo/paises";
+import { rotuloDoSegmento } from "@/lib/osm/segmentos";
+import { ROTULO_STATUS_SITE } from "@/db/tipos";
+import { exigirSessaoNaApi } from "@/server/sessao";
+
+/** Lê os mesmos filtros da listagem, para exportar exatamente o que está na tela. */
+export function filtrosDaUrl(params: URLSearchParams): Filtros {
+  const booleano = (chave: string): boolean | undefined => {
+    const v = params.get(chave);
+    if (v === "sim") return true;
+    if (v === "nao") return false;
+    return undefined;
+  };
+
+  return {
+    segmento: params.get("segmento") ?? undefined,
+    pais: params.get("pais") ?? undefined,
+    estado: params.get("estado") ?? undefined,
+    cidade: params.get("cidade") ?? undefined,
+    temSite: booleano("temSite"),
+    temEmail: booleano("temEmail"),
+    temTelefone: booleano("temTelefone"),
+    busca: params.get("q") ?? undefined,
+  };
+}
+
+const CABECALHOS = [
+  "Nome",
+  "Segmento",
+  "País",
+  "Estado",
+  "Cidade",
+  "Endereço",
+  "Telefone",
+  "WhatsApp (E.164)",
+  "E-mail",
+  "Origem do e-mail",
+  "Website",
+  "Instagram",
+  "Facebook",
+  "Presença digital",
+  "Score",
+  "Motivo",
+  "Status do lead",
+  "Idioma",
+  "OpenStreetMap",
+  "Adicionado em",
+];
+
+export async function GET(request: Request) {
+  const naoAutenticado = await exigirSessaoNaApi();
+  if (naoAutenticado) return naoAutenticado;
+
+  const filtros = filtrosDaUrl(new URL(request.url).searchParams);
+  const empresas = await listarEmpresasParaExportar(filtros);
+
+  const linhas = empresas.map((e) => [
+    e.nome,
+    rotuloDoSegmento(e.categoria),
+    nomeDoPais(e.pais),
+    e.estado,
+    e.cidade,
+    e.endereco,
+    formatarTelefone(e.telefone, e.pais),
+    // A coluna crua em E.164 existe para quem for importar num
+    // discador ou numa planilha de disparo; a formatada é para ler.
+    normalizarTelefone(e.telefone, e.pais),
+    e.email,
+    e.email_origem,
+    e.website,
+    e.instagram,
+    e.facebook,
+    ROTULO_STATUS_SITE[e.status_site],
+    e.score_oportunidade,
+    e.motivo_problema,
+    e.status_lead,
+    e.idioma_abordagem,
+    `https://www.openstreetmap.org/${e.osm_id}`,
+    e.criado_em,
+  ]);
+
+  const hoje = new Date().toISOString().slice(0, 10);
+
+  return new Response(gerarCsv(CABECALHOS, linhas), {
+    headers: {
+      "Content-Type": "text/csv; charset=utf-8",
+      "Content-Disposition": `attachment; filename="vynexa-leads-${hoje}.csv"`,
+      "Cache-Control": "no-store",
+    },
+  });
+}

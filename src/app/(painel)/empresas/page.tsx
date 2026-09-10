@@ -21,6 +21,13 @@ function lerBooleano(valor: string | string[] | undefined): boolean | undefined 
   return undefined;
 }
 
+/** Score mínimo. Valor não numérico é ignorado em vez de virar NaN no SQL. */
+function lerNumero(valor: string | string[] | undefined): number | undefined {
+  const v = Array.isArray(valor) ? valor[0] : valor;
+  const n = Number(v);
+  return v && Number.isFinite(n) ? n : undefined;
+}
+
 function primeiro(valor: string | string[] | undefined): string | undefined {
   const v = Array.isArray(valor) ? valor[0] : valor;
   return v && v.trim() !== "" ? v : undefined;
@@ -37,6 +44,8 @@ export default async function PaginaEmpresas({ searchParams }: PageProps<"/empre
     temSite: lerBooleano(sp.temSite),
     temEmail: lerBooleano(sp.temEmail),
     temTelefone: lerBooleano(sp.temTelefone),
+    scoreMin: lerNumero(sp.scoreMin),
+    canal: primeiro(sp.canal) === "whatsapp" ? "whatsapp" : primeiro(sp.canal) === "email" ? "email" : undefined,
     busca: primeiro(sp.q),
   };
 

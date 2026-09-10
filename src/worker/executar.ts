@@ -9,6 +9,7 @@
  */
 import { agora, getBanco } from "@/db/cliente";
 import type { Job, PayloadBusca } from "@/db/tipos";
+import { processarAnaliseIA, type PayloadAnalise } from "@/worker/handlers/analise-ia";
 import { processarBusca } from "@/worker/handlers/busca";
 
 /**
@@ -160,9 +161,10 @@ function despachar(banco: ReturnType<typeof getBanco>, job: Job): Promise<string
     case "busca":
       return processarBusca(banco, JSON.parse(job.payload) as PayloadBusca);
     case "analise_ia":
+      return processarAnaliseIA(banco, JSON.parse(job.payload) as PayloadAnalise);
     case "envio_email":
-      // Etapas 2 e 3. Falhar explicitamente é melhor que marcar como
-      // concluído em silêncio e o job sumir sem ter feito nada.
+      // Etapa 3. Falhar explicitamente é melhor que marcar como concluído
+      // em silêncio e o job sumir sem ter feito nada.
       return Promise.reject(new Error(`Handler '${job.tipo}' ainda não implementado.`));
     default:
       return Promise.reject(new Error(`Tipo de job desconhecido: ${job.tipo}`));

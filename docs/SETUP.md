@@ -85,6 +85,7 @@ secret**, cadastre três segredos:
 | `TURSO_DATABASE_URL` | a URL `libsql://…` do passo 2 |
 | `TURSO_AUTH_TOKEN` | o token do passo 2 |
 | `OSM_CONTATO` | seu e-mail |
+| `GEMINI_API_KEY` | a chave do passo 3.1 |
 
 O workflow está em `.github/workflows/worker.yml`. Ele roda a cada 5
 minutos e também pode ser disparado à mão em **Actions → worker → Run
@@ -95,6 +96,19 @@ workflow**, o que é a forma mais rápida de testar.
 > dia as buscas pararem de sair da fila sem erro nenhum, é isto.
 
 ---
+
+## 3.1 Chave do Gemini (análise de IA)
+
+1. <https://aistudio.google.com/apikey> → **Create API key**. Entra com a
+   conta Google, **não pede cartão nem projeto no Google Cloud**.
+2. Copie a chave e cadastre como o segredo `GEMINI_API_KEY` no GitHub.
+3. Para rodar a análise na sua máquina, coloque também no `.env.local`.
+
+A chave é usada **só pelo worker**. O site não fala com o Gemini, então
+ela não entra nas variáveis da Vercel — é uma credencial a menos exposta.
+
+Modelo usado: `gemini-3.5-flash-lite`, que está no free tier. Os modelos
+Pro saíram do plano gratuito e não são usados neste projeto.
 
 ## 4. Vercel
 
@@ -131,7 +145,7 @@ expulsar alguém que tenha ficado com o cookie.
 | GitHub Actions | Não | **público: ilimitado** · privado: 2.000 min/mês |
 | Overpass API | Não | sem cota fixa; entra em fila quando carregada |
 | Nominatim | Não | 1 requisição por segundo, com cache obrigatório |
-| Gemini (Etapa 2) | Não | Flash e Flash-Lite seguem no free tier |
+| Gemini | Não | Flash e Flash-Lite seguem no free tier; Pro saiu em abril/2026 |
 
 **A conta do cron.** No plano Free, cada execução do Actions é cobrada
 arredondada para cima ao minuto inteiro. Um cron de 5 minutos são 8.640

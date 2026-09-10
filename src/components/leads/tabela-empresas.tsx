@@ -1,5 +1,6 @@
 import { AtSign, ExternalLink, MapPin, Phone, PhoneOff } from "lucide-react";
 
+import { AcaoLead, BadgeScore } from "@/components/leads/acao-lead";
 import { BadgeStatusSite } from "@/components/leads/badge-status-site";
 import type { EmpresaListada } from "@/db/consultas";
 import { nomeDoPais } from "@/lib/geo/paises";
@@ -34,6 +35,7 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
               <th scope="col" className="px-4 py-3 font-medium">Local</th>
               <th scope="col" className="px-4 py-3 font-medium">Contato</th>
               <th scope="col" className="px-4 py-3 font-medium">Presença</th>
+              <th scope="col" className="px-4 py-3 font-medium">Oportunidade</th>
               <th scope="col" className="px-4 py-3 font-medium">
                 <span className="sr-only">Links</span>
               </th>
@@ -86,7 +88,13 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
                   </td>
 
                   <td className="px-4 py-3">
+                    <BadgeScore score={e.score_oportunidade} />
+                  </td>
+
+                  <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
+                      <AcaoLead empresa={e} />
+
                       {e.website && (
                         <a
                           href={e.website}
@@ -132,7 +140,10 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
                     {rotuloDoSegmento(e.categoria)} · {local(e)}
                   </p>
                 </div>
-                <BadgeStatusSite status={e.status_site} />
+                <div className="flex shrink-0 flex-col items-end gap-1.5">
+                  <BadgeStatusSite status={e.status_site} />
+                  <BadgeScore score={e.score_oportunidade} />
+                </div>
               </div>
 
               <div className="mt-3 flex flex-col gap-1.5 text-sm">
@@ -156,7 +167,9 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
                 )}
               </div>
 
-              <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
+              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+                <AcaoLead empresa={e} />
+
                 {e.website && (
                   <a
                     href={e.website}

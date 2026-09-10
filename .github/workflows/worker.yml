@@ -42,3 +42,4 @@ jobs:
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
           OSM_CONTATO: ${{ secrets.OSM_CONTATO }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

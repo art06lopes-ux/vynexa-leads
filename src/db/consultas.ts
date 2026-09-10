@@ -3,7 +3,7 @@ import "server-only";
 import type { InValue } from "@libsql/client";
 
 import { agora, getBanco, novoId } from "@/db/cliente";
-import type { Busca, Contadores, Empresa, PayloadBusca } from "@/db/tipos";
+import type { Busca, Contadores, Empresa, PayloadBusca, StatusLead } from "@/db/tipos";
 import { normalizarTelefone } from "@/lib/leads/whatsapp";
 
 /**
@@ -96,6 +96,9 @@ export type Filtros = {
   temSite?: boolean;
   temEmail?: boolean;
   temTelefone?: boolean;
+  /** Score mínimo da análise de IA. 70 é o corte de "oportunidade alta". */
+  scoreMin?: number;
+  canal?: "whatsapp" | "email";
   busca?: string;
 };
 
@@ -132,6 +135,15 @@ function montarWhere(f: Filtros): { clausula: string; args: InValue[] } {
   if (f.temTelefone === true) partes.push("e.telefone IS NOT NULL AND e.telefone <> ''");
   if (f.temTelefone === false) partes.push("(e.telefone IS NULL OR e.telefone = '')");
 
+  if (f.scoreMin !== undefined) {
+    partes.push("l.score_oportunidade >= ?");
+    args.push(f.scoreMin);
+  }
+  if (f.canal) {
+    partes.push("l.canal_recomendado = ?");
+    args.push(f.canal);
+  }
+
   if (f.busca) {
     partes.push("(e.nome LIKE ? OR e.endereco LIKE ?)");
     const curinga = `%${f.busca}%`;
@@ -147,7 +159,9 @@ function montarWhere(f: Filtros): { clausula: string; args: InValue[] } {
 export type EmpresaListada = Empresa & {
   score_oportunidade: number | null;
   motivo_problema: string | null;
-  status_lead: string | null;
+  mensagem_gerada: string | null;
+  canal_recomendado: "whatsapp" | "email" | null;
+  status_lead: StatusLead | null;
 };
 
 export async function listarEmpresas(
@@ -159,11 +173,18 @@ export async function listarEmpresas(
   const { clausula, args } = montarWhere(filtros);
 
   const [{ rows: contagem }, { rows }] = await Promise.all([
-    banco.execute({ sql: `SELECT COUNT(*) AS n FROM empresas e ${clausula}`, args }),
+    // O LEFT JOIN aparece também na contagem porque os filtros de score
+    // e de canal referenciam colunas de `leads`.
+    banco.execute({
+      sql: `SELECT COUNT(*) AS n FROM empresas e
+            LEFT JOIN leads l ON l.empresa_id = e.id ${clausula}`,
+      args,
+    }),
     banco.execute({
       // LEFT JOIN e não INNER: na Etapa 1 nenhuma empresa tem lead ainda,
       // e um INNER JOIN devolveria uma lista vazia.
-      sql: `SELECT e.*, l.score_oportunidade, l.motivo_problema, l.status AS status_lead
+      sql: `SELECT e.*, l.score_oportunidade, l.motivo_problema, l.mensagem_gerada,
+                   l.canal_recomendado, l.status AS status_lead
             FROM empresas e
             LEFT JOIN leads l ON l.empresa_id = e.id
             ${clausula}
@@ -183,7 +204,8 @@ export async function listarEmpresas(
 export async function listarEmpresasParaExportar(filtros: Filtros): Promise<EmpresaListada[]> {
   const { clausula, args } = montarWhere(filtros);
   const { rows } = await getBanco().execute({
-    sql: `SELECT e.*, l.score_oportunidade, l.motivo_problema, l.status AS status_lead
+    sql: `SELECT e.*, l.score_oportunidade, l.motivo_problema, l.mensagem_gerada,
+                 l.canal_recomendado, l.status AS status_lead
           FROM empresas e
           LEFT JOIN leads l ON l.empresa_id = e.id
           ${clausula}
@@ -241,6 +263,16 @@ export async function obterContadores(): Promise<Contadores> {
     comWhatsapp,
     oportunidadeAlta: Number(altas[0]?.n ?? 0),
   };
+}
+
+/** Quantas empresas ainda não passaram pela análise de IA. */
+export async function contarSemAnalise(): Promise<number> {
+  const { rows } = await getBanco().execute(
+    `SELECT COUNT(*) AS n FROM empresas e
+     LEFT JOIN leads l ON l.empresa_id = e.id
+     WHERE l.id IS NULL`,
+  );
+  return Number(rows[0]?.n ?? 0);
 }
 
 /** Valores distintos para popular os seletores de filtro. */

@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Identidade Vynexa Dev: azul-índigo profundo com violeta.
+ * Identidade Vynexa Dev: preto quente com vermelho.
  *
  * A ferramenta é escura por definição, não por preferência do sistema:
  * é um painel de trabalho usado por horas seguidas e a identidade da
@@ -13,9 +13,14 @@
  * repete os mesmos valores — os componentes do shadcn que consultam a
  * variante continuam funcionando, e não existe um modo claro pela metade.
  *
- * Contraste conferido: foreground #F1F5F9 sobre #0F172A = 15,8:1;
- * muted-foreground #94A3B8 sobre card #192134 = 6,6:1; branco sobre
- * primary #7C3AED = 6,1:1. Todos acima do mínimo 4.5:1 da WCAG AA.
+ * Contraste medido, não estimado: foreground #F5F2F2 sobre #0C0A0A =
+ * 17,7:1; muted-foreground #A89F9F sobre card #171313 = 7,1:1; branco
+ * sobre primary #DC2626 = 4,8:1. Todos acima do mínimo 4.5:1 da WCAG AA.
+ *
+ * O vermelho do botão é #DC2626 e não #EF4444 por um motivo medido: o
+ * segundo dá apenas 3,8:1 com texto branco e reprovaria. Vermelho vivo
+ * sobre preto é armadilha conhecida de contraste — a versão viva fica
+ * para texto e ícone sobre o fundo escuro, onde alcança 7,1:1.
  */
 
 @theme inline {
@@ -73,47 +78,52 @@
 
 :root,
 .dark {
-  --background: #0f172a;
-  --foreground: #f1f5f9;
+  --background: #0c0a0a;
+  --foreground: #f5f2f2;
 
-  --card: #192134;
-  --card-foreground: #f1f5f9;
-  --popover: #1b2438;
-  --popover-foreground: #f1f5f9;
+  --card: #171313;
+  --card-foreground: #f5f2f2;
+  --popover: #1a1515;
+  --popover-foreground: #f5f2f2;
 
-  --primary: #7c3aed;
+  --primary: #dc2626;
   --primary-foreground: #ffffff;
 
-  --secondary: #232c45;
-  --secondary-foreground: #e2e8f0;
+  --secondary: #241c1c;
+  --secondary-foreground: #ece7e7;
 
-  --muted: #1a2237;
-  --muted-foreground: #94a3b8;
+  --muted: #191414;
+  --muted-foreground: #a89f9f;
 
-  --accent: #262f4a;
-  --accent-foreground: #f1f5f9;
+  --accent: #2a2020;
+  --accent-foreground: #f5f2f2;
 
-  --destructive: #f87171;
-  --border: rgba(148, 163, 184, 0.16);
-  --input: rgba(148, 163, 184, 0.22);
-  --ring: #8b5cf6;
+  /* Mais claro que o primary de propósito. Numa marca vermelha, erro e
+     ação principal correriam o risco de se confundir; a diferença de
+     luminosidade separa os dois, e todo estado de erro vem acompanhado
+     de ícone e texto — a cor nunca carrega o significado sozinha. */
+  --destructive: #fca5a5;
 
-  --chart-1: #8b5cf6;
-  --chart-2: #6366f1;
-  --chart-3: #38bdf8;
-  --chart-4: #34d399;
+  --border: rgba(245, 235, 235, 0.13);
+  --input: rgba(245, 235, 235, 0.2);
+  --ring: #ef4444;
+
+  --chart-1: #ef4444;
+  --chart-2: #f87171;
+  --chart-3: #fb923c;
+  --chart-4: #a89f9f;
   --chart-5: #fbbf24;
 
   --radius: 0.75rem;
 
-  --sidebar: #131a2b;
-  --sidebar-foreground: #cbd5e1;
-  --sidebar-primary: #7c3aed;
+  --sidebar: #120f0f;
+  --sidebar-foreground: #d6cfcf;
+  --sidebar-primary: #dc2626;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #232c45;
-  --sidebar-accent-foreground: #f1f5f9;
-  --sidebar-border: rgba(148, 163, 184, 0.14);
-  --sidebar-ring: #8b5cf6;
+  --sidebar-accent: #241c1c;
+  --sidebar-accent-foreground: #f5f2f2;
+  --sidebar-border: rgba(245, 235, 235, 0.12);
+  --sidebar-ring: #ef4444;
 
   /* Cores dos status. Cada uma vem acompanhada de rótulo em texto na
      interface — a cor reforça, nunca carrega sozinha o significado. */
@@ -135,11 +145,11 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    /* Brilho radial frio no topo: dá profundidade ao fundo chapado sem
-       custo de renderização (é um gradiente fixo, não um blur animado). */
+    /* Brasa vermelha no topo: dá profundidade ao preto chapado sem custo
+       de renderização (é um gradiente fixo, não um blur animado). */
     background-image:
-      radial-gradient(60rem 32rem at 15% -12%, rgba(124, 58, 237, 0.16), transparent 60%),
-      radial-gradient(48rem 28rem at 92% -6%, rgba(56, 189, 248, 0.1), transparent 60%);
+      radial-gradient(60rem 32rem at 15% -12%, rgba(220, 38, 38, 0.18), transparent 60%),
+      radial-gradient(48rem 28rem at 92% -6%, rgba(248, 113, 113, 0.08), transparent 60%);
     background-attachment: fixed;
   }
 

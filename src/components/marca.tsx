@@ -18,15 +18,15 @@ export function Marca({ className, mostrarTexto = true }: { className?: string; 
       >
         <defs>
           <linearGradient id="vynexa-marca" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#818cf8" />
-            <stop offset="100%" stopColor="#a855f7" />
+            <stop offset="0%" stopColor="#f87171" />
+            <stop offset="100%" stopColor="#b91c1c" />
           </linearGradient>
         </defs>
         <rect width="32" height="32" rx="9" fill="url(#vynexa-marca)" />
         <path
           d="M9 10.5 L16 22 L23 10.5"
           fill="none"
-          stroke="#0f172a"
+          stroke="#0c0a0a"
           strokeWidth="2.75"
           strokeLinecap="round"
           strokeLinejoin="round"

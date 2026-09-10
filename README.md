@@ -45,6 +45,7 @@ no GitHub Actions faz a consulta com o tempo que precisar.
 
 | Camada | Escolha |
 | --- | --- |
+| IA | Gemini `gemini-3.5-flash-lite`, free tier |
 | Aplicação | Next.js 16 (App Router) + TypeScript |
 | Interface | Tailwind CSS v4 + shadcn/ui |
 | Banco | Turso (libSQL) — em desenvolvimento, um arquivo SQLite local |
@@ -81,10 +82,18 @@ npm run worker               # processa a fila, noutro terminal
 | Dashboard com contadores | pronto |
 | Listagem com filtros e paginação | pronto |
 | Exportação CSV | pronto |
-| **2 — Inteligência (Gemini)** | não iniciada |
+| **2 — Inteligência (Gemini)** | implementada, falta verificar |
+| Análise por IA: score, motivo e mensagem | escrito, sem chamada real ainda |
+| Link `wa.me` com a mensagem pronta | pronto |
+| Filtros de oportunidade e canal | pronto |
 | **3 — Campanhas de e-mail (Gmail)** | não iniciada |
 
-As tabelas `leads`, `campanhas`, `campanha_leads` e `envios` já existem no
-banco, com os campos das Etapas 2 e 3. O dashboard lê `score_oportunidade`
-e mostra zero enquanto a análise não roda — o caminho está pronto, só o
-handler não existe.
+O cliente do Gemini foi escrito a partir da documentação — endpoint
+`/v1beta/interactions`, saída em `output_text` —, mas nenhuma chamada real
+foi feita ainda, porque exige uma chave. Enquanto isso não acontecer, a
+Etapa 2 é código que compila, não código comprovado.
+
+As tabelas `campanhas`, `campanha_leads` e `envios` já existem no banco,
+com os campos da Etapa 3, mas o handler `envio_email` ainda não existe e
+falha de propósito se for chamado — melhor do que marcar como concluído
+em silêncio.

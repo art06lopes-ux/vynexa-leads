@@ -129,6 +129,38 @@ export function Filtros({ opcoes, total }: { opcoes: Opcoes; total: number }) {
             ))}
           </select>
         </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`${idBase}-score`} className="text-xs text-muted-foreground">
+            Oportunidade
+          </Label>
+          <select
+            id={`${idBase}-score`}
+            value={params.get("scoreMin") ?? ""}
+            onChange={(e) => aplicar("scoreMin", e.target.value)}
+            className={classeCampo}
+          >
+            <option value="">Todas</option>
+            <option value="70">Alta (70+)</option>
+            <option value="45">Média para cima (45+)</option>
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`${idBase}-canal`} className="text-xs text-muted-foreground">
+            Canal
+          </Label>
+          <select
+            id={`${idBase}-canal`}
+            value={params.get("canal") ?? ""}
+            onChange={(e) => aplicar("canal", e.target.value)}
+            className={classeCampo}
+          >
+            <option value="">Todos</option>
+            <option value="whatsapp">WhatsApp</option>
+            <option value="email">E-mail</option>
+          </select>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

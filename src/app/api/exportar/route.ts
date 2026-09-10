@@ -15,6 +15,15 @@ export function filtrosDaUrl(params: URLSearchParams): Filtros {
     return undefined;
   };
 
+  // `Number(null)` é 0, e 0 é finito: sem esta guarda, um CSV sem filtro
+  // aplicaria `score >= 0` e descartaria em silêncio toda empresa ainda
+  // não analisada, que é justamente a maioria.
+  const numero = (chave: string | null): number | undefined => {
+    if (chave === null || chave.trim() === "") return undefined;
+    const n = Number(chave);
+    return Number.isFinite(n) ? n : undefined;
+  };
+
   return {
     segmento: params.get("segmento") ?? undefined,
     pais: params.get("pais") ?? undefined,
@@ -23,6 +32,13 @@ export function filtrosDaUrl(params: URLSearchParams): Filtros {
     temSite: booleano("temSite"),
     temEmail: booleano("temEmail"),
     temTelefone: booleano("temTelefone"),
+    scoreMin: numero(params.get("scoreMin")),
+    canal:
+      params.get("canal") === "whatsapp"
+        ? "whatsapp"
+        : params.get("canal") === "email"
+          ? "email"
+          : undefined,
     busca: params.get("q") ?? undefined,
   };
 }
@@ -44,6 +60,8 @@ const CABECALHOS = [
   "Presença digital",
   "Score",
   "Motivo",
+  "Mensagem gerada",
+  "Canal",
   "Status do lead",
   "Idioma",
   "OpenStreetMap",
@@ -76,6 +94,8 @@ export async function GET(request: Request) {
     ROTULO_STATUS_SITE[e.status_site],
     e.score_oportunidade,
     e.motivo_problema,
+    e.mensagem_gerada,
+    e.canal_recomendado,
     e.status_lead,
     e.idioma_abordagem,
     `https://www.openstreetmap.org/${e.osm_id}`,

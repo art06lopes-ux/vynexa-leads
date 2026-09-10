@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AtSign, CircleAlert, Flame, Globe, MessageCircle, Search } from "lucide-react";
 
+import { BotaoAnalisar } from "@/components/painel/botao-analisar";
 import { CartaoContador, NumeroPrincipal } from "@/components/painel/cartao-contador";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { listarBuscasRecentes, obterContadores } from "@/db/consultas";
+import { contarSemAnalise, listarBuscasRecentes, obterContadores } from "@/db/consultas";
 import { nomeDoPais } from "@/lib/geo/paises";
 import { rotuloDoSegmento } from "@/lib/osm/segmentos";
 import type { Busca } from "@/db/tipos";
@@ -17,7 +18,11 @@ export const metadata: Metadata = { title: "Painel" };
 export const dynamic = "force-dynamic";
 
 export default async function PaginaPainel() {
-  const [contadores, buscas] = await Promise.all([obterContadores(), listarBuscasRecentes()]);
+  const [contadores, buscas, semAnalise] = await Promise.all([
+    obterContadores(),
+    listarBuscasRecentes(),
+    contarSemAnalise(),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -30,10 +35,14 @@ export default async function PaginaPainel() {
           </p>
         </div>
 
-        <Button render={<Link href="/buscar" />} className="h-11 cursor-pointer">
-          <Search className="size-4" aria-hidden="true" />
-          Nova busca
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <BotaoAnalisar pendentes={semAnalise} />
+
+          <Button render={<Link href="/buscar" />} className="h-11 cursor-pointer">
+            <Search className="size-4" aria-hidden="true" />
+            Nova busca
+          </Button>
+        </div>
       </header>
 
       <section aria-label="Resumo da carteira" className="grid gap-3 lg:grid-cols-3">
@@ -73,8 +82,8 @@ export default async function PaginaPainel() {
             // Sem análise de IA, este número é zero e dizer "0% da
             // carteira" sugeriria que a conta foi feita e deu zero.
             detalhe={
-              contadores.oportunidadeAlta === 0
-                ? "Depende da análise de IA (Etapa 2)."
+              contadores.oportunidadeAlta === 0 && semAnalise > 0
+                ? `${semAnalise} empresa(s) ainda sem análise.`
                 : "Score 70 ou mais."
             }
           />

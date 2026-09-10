@@ -12,10 +12,21 @@ import { createClient, type Client } from "@libsql/client";
 
 let cache: Client | null = null;
 
+/**
+ * Remove TODO espaço em branco, não só nas pontas.
+ *
+ * `trim()` sozinho não bastava: colar uma credencial de um campo que
+ * quebra linha traz uma quebra no meio do valor, e nem a URL nem o token
+ * do Turso podem conter espaço em lugar nenhum.
+ */
+function limpar(valor: string | undefined): string {
+  return (valor ?? "").replace(/\s+/g, "");
+}
+
 export function getBanco(): Client {
   if (cache !== null) return cache;
 
-  const url = process.env.TURSO_DATABASE_URL?.trim();
+  const url = limpar(process.env.TURSO_DATABASE_URL);
   if (!url) {
     throw new Error(
       "TURSO_DATABASE_URL ausente. Copie .env.example para .env.local. Para rodar local sem conta no Turso, use file:./local.db. Ver docs/SETUP.md.",
@@ -23,10 +34,20 @@ export function getBanco(): Client {
   }
 
   // O token não é exigido para `file:`, e exigi-lo quebraria o modo local.
-  const authToken = process.env.TURSO_AUTH_TOKEN?.trim() || undefined;
+  const authToken = limpar(process.env.TURSO_AUTH_TOKEN) || undefined;
   if (!url.startsWith("file:") && !authToken) {
     throw new Error(
       "TURSO_AUTH_TOKEN ausente. É obrigatório para bancos remotos do Turso. Ver docs/SETUP.md.",
+    );
+  }
+
+  // Falha com mensagem legível antes de a credencial virar cabeçalho HTTP.
+  // Sem isto, um token colado com quebra de linha produzia
+  // `TypeError: Headers.set: "Bearer eyJ…" is an invalid header value` —
+  // erro que não diz nem qual variável está errada nem por quê.
+  if (authToken !== undefined && !/^[A-Za-z0-9._~+/=-]+$/.test(authToken)) {
+    throw new Error(
+      "TURSO_AUTH_TOKEN contém caracteres inválidos. Ele é um JWT: só letras, números, ponto, hífen e underscore. Provavelmente veio uma quebra de linha junto ao colar. Cole novamente, em uma linha só.",
     );
   }
 

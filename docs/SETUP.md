@@ -110,6 +110,40 @@ ela não entra nas variáveis da Vercel — é uma credencial a menos exposta.
 Modelo usado: `gemini-3.5-flash-lite`, que está no free tier. Os modelos
 Pro saíram do plano gratuito e não são usados neste projeto.
 
+## 3.2 Stripe (checkout)
+
+**Comece pelo modo de teste.** A chave `sk_test_` aceita cartões
+fictícios e não move dinheiro nenhum — o painel mostra um aviso amarelo
+enquanto ela estiver ativa.
+
+1. <https://dashboard.stripe.com> → criar conta. **Aceita CPF**, não
+   exige CNPJ, e não pede cartão de crédito.
+2. **Developers → API keys** → copie a **Secret key** (`sk_test_…`).
+3. Cadastre na Vercel como `STRIPE_SECRET_KEY`.
+4. **Developers → Webhooks → Add endpoint**:
+   - URL: `https://SEU-PROJETO.vercel.app/api/webhooks/stripe`
+   - Evento: `checkout.session.completed`
+5. Copie o **Signing secret** (`whsec_…`) e cadastre como
+   `STRIPE_WEBHOOK_SECRET`.
+6. Redeploy.
+
+Sem o passo 4 e 5 os links funcionam e o cliente paga, mas a venda fica
+como "Aguardando" para sempre: é o webhook que confirma.
+
+### Custo
+
+A Stripe **não cobra mensalidade nem taxa de instalação**. Cobra por
+transação: **cartão nacional 3,99% + R$ 0,39**, Pix 1,19% (liberado por
+convite), boleto R$ 3,45. Numa venda de R$ 1.297 no cartão, a taxa fica
+em torno de R$ 52. Valores conferidos em <https://stripe.com/br/pricing>.
+
+### O que este projeto não faz
+
+Não existe campo de cartão em lugar nenhum da aplicação, e não vai
+existir. O cliente é levado à página de checkout da Stripe, que é
+certificada para isso. Guardar dado de cartão aqui traria escopo de PCI
+sem nenhum ganho.
+
 ## 4. Vercel
 
 1. <https://vercel.com> → **Add New** → **Project** → importe o repositório.
@@ -123,6 +157,8 @@ Pro saíram do plano gratuito e não são usados neste projeto.
    | `SENHA_PAINEL` | a senha do painel |
    | `SEGREDO_SESSAO` | o segredo de 64 caracteres |
    | `OSM_CONTATO` | seu e-mail |
+   | `STRIPE_SECRET_KEY` | a chave do passo 3.2 |
+   | `STRIPE_WEBHOOK_SECRET` | o signing secret do passo 3.2 |
 
 3. Deploy.
 

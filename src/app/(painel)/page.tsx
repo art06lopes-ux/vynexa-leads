@@ -3,10 +3,16 @@ import Link from "next/link";
 import { AtSign, CircleAlert, Flame, Globe, MessageCircle, Search } from "lucide-react";
 
 import { BotaoAnalisar } from "@/components/painel/botao-analisar";
+import { GraficoLeads } from "@/components/painel/grafico-leads";
 import { CartaoContador, NumeroPrincipal } from "@/components/painel/cartao-contador";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { contarSemAnalise, listarBuscasRecentes, obterContadores } from "@/db/consultas";
+import {
+  contarSemAnalise,
+  listarBuscasRecentes,
+  obterContadores,
+  obterSerieLeads,
+} from "@/db/consultas";
 import { nomeDoPais } from "@/lib/geo/paises";
 import { rotuloDoSegmento } from "@/lib/osm/segmentos";
 import type { Busca } from "@/db/tipos";
@@ -18,10 +24,11 @@ export const metadata: Metadata = { title: "Painel" };
 export const dynamic = "force-dynamic";
 
 export default async function PaginaPainel() {
-  const [contadores, buscas, semAnalise] = await Promise.all([
+  const [contadores, buscas, semAnalise, serie] = await Promise.all([
     obterContadores(),
     listarBuscasRecentes(),
     contarSemAnalise(),
+    obterSerieLeads(14),
   ]);
 
   return (
@@ -89,6 +96,14 @@ export default async function PaginaPainel() {
           />
         </div>
       </section>
+
+      {contadores.total > 0 && (
+        <Card className="vidro">
+          <CardContent className="pt-6">
+            <GraficoLeads serie={serie} />
+          </CardContent>
+        </Card>
+      )}
 
       <BuscasRecentes buscas={buscas} />
     </div>

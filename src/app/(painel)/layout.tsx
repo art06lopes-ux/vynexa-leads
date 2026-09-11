@@ -1,7 +1,8 @@
 import { LogOut } from "lucide-react";
 
 import { Marca } from "@/components/marca";
-import { Navegacao } from "@/components/painel/navegacao";
+import { Dock } from "@/components/painel/dock";
+import { BuscaGlobal } from "@/components/painel/busca-global";
 import { Button } from "@/components/ui/button";
 import { sair } from "@/server/acoes-auth";
 import { exigirSessao } from "@/server/sessao";
@@ -14,12 +15,10 @@ export default async function LayoutPainel({ children }: LayoutProps<"/">) {
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="vidro sticky top-0 z-40 border-x-0 border-t-0">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 sm:px-6">
-          <Marca className="shrink-0" />
+        <div className="flex h-16 w-full items-center gap-3 px-4 sm:gap-4 sm:px-6">
+          <Marca className="shrink-0" mostrarTexto={false} />
 
-          <div className="mx-auto sm:mx-0">
-            <Navegacao />
-          </div>
+          <BuscaGlobal />
 
           <form action={sair} className="ml-auto">
             <Button
@@ -36,7 +35,13 @@ export default async function LayoutPainel({ children }: LayoutProps<"/">) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+      {/* `pb-28` reserva a altura do dock flutuante. Sem essa folga a
+          última linha da tabela fica escondida atrás dele. */}
+      <main className="w-full min-w-0 flex-1 px-4 pb-28 pt-6 sm:px-6 sm:pt-8">
+        <div className="mx-auto w-full max-w-6xl">{children}</div>
+      </main>
+
+      <Dock />
     </div>
   );
 }

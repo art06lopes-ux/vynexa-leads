@@ -25,17 +25,20 @@ function compactar(valor: number): string {
 export function NumeroPrincipal({
   rotulo,
   valor,
+  valorTexto,
   detalhe,
 }: {
   rotulo: string;
-  valor: number;
+  valor?: number;
+  /** Valor já formatado — dinheiro, por exemplo. Tem prioridade sobre `valor`. */
+  valorTexto?: string;
   detalhe?: string;
 }) {
   return (
-    <div className="vidro flex flex-col justify-between rounded-xl p-5">
+    <div className="vidro brasa flex flex-col justify-between rounded-xl p-5">
       <p className="text-sm text-muted-foreground">{rotulo}</p>
-      <p className="mt-2 text-5xl font-semibold tracking-tight">
-        {valor.toLocaleString("pt-BR")}
+      <p className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">
+        {valorTexto ?? (valor ?? 0).toLocaleString("pt-BR")}
       </p>
       {detalhe && <p className="mt-2 text-xs text-muted-foreground">{detalhe}</p>}
     </div>
@@ -45,6 +48,7 @@ export function NumeroPrincipal({
 export function CartaoContador({
   rotulo,
   valor,
+  valorTexto,
   total,
   Icone,
   tom = "neutro",
@@ -52,6 +56,8 @@ export function CartaoContador({
 }: {
   rotulo: string;
   valor: number;
+  /** Valor já formatado — dinheiro, por exemplo. Tem prioridade sobre `valor`. */
+  valorTexto?: string;
   /** Base para a proporção. Omitido, o cartão não mostra porcentagem. */
   total?: number;
   Icone: LucideIcon;
@@ -66,7 +72,9 @@ export function CartaoContador({
   } as const;
 
   const proporcao =
-    total !== undefined && total > 0 ? Math.round((valor / total) * 100) : null;
+    valorTexto === undefined && total !== undefined && total > 0
+      ? Math.round((valor / total) * 100)
+      : null;
 
   return (
     <div className="vidro flex flex-col gap-3 rounded-xl p-4">
@@ -77,7 +85,7 @@ export function CartaoContador({
         <p className="text-sm text-muted-foreground">{rotulo}</p>
       </div>
 
-      <p className="text-2xl font-semibold tracking-tight">{compactar(valor)}</p>
+      <p className="text-2xl font-semibold tracking-tight">{valorTexto ?? compactar(valor)}</p>
 
       <p className="text-xs text-muted-foreground">
         {detalhe ?? (proporcao !== null ? `${proporcao}% da carteira` : " ")}

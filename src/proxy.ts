@@ -13,7 +13,16 @@ import { NOME_COOKIE, sessaoValida } from "@/lib/auth";
  * chamada por caminho que o `matcher` não cobre, e aí a tranca não existe.
  */
 
-const PUBLICAS = ["/login"];
+/**
+ * Rotas que não exigem sessão.
+ *
+ * O webhook da Stripe está aqui porque quem chama é a Stripe, não o
+ * operador — sem sessão, ele seria redirecionado para o login e a
+ * Stripe receberia um 307 em vez do 200 que espera, desativando o
+ * endpoint depois de algumas tentativas. A proteção dele não é a
+ * sessão: é a assinatura HMAC, conferida dentro da própria rota.
+ */
+const PUBLICAS = ["/login", "/api/webhooks"];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

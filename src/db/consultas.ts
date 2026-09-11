@@ -265,6 +265,40 @@ export async function obterContadores(): Promise<Contadores> {
   };
 }
 
+export type PontoSerie = { dia: string; total: number };
+
+/**
+ * Empresas adicionadas por dia, para o gráfico do painel.
+ *
+ * O SQL agrupa só os dias que existem; os vazios são preenchidos aqui.
+ * Sem esse preenchimento a linha do gráfico ligaria segunda direto em
+ * sexta como se nada tivesse acontecido no meio — o buraco desapareceria
+ * em vez de aparecer, que é o oposto do que um gráfico deve fazer.
+ */
+export async function obterSerieLeads(dias = 14): Promise<PontoSerie[]> {
+  const { rows } = await getBanco().execute({
+    sql: `SELECT date(criado_em) AS dia, COUNT(*) AS total
+          FROM empresas
+          WHERE criado_em >= date('now', ?)
+          GROUP BY dia
+          ORDER BY dia`,
+    args: [`-${dias - 1} days`],
+  });
+
+  const porDia = new Map(rows.map((r) => [String(r.dia), Number(r.total)]));
+  const serie: PontoSerie[] = [];
+  const hoje = new Date();
+
+  for (let i = dias - 1; i >= 0; i -= 1) {
+    const d = new Date(hoje);
+    d.setDate(d.getDate() - i);
+    const chave = d.toISOString().slice(0, 10);
+    serie.push({ dia: chave, total: porDia.get(chave) ?? 0 });
+  }
+
+  return serie;
+}
+
 /** Quantas empresas ainda não passaram pela análise de IA. */
 export async function contarSemAnalise(): Promise<number> {
   const { rows } = await getBanco().execute(

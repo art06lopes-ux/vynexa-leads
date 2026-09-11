@@ -105,7 +105,11 @@ export async function pedirJson<T>(
   const texto = extrairTexto(dados);
 
   if (texto === null) {
-    throw new ErroGemini("Resposta do Gemini sem texto reconhecível.");
+    // Inclui as chaves de primeiro nível: se a API mudar de forma outra
+    // vez, o erro já diz onde procurar em vez de exigir uma investigação.
+    throw new ErroGemini(
+      `Resposta do Gemini sem texto reconhecível. Campos recebidos: ${Object.keys(dados).join(", ")}`,
+    );
   }
 
   try {
@@ -118,21 +122,32 @@ export async function pedirJson<T>(
 /**
  * Encontra o texto gerado na resposta.
  *
- * A documentação expõe `output_text` nos SDKs. Como o formato exato do
- * corpo REST não está documentado com a mesma clareza, há um caminho
- * alternativo percorrendo `output[].content[].text`. Não é adivinhação
- * defensiva sem motivo: a alternativa custa dez linhas e evita que uma
- * mudança de forma na resposta derrube toda a análise em silêncio.
+ * A forma abaixo foi observada numa chamada real, não deduzida da
+ * documentação — e as duas divergem. Os SDKs expõem `output_text`, mas o
+ * corpo REST não tem esse campo: ele traz `steps`, onde o primeiro passo
+ * costuma ser do tipo "thought" (sem conteúdo) e o texto vive no passo
+ * "model_output".
+ *
+ * Resposta real, encurtada:
+ *   { "status": "completed",
+ *     "steps": [ { "type": "thought" },
+ *                { "type": "model_output",
+ *                  "content": [ { "type": "text", "text": "{ … }" } ] } ] }
+ *
+ * `output_text` continua sendo tentado primeiro: se um dia a API passar
+ * a devolvê-lo, este código já aproveita sem precisar mudar.
  */
 function extrairTexto(dados: Record<string, unknown>): string | null {
   if (typeof dados.output_text === "string" && dados.output_text.trim() !== "") {
     return dados.output_text;
   }
 
-  const saida = dados.output;
-  if (Array.isArray(saida)) {
-    for (const item of saida) {
-      const conteudo = (item as { content?: unknown })?.content;
+  const passos = dados.steps;
+  if (Array.isArray(passos)) {
+    // De trás para frente: o texto final é o último passo com conteúdo,
+    // e passos de raciocínio vêm antes.
+    for (let i = passos.length - 1; i >= 0; i -= 1) {
+      const conteudo = (passos[i] as { content?: unknown })?.content;
       if (!Array.isArray(conteudo)) continue;
       for (const parte of conteudo) {
         const texto = (parte as { text?: unknown })?.text;

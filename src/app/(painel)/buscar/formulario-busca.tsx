@@ -2,13 +2,14 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, CheckCircle2, LoaderCircle, Search } from "lucide-react";
+import { AlertCircle, LoaderCircle, Radar } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ProgressoBusca } from "@/components/leads/progresso-busca";
 import type { UF } from "@/lib/geo/ibge";
 import { PAISES } from "@/lib/geo/paises";
 import { SEGMENTOS } from "@/lib/osm/segmentos";
@@ -428,40 +429,29 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
           )}
 
           {progresso && progresso.status !== "erro" && (
-            <div
-              aria-live="polite"
-              className="rounded-lg border border-primary/25 bg-primary/8 px-4 py-3 text-sm"
-            >
-              {progresso.status === "concluida" ? (
-                <>
-                  <p className="flex items-center gap-2 font-medium">
-                    <CheckCircle2 className="size-4 text-emerald-300" aria-hidden="true" />
-                    {progresso.rotulo}
-                  </p>
-                  <dl className="num mt-2 flex flex-wrap gap-x-6 gap-y-1 text-muted-foreground">
+            <div aria-live="polite">
+              <ProgressoBusca
+                estagio={progresso.status === "concluida" ? "concluida" : progresso.status}
+                local={progresso.rotulo}
+              />
+
+              {progresso.status === "concluida" && (
+                <dl className="num mt-3 flex flex-wrap gap-x-6 gap-y-1 px-1 text-sm text-muted-foreground">
+                  <div className="flex gap-1.5">
+                    <dt>Encontradas:</dt>
+                    <dd className="font-medium text-foreground">{progresso.encontradas}</dd>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <dt>Novas:</dt>
+                    <dd className="font-medium text-emerald-300">{progresso.novas}</dd>
+                  </div>
+                  {progresso.expansoes > 0 && progresso.raioKm !== null && (
                     <div className="flex gap-1.5">
-                      <dt>Encontradas:</dt>
-                      <dd className="font-medium text-foreground">{progresso.encontradas}</dd>
+                      <dt>Raio final:</dt>
+                      <dd className="font-medium text-foreground">{progresso.raioKm} km</dd>
                     </div>
-                    <div className="flex gap-1.5">
-                      <dt>Novas:</dt>
-                      <dd className="font-medium text-emerald-300">{progresso.novas}</dd>
-                    </div>
-                    {progresso.expansoes > 0 && progresso.raioKm !== null && (
-                      <div className="flex gap-1.5">
-                        <dt>Raio final:</dt>
-                        <dd className="font-medium text-foreground">{progresso.raioKm} km</dd>
-                      </div>
-                    )}
-                  </dl>
-                </>
-              ) : (
-                <p className="flex items-center gap-2">
-                  <LoaderCircle className="size-4 animate-spin text-primary" aria-hidden="true" />
-                  {progresso.status === "pendente"
-                    ? "Na fila. O worker roda a cada 5 minutos — pode fechar esta tela."
-                    : "Consultando o OpenStreetMap…"}
-                </p>
+                  )}
+                </dl>
               )}
             </div>
           )}
@@ -471,12 +461,12 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
               {enviando ? (
                 <>
                   <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-                  Aguardando o worker…
+                  Caçando…
                 </>
               ) : (
                 <>
-                  <Search className="size-4" aria-hidden="true" />
-                  Buscar empresas
+                  <Radar className="size-4" aria-hidden="true" />
+                  Caçar empresas
                 </>
               )}
             </Button>

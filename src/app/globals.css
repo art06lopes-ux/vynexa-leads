@@ -173,6 +173,23 @@
   .vidro {
     @apply border border-white/8 bg-white/4 backdrop-blur-xl;
   }
+
+  /* Brasa: fio de luz vermelha na borda superior do cartão. Um
+     `box-shadow` e um pseudo-elemento, sem custo de animação. */
+  .brasa {
+    position: relative;
+    box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.18), 0 18px 40px -24px rgba(220, 38, 38, 0.5);
+  }
+
+  .brasa::before {
+    content: "";
+    position: absolute;
+    inset-inline: 12%;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    opacity: 0.8;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

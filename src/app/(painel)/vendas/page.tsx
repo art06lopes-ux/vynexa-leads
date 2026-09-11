@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Link2, Receipt, TrendingUp, Wallet } from "lucide-react";
 
+import { Entrada } from "@/components/motion/entrada";
+import { Heroi } from "@/components/painel/heroi";
 import { FormularioCheckout } from "@/app/(painel)/vendas/formulario-checkout";
 import { FormularioVendaManual } from "@/app/(painel)/vendas/formulario-venda-manual";
 import { SeletorPeriodo } from "@/app/(painel)/vendas/seletor-periodo";
@@ -10,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ehPeriodo,
   listarVendas,
+  obterHojeEOntem,
   obterResumo,
   obterSerieReceita,
   PERIODOS,
@@ -33,17 +36,18 @@ export default async function PaginaVendas({ searchParams }: PageProps<"/vendas"
   const bruto = Array.isArray(sp.periodo) ? sp.periodo[0] : sp.periodo;
   const periodo: ChavePeriodo = ehPeriodo(bruto) ? bruto : "7d";
 
-  const [resumo, serie, vendas] = await Promise.all([
+  const [resumo, serie, vendas, hoje] = await Promise.all([
     obterResumo(periodo),
     obterSerieReceita(periodo),
     listarVendas(20),
+    obterHojeEOntem(),
   ]);
 
   const teste = emModoTeste();
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+    <Entrada className="flex flex-col gap-6">
+      <header data-entrada className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Vendas</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -64,7 +68,21 @@ export default async function PaginaVendas({ searchParams }: PageProps<"/vendas"
         </p>
       )}
 
-      <section aria-label="Resumo financeiro" className="grid gap-3 lg:grid-cols-3">
+      <div data-entrada>
+        <Heroi
+          rotuloSuperior="Sala de receita"
+          rotulo="Vendas hoje"
+          centavos={hoje.hojeCentavos}
+          variacao={hoje.variacao}
+          detalhe={
+            hoje.vendasHoje === 0
+              ? "Nenhuma venda confirmada hoje ainda."
+              : `${hoje.vendasHoje} ${hoje.vendasHoje === 1 ? "venda confirmada" : "vendas confirmadas"} hoje.`
+          }
+        />
+      </div>
+
+      <section data-entrada aria-label="Resumo financeiro" className="grid gap-3 lg:grid-cols-3">
         <NumeroPrincipal
           rotulo={`Recebido · ${PERIODOS[periodo].rotulo.toLowerCase()}`}
           valorTexto={formatarDinheiro(resumo.totalCentavos)}
@@ -91,14 +109,16 @@ export default async function PaginaVendas({ searchParams }: PageProps<"/vendas"
       </section>
 
       {resumo.quantidade > 0 && (
-        <Card className="vidro">
-          <CardContent className="pt-6">
-            <GraficoReceita serie={serie} />
-          </CardContent>
-        </Card>
+        <div data-entrada>
+          <Card className="vidro brasa">
+            <CardContent className="pt-6">
+              <GraficoReceita serie={serie} />
+            </CardContent>
+          </Card>
+        </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
+      <div data-entrada className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
         <div className="flex flex-col gap-6">
           {/* Manual em cima: é o caso comum (Pix direto). O checkout da
               Stripe fica para quem só paga no cartão. */}
@@ -165,6 +185,6 @@ export default async function PaginaVendas({ searchParams }: PageProps<"/vendas"
           </CardContent>
         </Card>
       </div>
-    </div>
+    </Entrada>
   );
 }

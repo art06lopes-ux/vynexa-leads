@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useCallback, useRef } from "react";
 import {
   Building2,
   History,
@@ -11,20 +12,21 @@ import {
   Wallet,
 } from "lucide-react";
 
+import { ELASTICO, gsap } from "@/components/motion/gsap";
 import { cn } from "@/lib/utils";
 
 /**
- * Dock flutuante, no rodapé, no lugar do trilho lateral.
+ * Dock flutuante com magnificação de macOS.
  *
- * Devolve a largura inteira ao conteúdo — numa tabela de seis colunas
- * isso é espaço que faz diferença de verdade — e mantém a navegação ao
- * alcance do polegar no celular, onde o topo é a parte mais difícil de
- * alcançar.
+ * O ícone sob o ponteiro cresce, os vizinhos crescem menos, e o resto
+ * fica no lugar — Hover Animation + Scale Up + Elastic do guia. A escala
+ * é calculada pela distância horizontal do ponteiro a cada item, o que
+ * dá a curva contínua do macOS em vez de um "pula quando entra".
  *
- * `position: fixed` cobre o rodapé da página, então o `<main>` reserva
- * espaço embaixo. Sem isso a última linha da tabela ficaria escondida
- * atrás do dock — o tipo de defeito que só aparece quando a lista é
- * longa o bastante.
+ * Só com ponteiro fino: no toque não existe hover, e um item preso em
+ * escala 1,5 depois do dedo sair ficaria errado. Lá o dock é estático.
+ *
+ * `position: fixed` cobre o rodapé, então o `<main>` reserva espaço.
  */
 
 const ITENS = [
@@ -36,21 +38,76 @@ const ITENS = [
   { href: "/ajustes", rotulo: "Ajustes", Icone: Settings },
 ] as const;
 
+/** Alcance da magnificação em px e escala máxima no centro. */
+const ALCANCE = 110;
+const ESCALA_MAX = 1.45;
+
 export function Dock() {
   const caminho = usePathname();
+  const itens = useRef<Array<HTMLAnchorElement | null>>([]);
+  const ponteiroFino = useRef<boolean | null>(null);
+
+  const temPonteiroFino = () => {
+    if (ponteiroFino.current === null) {
+      ponteiroFino.current = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    }
+    return ponteiroFino.current;
+  };
+
+  const aoMover = useCallback((evento: React.MouseEvent) => {
+    if (!temPonteiroFino()) return;
+    const x = evento.clientX;
+
+    for (const el of itens.current) {
+      if (!el) continue;
+      const r = el.getBoundingClientRect();
+      const centro = r.left + r.width / 2;
+      const d = Math.abs(x - centro);
+      // Curva de sino: 1 no centro, 0 fora do alcance.
+      const fator = d > ALCANCE ? 0 : Math.cos((d / ALCANCE) * (Math.PI / 2));
+      const escala = 1 + (ESCALA_MAX - 1) * fator;
+
+      gsap.to(el, {
+        scale: escala,
+        y: -12 * fator,
+        duration: 0.18,
+        ease: "power2.out",
+        overwrite: "auto",
+      });
+    }
+  }, []);
+
+  const aoSair = useCallback(() => {
+    if (!temPonteiroFino()) return;
+    gsap.to(itens.current.filter(Boolean), {
+      scale: 1,
+      y: 0,
+      duration: 0.5,
+      ease: ELASTICO,
+      overwrite: "auto",
+    });
+  }, []);
+
+  /** Microinteraction (guia, cat. 04): um "tap" curto ao clicar. */
+  const aoClicar = useCallback((el: HTMLAnchorElement | null) => {
+    if (!el) return;
+    gsap.fromTo(el, { scale: 0.9 }, { scale: 1, duration: 0.45, ease: ELASTICO });
+  }, []);
 
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-4"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4"
       // Faixa de gestos do iPhone: sem isto o dock encosta na barra do
       // sistema e o toque no item do meio vira "voltar à tela inicial".
       style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
     >
       <nav
         aria-label="Seções"
-        className="vidro pointer-events-auto flex items-end gap-1 rounded-2xl p-2 shadow-[0_18px_50px_-20px_rgba(0,0,0,0.9)]"
+        onMouseMove={aoMover}
+        onMouseLeave={aoSair}
+        className="vidro brasa pointer-events-auto flex items-end gap-1 rounded-2xl px-2 pb-2 pt-3 shadow-[0_18px_50px_-20px_rgba(0,0,0,0.9)]"
       >
-        {ITENS.map(({ href, rotulo, Icone }) => {
+        {ITENS.map(({ href, rotulo, Icone }, i) => {
           // Exato na raiz, prefixo nas demais: sem isso "/" ficaria aceso
           // em todas as páginas.
           const ativo = href === "/" ? caminho === "/" : caminho.startsWith(href);
@@ -59,17 +116,24 @@ export function Dock() {
             <Link
               key={href}
               href={href}
+              ref={(el) => {
+                itens.current[i] = el;
+              }}
+              onClick={() => aoClicar(itens.current[i] ?? null)}
               aria-current={ativo ? "page" : undefined}
               title={rotulo}
+              // `origin-bottom`: cresce para cima, como no macOS, e não
+              // para os dois lados empurrando os vizinhos.
               className={cn(
-                "group relative flex h-14 w-[3.25rem] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl text-[0.6rem] font-medium transition-all duration-200 sm:w-[4.25rem] sm:text-[0.65rem]",
-                ativo
-                  ? "bg-primary/18 text-foreground"
-                  : "text-muted-foreground hover:-translate-y-1 hover:bg-accent hover:text-foreground",
+                "group relative flex h-14 w-[3.25rem] origin-bottom cursor-pointer flex-col items-center justify-center gap-1 rounded-xl text-[0.6rem] font-medium will-change-transform sm:w-[4.25rem] sm:text-[0.65rem]",
+                ativo ? "bg-primary/18 text-foreground" : "text-muted-foreground hover:text-foreground",
               )}
             >
               <Icone
-                className={cn("size-5 transition-transform duration-200", ativo && "drop-shadow-[0_0_8px_var(--primary)]")}
+                className={cn(
+                  "size-5",
+                  ativo && "text-neon drop-shadow-[0_0_8px_var(--neon)]",
+                )}
                 aria-hidden="true"
               />
               {rotulo}
@@ -80,7 +144,7 @@ export function Dock() {
               {ativo && (
                 <span
                   aria-hidden="true"
-                  className="absolute -bottom-0.5 size-1 rounded-full bg-primary"
+                  className="absolute -bottom-1 size-1 rounded-full bg-neon shadow-[var(--neon-brilho)]"
                 />
               )}
             </Link>

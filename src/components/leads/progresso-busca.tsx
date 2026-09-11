@@ -2,6 +2,8 @@
 
 import { Check, LoaderCircle, Radar } from "lucide-react";
 
+import { Particulas } from "@/components/motion/particulas";
+import { TextoEmbaralhado } from "@/components/motion/texto-embaralhado";
 import { cn } from "@/lib/utils";
 
 export type EstagioBusca = "pendente" | "em_andamento" | "concluida";
@@ -34,7 +36,14 @@ export function ProgressoBusca({
   const indiceAtual = ESTAGIOS.findIndex((e) => e.chave === estagio);
 
   return (
-    <div className="vidro brasa flex flex-col gap-4 rounded-xl p-5 sm:flex-row sm:items-center sm:gap-6">
+    <div className="vidro brasa relative flex flex-col gap-4 overflow-hidden rounded-xl p-5 sm:flex-row sm:items-center sm:gap-6">
+      {/* Rede de pontos atrás, só enquanto rastreia — é o "Code Hunter"
+          da referência, sem o globo: partículas custam pouco, um globo
+          em 3D custaria uma biblioteca inteira. */}
+      {estagio !== "concluida" && (
+        <Particulas densidade={45} className="pointer-events-none absolute inset-0 h-full w-full opacity-70" />
+      )}
+
       <div className="relative mx-auto size-24 shrink-0 sm:mx-0">
         {/* Anéis do radar */}
         <span className="absolute inset-0 rounded-full border border-primary/25" aria-hidden="true" />
@@ -66,8 +75,10 @@ export function ProgressoBusca({
         </span>
       </div>
 
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{local ?? "Localizando a região…"}</p>
+      <div className="relative min-w-0 flex-1">
+        <p className="truncate font-medium">
+          {local ? <TextoEmbaralhado texto={local} /> : "Localizando a região…"}
+        </p>
 
         <ol className="mt-3 flex flex-col gap-2">
           {ESTAGIOS.map((e, i) => {

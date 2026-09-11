@@ -1,6 +1,8 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+
+import { gsap, SEM_REDUCAO } from "@/components/motion/gsap";
 
 import type { PontoSerie } from "@/db/consultas";
 
@@ -27,6 +29,23 @@ function formatarDia(iso: string): string {
 export function GraficoLeads({ serie }: { serie: PontoSerie[] }) {
   const [ativo, setAtivo] = useState<number | null>(null);
   const idGradiente = useId();
+  const idBrilho = useId();
+  const refLinha = useRef<SVGPathElement>(null);
+  const refArea = useRef<SVGPathElement>(null);
+
+  // Draw SVG (guia, cat. 05): a linha se traça da esquerda para a direita
+  // e a área aparece por baixo dela. Só na montagem — ao trocar de
+  // período a página remonta e o efeito repete, que é o esperado.
+  useEffect(() => {
+    const mm = gsap.matchMedia();
+    mm.add(SEM_REDUCAO, () => {
+      if (!refLinha.current || !refArea.current) return;
+      const tl = gsap.timeline();
+      tl.fromTo(refLinha.current, { drawSVG: "0%" }, { drawSVG: "100%", duration: 1.2, ease: "power2.inOut" });
+      tl.fromTo(refArea.current, { opacity: 0 }, { opacity: 1, duration: 0.6 }, "-=0.5");
+    });
+    return () => mm.revert();
+  }, [serie]);
 
   if (serie.length === 0) return null;
 
@@ -68,9 +87,17 @@ export function GraficoLeads({ serie }: { serie: PontoSerie[] }) {
         onMouseLeave={() => setAtivo(null)}
       >
         <defs>
+          {/* Halo neon na linha: um blur da própria linha, por baixo dela. */}
+          <filter id={idBrilho} x="-10%" y="-50%" width="120%" height="200%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
           <linearGradient id={idGradiente} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
+            <stop offset="0%" stopColor="var(--neon)" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="var(--neon)" stopOpacity="0" />
           </linearGradient>
         </defs>
 
@@ -84,8 +111,16 @@ export function GraficoLeads({ serie }: { serie: PontoSerie[] }) {
           strokeOpacity="0.12"
         />
 
-        <path d={area} fill={`url(#${idGradiente})`} />
-        <path d={linha} fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinejoin="round" />
+        <path ref={refArea} d={area} fill={`url(#${idGradiente})`} />
+        <path
+          ref={refLinha}
+          d={linha}
+          fill="none"
+          stroke="var(--neon)"
+          strokeWidth="2"
+          strokeLinejoin="round"
+          filter={`url(#${idBrilho})`}
+        />
 
         {ativo !== null && serie[ativo] && (
           <>
@@ -98,7 +133,7 @@ export function GraficoLeads({ serie }: { serie: PontoSerie[] }) {
               strokeOpacity="0.25"
             />
             {/* Anel na cor da superfície separa o ponto da linha. */}
-            <circle cx={x(ativo)} cy={y(serie[ativo].total)} r="5" fill="var(--primary)" stroke="var(--card)" strokeWidth="2" />
+            <circle cx={x(ativo)} cy={y(serie[ativo].total)} r="5" fill="var(--neon)" stroke="var(--card)" strokeWidth="2" />
           </>
         )}
 

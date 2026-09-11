@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 
+import { NumeroAnimado } from "@/components/motion/numero-animado";
 import { cn } from "@/lib/utils";
 
 /**
@@ -38,7 +39,12 @@ export function NumeroPrincipal({
     <div className="vidro brasa flex flex-col justify-between rounded-xl p-5">
       <p className="text-sm text-muted-foreground">{rotulo}</p>
       <p className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">
-        {valorTexto ?? (valor ?? 0).toLocaleString("pt-BR")}
+        {valorTexto ?? (
+          <NumeroAnimado
+            valor={valor ?? 0}
+            formatar={(v) => Math.round(v).toLocaleString("pt-BR")}
+          />
+        )}
       </p>
       {detalhe && <p className="mt-2 text-xs text-muted-foreground">{detalhe}</p>}
     </div>
@@ -77,7 +83,7 @@ export function CartaoContador({
       : null;
 
   return (
-    <div className="vidro flex flex-col gap-3 rounded-xl p-4">
+    <div className="vidro brasa flex flex-col gap-3 rounded-xl p-4">
       <div className="flex items-center gap-2">
         {/* Ícone acompanhando o rótulo em texto: a cor reforça o
             significado, nunca o carrega sozinha. */}
@@ -85,7 +91,9 @@ export function CartaoContador({
         <p className="text-sm text-muted-foreground">{rotulo}</p>
       </div>
 
-      <p className="text-2xl font-semibold tracking-tight">{valorTexto ?? compactar(valor)}</p>
+      <p className="text-2xl font-semibold tracking-tight">
+        {valorTexto ?? <NumeroAnimado valor={valor} formatar={(v) => compactar(Math.round(v))} />}
+      </p>
 
       <p className="text-xs text-muted-foreground">
         {detalhe ?? (proporcao !== null ? `${proporcao}% da carteira` : " ")}

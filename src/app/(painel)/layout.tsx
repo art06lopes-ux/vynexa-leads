@@ -4,6 +4,7 @@ import { Marca } from "@/components/marca";
 import { Dock } from "@/components/painel/dock";
 import { BuscaGlobal } from "@/components/painel/busca-global";
 import { Button } from "@/components/ui/button";
+import { lerConfiguracao } from "@/db/configuracoes";
 import { sair } from "@/server/acoes-auth";
 import { exigirSessao } from "@/server/sessao";
 
@@ -11,6 +12,13 @@ export default async function LayoutPainel({ children }: LayoutProps<"/">) {
   // Repete a checagem do proxy de propósito: o `matcher` é uma expressão
   // regular, e uma rota nova pode escapar dela sem ninguém notar.
   await exigirSessao();
+  const empresa = await lerConfiguracao("empresa_nome", "Vynexa Dev");
+  // Iniciais para o avatar: até duas palavras, uma letra cada.
+  const iniciais = empresa
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((p) => p.charAt(0).toUpperCase())
+    .join("");
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -20,7 +28,21 @@ export default async function LayoutPainel({ children }: LayoutProps<"/">) {
 
           <BuscaGlobal />
 
-          <form action={sair} className="ml-auto">
+          {/* "Ao vivo": o painel é servidor-renderizado a cada abertura,
+              sem cache — o chip diz isso em vez de deixar a dúvida. */}
+          <span className="ao-vivo ml-auto hidden items-center gap-2 rounded-full border border-neon/25 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-foreground/80 md:inline-flex">
+            Ao vivo
+          </span>
+
+          <span
+            className="hidden size-9 shrink-0 items-center justify-center rounded-full border border-neon/30 bg-primary/15 text-xs font-bold text-neon shadow-[var(--neon-brilho)] sm:inline-flex"
+            title={empresa}
+            aria-label={empresa}
+          >
+            {iniciais}
+          </span>
+
+          <form action={sair} className="ml-auto md:ml-0">
             <Button
               type="submit"
               variant="ghost"

@@ -188,6 +188,38 @@ export async function obterSerieReceita(periodo: ChavePeriodo): Promise<PontoRec
   return serie;
 }
 
+/**
+ * Recebido hoje e ontem, para o painel-herói e a variação.
+ *
+ * Só o que está `pago`. A comparação com ontem é o número que a
+ * referência mostra como "+63% vs ontem" — e ela fica nula quando ontem
+ * foi zero, porque "+∞%" não é informação.
+ */
+export async function obterHojeEOntem(): Promise<{
+  hojeCentavos: number;
+  ontemCentavos: number;
+  vendasHoje: number;
+  variacao: number | null;
+}> {
+  const { rows } = await getBanco().execute(`
+    SELECT
+      COALESCE(SUM(CASE WHEN date(pago_em) = date('now')            THEN valor_centavos END), 0) AS hoje,
+      COALESCE(SUM(CASE WHEN date(pago_em) = date('now', '-1 day')  THEN valor_centavos END), 0) AS ontem,
+      COALESCE(SUM(CASE WHEN date(pago_em) = date('now')            THEN 1 END), 0)              AS n_hoje
+    FROM vendas WHERE status = 'pago'
+  `);
+
+  const hoje = Number(rows[0]?.hoje ?? 0);
+  const ontem = Number(rows[0]?.ontem ?? 0);
+
+  return {
+    hojeCentavos: hoje,
+    ontemCentavos: ontem,
+    vendasHoje: Number(rows[0]?.n_hoje ?? 0),
+    variacao: ontem > 0 ? Math.round(((hoje - ontem) / ontem) * 100) : null,
+  };
+}
+
 export async function listarVendas(limite = 30): Promise<Venda[]> {
   const { rows } = await getBanco().execute({
     sql: `SELECT id, produto_id, lead_id, descricao, valor_centavos, moeda, status, origem,

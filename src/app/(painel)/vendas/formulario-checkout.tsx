@@ -163,6 +163,7 @@ export function FormularioCheckout() {
                 </Button>
                 <Button
                   render={<a href={link} target="_blank" rel="noopener noreferrer" />}
+                  nativeButton={false}
                   variant="ghost"
                   className="h-10 cursor-pointer gap-2 text-muted-foreground"
                 >

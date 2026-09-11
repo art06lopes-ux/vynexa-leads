@@ -48,7 +48,7 @@ export default async function PaginaPainel() {
         <div className="flex flex-wrap items-center gap-2">
           <BotaoAnalisar pendentes={semAnalise} />
 
-          <Button render={<Link href="/buscar" />} className="h-11 cursor-pointer">
+          <Button render={<Link href="/buscar" />} nativeButton={false} className="h-11 cursor-pointer">
             <Search className="size-4" aria-hidden="true" />
             Nova caçada
           </Button>
@@ -145,7 +145,7 @@ function BuscasRecentes({ buscas }: { buscas: Busca[] }) {
             Comece por uma cidade e um segmento só, para ver quanta coisa o OpenStreetMap tem
             mapeado da sua região.
           </p>
-          <Button render={<Link href="/buscar" />} className="mt-2 h-11 cursor-pointer">
+          <Button render={<Link href="/buscar" />} nativeButton={false} className="mt-2 h-11 cursor-pointer">
             Fazer a primeira
           </Button>
         </CardContent>

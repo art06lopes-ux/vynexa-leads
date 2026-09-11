@@ -4,19 +4,6 @@ import { NumeroAnimado } from "@/components/motion/numero-animado";
 import { cn } from "@/lib/utils";
 
 /**
- * Formato compacto a partir de mil.
- *
- * "12,4 mil" cabe no cartão; "12.438" quebra a linha no celular e o
- * número deixa de ser lido de relance, que é a única função dele aqui.
- */
-function compactar(valor: number): string {
-  if (valor < 1000) return String(valor);
-  return new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 1 }).format(
-    valor,
-  );
-}
-
-/**
  * Número principal do painel. Existe um só por tela, por definição.
  *
  * Sem `tabular-nums` de propósito: em corpo grande, dar a todo dígito a
@@ -40,10 +27,7 @@ export function NumeroPrincipal({
       <p className="text-sm text-muted-foreground">{rotulo}</p>
       <p className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">
         {valorTexto ?? (
-          <NumeroAnimado
-            valor={valor ?? 0}
-            formatar={(v) => Math.round(v).toLocaleString("pt-BR")}
-          />
+          <NumeroAnimado valor={valor ?? 0} formato="inteiro" />
         )}
       </p>
       {detalhe && <p className="mt-2 text-xs text-muted-foreground">{detalhe}</p>}
@@ -92,7 +76,7 @@ export function CartaoContador({
       </div>
 
       <p className="text-2xl font-semibold tracking-tight">
-        {valorTexto ?? <NumeroAnimado valor={valor} formatar={(v) => compactar(Math.round(v))} />}
+        {valorTexto ?? <NumeroAnimado valor={valor} formato="compacto" />}
       </p>
 
       <p className="text-xs text-muted-foreground">

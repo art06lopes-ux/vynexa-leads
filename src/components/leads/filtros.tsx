@@ -254,6 +254,7 @@ export function Filtros({ opcoes, total }: { opcoes: Opcoes; total: number }) {
               com exatamente os filtros que estão na URL. */}
           <Button
             render={<a href={`/api/exportar?${params.toString()}`} />}
+            nativeButton={false}
             variant="secondary"
             className="h-11 cursor-pointer gap-2"
           >

@@ -4,7 +4,6 @@ import { TrendingDown, TrendingUp } from "lucide-react";
 
 import { NumeroAnimado } from "@/components/motion/numero-animado";
 import { TextoEmbaralhado } from "@/components/motion/texto-embaralhado";
-import { formatarDinheiro } from "@/lib/pagamento/dinheiro";
 import { cn } from "@/lib/utils";
 
 /**
@@ -52,7 +51,7 @@ export function Heroi({
       <p className="mt-4 flex flex-wrap items-end gap-x-4 gap-y-2">
         <NumeroAnimado
           valor={centavos}
-          formatar={(v) => formatarDinheiro(Math.round(v))}
+          formato="dinheiro"
           duracao={1.3}
           className="texto-neon text-5xl font-bold tracking-tight sm:text-6xl"
         />

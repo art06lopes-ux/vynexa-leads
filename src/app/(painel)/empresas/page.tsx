@@ -91,7 +91,7 @@ export default async function PaginaEmpresas({ searchParams }: PageProps<"/empre
                 : "Afrouxe algum filtro ou limpe todos para ver a lista inteira."}
             </p>
             {total === 0 && (
-              <Button render={<Link href="/buscar" />} className="mt-2 h-11 cursor-pointer">
+              <Button render={<Link href="/buscar" />} nativeButton={false} className="mt-2 h-11 cursor-pointer">
                 Buscar empresas
               </Button>
             )}
@@ -159,6 +159,7 @@ function Paginacao({
   return (
     <Button
       render={<Link href={`/empresas?${params.toString()}`} />}
+      nativeButton={false}
       variant="ghost"
       className="h-11 cursor-pointer gap-1.5"
     >

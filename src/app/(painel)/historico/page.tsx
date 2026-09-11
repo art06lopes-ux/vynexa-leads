@@ -36,7 +36,7 @@ export default async function PaginaHistorico() {
           <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
             <Radar className="size-8 text-muted-foreground" aria-hidden="true" />
             <p className="font-medium">Nenhuma caçada ainda</p>
-            <Button render={<Link href="/buscar" />} className="mt-2 h-11 cursor-pointer">
+            <Button render={<Link href="/buscar" />} nativeButton={false} className="mt-2 h-11 cursor-pointer">
               Fazer a primeira
             </Button>
           </CardContent>

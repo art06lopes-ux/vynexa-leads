@@ -106,6 +106,7 @@ export function AcaoLead({ empresa }: { empresa: EmpresaListada }) {
           {linkWhatsapp ? (
             <Button
               render={<a href={linkWhatsapp} target="_blank" rel="noopener noreferrer" />}
+              nativeButton={false}
               className="h-11 cursor-pointer gap-2"
             >
               <MessageCircle className="size-4" aria-hidden="true" />
@@ -125,6 +126,7 @@ export function AcaoLead({ empresa }: { empresa: EmpresaListada }) {
           {linkEmail && (
             <Button
               render={<a href={linkEmail} />}
+              nativeButton={false}
               variant="secondary"
               className="h-11 cursor-pointer gap-2"
             >

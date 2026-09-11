@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { CircleAlert, CircleCheck } from "lucide-react";
 
 import { FormularioAjustes } from "@/app/(painel)/ajustes/formulario-ajustes";
+import { BotaoNotificacoes } from "@/components/painel/botao-notificacoes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { diagnosticarIntegracoes, lerConfiguracoes } from "@/db/configuracoes";
 
@@ -24,6 +25,19 @@ export default async function PaginaAjustes() {
       </header>
 
       <FormularioAjustes valores={config} />
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Notificações no celular</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          <p className="text-sm text-muted-foreground">
+            Aviso na tela de bloqueio a cada venda — manual ou pela Stripe. Ative em cada aparelho
+            que quiser receber. No iPhone, primeiro adicione o site à Tela de Início pelo Safari.
+          </p>
+          <BotaoNotificacoes />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

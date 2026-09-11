@@ -86,6 +86,9 @@ npm run worker               # processa a fila, noutro terminal
 | Análise por IA: score, motivo e mensagem | escrito, sem chamada real ainda |
 | Link `wa.me` com a mensagem pronta | pronto |
 | Filtros de oportunidade e canal | pronto |
+| Vendas: registro manual (Pix, transferência, dinheiro) | pronto |
+| Vendas: checkout por cartão via Stripe + webhook | verificado em modo teste |
+| PWA instalável + push de venda no celular | pronto, falta ativar por aparelho |
 | **3 — Campanhas de e-mail (Gmail)** | não iniciada |
 
 O cliente do Gemini foi escrito a partir da documentação — endpoint

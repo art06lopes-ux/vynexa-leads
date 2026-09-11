@@ -22,7 +22,17 @@ import { NOME_COOKIE, sessaoValida } from "@/lib/auth";
  * endpoint depois de algumas tentativas. A proteção dele não é a
  * sessão: é a assinatura HMAC, conferida dentro da própria rota.
  */
-const PUBLICAS = ["/login", "/api/webhooks"];
+const PUBLICAS = [
+  "/login",
+  "/api/webhooks",
+  // O navegador busca o manifesto SEM cookies, e o service worker precisa
+  // existir mesmo depois de a sessão expirar — senão a instalação como
+  // aplicativo falha em silêncio e a notificação nunca chega. Nenhum dos
+  // dois tem conteúdo sensível: são o nome do app e um script público.
+  "/manifest.webmanifest",
+  "/sw.js",
+  "/icones",
+];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

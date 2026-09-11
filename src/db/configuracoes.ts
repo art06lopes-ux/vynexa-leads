@@ -82,6 +82,14 @@ export function diagnosticarIntegracoes(): EstadoIntegracao[] {
             : "Modo de produção.",
     },
     {
+      nome: "Notificações push",
+      ligada: tem("VAPID_PUBLIC_KEY") && tem("VAPID_PRIVATE_KEY"),
+      detalhe:
+        tem("VAPID_PUBLIC_KEY") && tem("VAPID_PRIVATE_KEY")
+          ? "Chaves VAPID presentes. Ative por aparelho acima."
+          : "Faltam VAPID_PUBLIC_KEY e VAPID_PRIVATE_KEY — gere com npm run push:chaves.",
+    },
+    {
       nome: "Webhook da Stripe",
       ligada: tem("STRIPE_WEBHOOK_SECRET"),
       detalhe: tem("STRIPE_WEBHOOK_SECRET")

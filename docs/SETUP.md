@@ -144,6 +144,31 @@ existir. O cliente é levado à página de checkout da Stripe, que é
 certificada para isso. Guardar dado de cartão aqui traria escopo de PCI
 sem nenhum ganho.
 
+## 3.3 Notificações no celular (push)
+
+Aviso na tela de bloqueio a cada venda, com a logo da Vynexa. Gratuito e
+sem serviço de terceiro: quem entrega é o Google (Android) e a Apple
+(iPhone), usando um par de chaves que identifica o seu site.
+
+1. Gere o par, uma vez:
+
+   ```bash
+   npm run push:chaves
+   ```
+
+2. Cadastre `VAPID_PUBLIC_KEY` e `VAPID_PRIVATE_KEY` na Vercel (e no
+   `.env.local`). **Trocar o par depois invalida todos os aparelhos** —
+   cada um precisaria ativar de novo.
+3. No celular, abra o site e **instale como aplicativo**:
+   - **Android (Chrome):** menu ⋮ → *Instalar app* (ou *Adicionar à tela
+     inicial*).
+   - **iPhone (Safari):** Compartilhar → *Adicionar à Tela de Início*.
+     Exige iOS 16.4 ou mais novo. **Pela aba do Safari não funciona** — a
+     Apple só entrega push a site instalado.
+4. Abra pelo ícone → **Ajustes** → *Ativar notificações neste aparelho*.
+
+A chave privada é segredo; a pública vai ao navegador e é pública mesmo.
+
 ## 4. Vercel
 
 1. <https://vercel.com> → **Add New** → **Project** → importe o repositório.
@@ -159,6 +184,8 @@ sem nenhum ganho.
    | `OSM_CONTATO` | seu e-mail |
    | `STRIPE_SECRET_KEY` | a chave do passo 3.2 |
    | `STRIPE_WEBHOOK_SECRET` | o signing secret do passo 3.2 |
+   | `VAPID_PUBLIC_KEY` | do passo 3.3 |
+   | `VAPID_PRIVATE_KEY` | do passo 3.3 |
 
 3. Deploy.
 

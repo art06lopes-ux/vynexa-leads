@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Link2, Receipt, TrendingUp, Wallet } from "lucide-react";
 
 import { FormularioCheckout } from "@/app/(painel)/vendas/formulario-checkout";
+import { FormularioVendaManual } from "@/app/(painel)/vendas/formulario-venda-manual";
 import { SeletorPeriodo } from "@/app/(painel)/vendas/seletor-periodo";
 import { GraficoReceita } from "@/components/painel/grafico-receita";
 import { CartaoContador, NumeroPrincipal } from "@/components/painel/cartao-contador";
@@ -18,6 +19,14 @@ import { emModoTeste, formatarDinheiro } from "@/lib/pagamento/stripe";
 
 export const metadata: Metadata = { title: "Vendas" };
 export const dynamic = "force-dynamic";
+
+const MEIO: Record<string, string> = {
+  pix: "Pix",
+  transferencia: "Transferência",
+  dinheiro: "Dinheiro",
+  cartao_stripe: "Cartão · Stripe",
+  outro: "Outro",
+};
 
 export default async function PaginaVendas({ searchParams }: PageProps<"/vendas">) {
   const sp = await searchParams;
@@ -38,7 +47,7 @@ export default async function PaginaVendas({ searchParams }: PageProps<"/vendas"
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Vendas</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Checkout hospedado pela Stripe. Nenhum dado de cartão passa por aqui.
+            Registre o que já caiu na conta, ou gere um link de cartão pela Stripe.
           </p>
         </div>
 
@@ -59,7 +68,7 @@ export default async function PaginaVendas({ searchParams }: PageProps<"/vendas"
         <NumeroPrincipal
           rotulo={`Recebido · ${PERIODOS[periodo].rotulo.toLowerCase()}`}
           valorTexto={formatarDinheiro(resumo.totalCentavos)}
-          detalhe="Só vendas com pagamento confirmado pela Stripe."
+          detalhe="Manual e Stripe, só o que já foi pago."
         />
 
         <div className="grid gap-3 sm:grid-cols-3 lg:col-span-2">
@@ -90,7 +99,12 @@ export default async function PaginaVendas({ searchParams }: PageProps<"/vendas"
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
-        <FormularioCheckout />
+        <div className="flex flex-col gap-6">
+          {/* Manual em cima: é o caso comum (Pix direto). O checkout da
+              Stripe fica para quem só paga no cartão. */}
+          <FormularioVendaManual />
+          <FormularioCheckout />
+        </div>
 
         <Card>
           <CardHeader>
@@ -102,8 +116,8 @@ export default async function PaginaVendas({ searchParams }: PageProps<"/vendas"
                 <Link2 className="size-7 text-muted-foreground" aria-hidden="true" />
                 <p className="font-medium">Nenhuma venda ainda</p>
                 <p className="max-w-xs text-sm text-muted-foreground">
-                  Gere um link ao lado e mande para o cliente. Quando ele pagar, a venda aparece
-                  aqui sozinha.
+                  Registre ao lado o que já caiu na conta, ou gere um link de cartão. Pagamentos
+                  pela Stripe aparecem aqui sozinhos.
                 </p>
               </div>
             ) : (
@@ -122,7 +136,8 @@ export default async function PaginaVendas({ searchParams }: PageProps<"/vendas"
                         <p className="truncate font-medium">{v.descricao}</p>
                         <p className="truncate text-xs text-muted-foreground">
                           {v.cliente_nome ?? v.cliente_email ?? "Sem identificação"}
-                          {v.origem === "manual" && " · lançamento manual"}
+                          {" · "}
+                          {MEIO[v.meio_pagamento ?? (v.origem === "stripe" ? "cartao_stripe" : "outro")]}
                         </p>
                       </div>
 

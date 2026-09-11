@@ -1,4 +1,6 @@
 import { marcarComoPaga } from "@/db/vendas";
+import { formatarDinheiro } from "@/lib/pagamento/dinheiro";
+import { notificarTodos } from "@/lib/push/enviar";
 import { assinaturaValida } from "@/lib/pagamento/stripe";
 
 /**
@@ -74,6 +76,17 @@ export async function POST(request: Request) {
     email: detalhes?.email ?? null,
     nome: detalhes?.name ?? null,
   });
+
+  // Só na primeira confirmação: a Stripe reenvia eventos, e cada reenvio
+  // não pode virar mais uma notificação no celular.
+  if (primeiraVez) {
+    const centavos = typeof sessao.amount_total === "number" ? sessao.amount_total : 0;
+    await notificarTodos({
+      titulo: "Venda realizada",
+      corpo: `Você recebeu: ${formatarDinheiro(centavos)}${detalhes?.name ? ` · ${detalhes.name}` : ""}`,
+      url: "/vendas",
+    });
+  }
 
   // 200 nos dois casos: reenvio de um evento já processado não é erro, e
   // responder diferente faria a Stripe insistir à toa.

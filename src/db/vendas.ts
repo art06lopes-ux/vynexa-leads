@@ -14,6 +14,7 @@ export type Venda = {
   moeda: string;
   status: StatusVenda;
   origem: "stripe" | "manual";
+  meio_pagamento: "pix" | "transferencia" | "dinheiro" | "cartao_stripe" | "outro" | null;
   stripe_session_id: string | null;
   cliente_email: string | null;
   cliente_nome: string | null;
@@ -99,6 +100,7 @@ export async function marcarComoPaga(
     sql: `UPDATE vendas
           SET status = 'pago',
               pago_em = ?,
+              meio_pagamento = 'cartao_stripe',
               stripe_session_id = COALESCE(stripe_session_id, ?),
               stripe_payment_intent = ?,
               cliente_email = COALESCE(?, cliente_email),
@@ -189,7 +191,7 @@ export async function obterSerieReceita(periodo: ChavePeriodo): Promise<PontoRec
 export async function listarVendas(limite = 30): Promise<Venda[]> {
   const { rows } = await getBanco().execute({
     sql: `SELECT id, produto_id, lead_id, descricao, valor_centavos, moeda, status, origem,
-                 stripe_session_id, cliente_email, cliente_nome, criado_em, pago_em
+                 meio_pagamento, stripe_session_id, cliente_email, cliente_nome, criado_em, pago_em
           FROM vendas
           ORDER BY COALESCE(pago_em, criado_em) DESC
           LIMIT ?`,

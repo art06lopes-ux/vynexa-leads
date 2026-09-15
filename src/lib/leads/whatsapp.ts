@@ -108,22 +108,74 @@ function normalizarBrasil(entrada: string): string | null {
 }
 
 /**
- * Fora do Brasil, só aceita número que já carregue o código do país.
+ * Plano de numeração de cada país atendido: o prefixo de tronco que se
+ * disca dentro do país e cai na chamada internacional ("0" na Europa,
+ * "1" na América do Norte), e os tamanhos válidos do número nacional
+ * depois de tirá-lo.
  *
- * Poderia prefixar o DDI de qualquer número local, mas isso seria um
- * palpite: cada país tem seu plano de numeração, com prefixo nacional
- * ("0" no Reino Unido, na Alemanha, na França) que precisa cair antes.
- * Errar aqui produz um link para outra pessoa, e é melhor pedir o número
- * ao operador do que entregar um telefone inventado.
+ * É regra publicada pelo regulador de cada país (ITU-T E.164 e os
+ * planos nacionais), não palpite: "020 7946 0000" em Londres é, por
+ * definição, +44 20 7946 0000. País fora desta tabela continua exigindo
+ * o número já em formato internacional — a Argentina é o caso: o
+ * celular ganha um "9" depois do DDI e perde o "15" da discagem local,
+ * e errar isso manda a mensagem para outra pessoa.
+ */
+const PLANOS: Record<string, { tronco: string; tamanhos: number[] }> = {
+  US: { tronco: "1", tamanhos: [10] },
+  CA: { tronco: "1", tamanhos: [10] },
+  GB: { tronco: "0", tamanhos: [10] },
+  IE: { tronco: "0", tamanhos: [9] },
+  AU: { tronco: "0", tamanhos: [9] },
+  NZ: { tronco: "0", tamanhos: [8, 9] },
+  ZA: { tronco: "0", tamanhos: [9] },
+  PT: { tronco: "", tamanhos: [9] },
+  ES: { tronco: "", tamanhos: [9] },
+  MX: { tronco: "", tamanhos: [10] },
+  CL: { tronco: "", tamanhos: [9] },
+  CO: { tronco: "", tamanhos: [10] },
+  PE: { tronco: "", tamanhos: [9] },
+  UY: { tronco: "0", tamanhos: [8] },
+  PY: { tronco: "0", tamanhos: [9] },
+  CR: { tronco: "", tamanhos: [8] },
+  PA: { tronco: "", tamanhos: [8] },
+  FR: { tronco: "0", tamanhos: [9] },
+  BE: { tronco: "0", tamanhos: [8, 9] },
+  LU: { tronco: "", tamanhos: [8, 9] },
+  DE: { tronco: "0", tamanhos: [9, 10, 11] },
+  AT: { tronco: "0", tamanhos: [9, 10, 11, 12] },
+  CH: { tronco: "0", tamanhos: [9] },
+};
+
+/**
+ * Fora do Brasil: aceita o número já com DDI, ou um número nacional que
+ * bata com o plano de numeração do país da busca — aí o DDI é
+ * acrescentado e o tronco cai. Fora dessas duas formas, nulo: melhor
+ * pedir o número ao operador do que entregar um link errado.
  */
 function normalizarInternacional(digitos: string, pais: string): string | null {
   const ddi = ddiDoPais(pais);
   if (ddi === null) return null;
 
-  if (!digitos.startsWith(ddi)) return null;
-  if (digitos.length <= ddi.length) return null;
+  const plano = PLANOS[pais];
 
-  return digitos.length >= MIN_E164 && digitos.length <= MAX_E164 ? digitos : null;
+  // Já veio com o código do país? Só quando o que sobra tem tamanho de
+  // número nacional — senão "1" + 10 dígitos de um londrino que começa
+  // com 1 viraria número americano.
+  if (digitos.startsWith(ddi) && digitos.length > ddi.length) {
+    const nacional = digitos.slice(ddi.length);
+    const tamanhoOk = plano ? plano.tamanhos.includes(nacional.length) : true;
+    if (tamanhoOk && digitos.length >= MIN_E164 && digitos.length <= MAX_E164) return digitos;
+  }
+
+  if (!plano) return null;
+
+  const semTronco =
+    plano.tronco !== "" && digitos.startsWith(plano.tronco) && plano.tamanhos.includes(digitos.length - plano.tronco.length)
+      ? digitos.slice(plano.tronco.length)
+      : digitos;
+
+  if (!plano.tamanhos.includes(semTronco.length)) return null;
+  return `${ddi}${semTronco}`;
 }
 
 /**

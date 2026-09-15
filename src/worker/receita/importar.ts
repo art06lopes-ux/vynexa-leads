@@ -166,6 +166,15 @@ async function main() {
     args: [origem, agora()],
   });
 
+  // Rodada anterior derrubada no meio (o Actions corta em 3 h) deixaria
+  // 27 linhas "importando" para sempre. Mais de 4 h é morta, não lenta.
+  await banco.execute({
+    sql: `UPDATE receita_importacoes
+          SET status = 'erro', erro = 'interrompida sem terminar (limite de tempo do GitHub Actions)', concluido_em = ?
+          WHERE status = 'em_andamento' AND iniciado_em < datetime('now', '-4 hours')`,
+    args: [agora()],
+  });
+
   const importacoes = new Map<string, string>();
   for (const uf of ufs) {
     const id = novoId();

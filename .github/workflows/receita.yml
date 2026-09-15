@@ -11,6 +11,12 @@ on:
     # Dia 15 de cada mês, 06:00 UTC. A Receita publica a pasta nova por
     # volta do dia 10; no 15 ela já está completa.
     - cron: "0 6 15 * *"
+  # Mudou o importador ou este fluxo: roda para provar que ainda importa.
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/receita.yml"
+      - "src/worker/receita/**"
   workflow_dispatch:
     inputs:
       ufs:

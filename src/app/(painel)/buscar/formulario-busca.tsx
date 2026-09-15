@@ -161,11 +161,6 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
             alvo,
           };
 
-    if (escopo === "br" && uf === "") {
-      setErro("Escolha o estado.");
-      return;
-    }
-
     setEnviando(true);
 
     try {
@@ -241,9 +236,8 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
                   value={uf}
                   onChange={(e) => void trocarUf(e.target.value)}
                   className={classeCampo}
-                  required
                 >
-                  <option value="">Escolha o estado</option>
+                  <option value="">Todo o Brasil</option>
                   {estados.map((e) => (
                     <option key={e.sigla} value={e.sigla}>
                       {e.nome}
@@ -268,7 +262,7 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
                 >
                   <option value="">
                     {uf === ""
-                      ? "Escolha o estado primeiro"
+                      ? "Todos os municípios"
                       : carregandoMunicipios
                         ? "Carregando…"
                         : "Estado inteiro"}
@@ -280,7 +274,8 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
                   ))}
                 </select>
                 <p className="text-xs text-muted-foreground">
-                  Sem cidade, a busca cobre o estado inteiro — bem mais lenta.
+                  Sem cidade, cobre o estado inteiro; sem estado, o Brasil inteiro pela base da
+                  Receita Federal (interior incluído).
                 </p>
               </div>
             </div>

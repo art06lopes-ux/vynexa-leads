@@ -29,6 +29,7 @@ type Estabelecimento = {
   cnpj: string;
   nome: string;
   cnae: string;
+  uf: string;
   municipio: string;
   logradouro: string | null;
   numero: string | null;
@@ -61,24 +62,28 @@ export async function complementarComReceita(
   const vazio: ResultadoReceita = { encontradas: 0, enriquecidas: 0, novas: 0, disponivel: false };
 
   const cnaes = cnaesDoSegmento(segmento.slug);
-  if (busca.pais !== "BR" || !busca.estado || cnaes.length === 0 || limite <= 0) return vazio;
+  if (busca.pais !== "BR" || cnaes.length === 0 || limite <= 0) return vazio;
 
-  const uf = busca.estado.toUpperCase();
+  // Sem estado é o Brasil inteiro: a base cobre todos os municípios.
+  const uf = busca.estado ? busca.estado.toUpperCase() : null;
   const { rows: importada } = await banco.execute({
-    sql: `SELECT 1 FROM receita_estabelecimentos WHERE uf = ? LIMIT 1`,
-    args: [uf],
+    sql: `SELECT 1 FROM receita_estabelecimentos ${uf ? "WHERE uf = ?" : ""} LIMIT 1`,
+    args: uf ? [uf] : [],
   });
   if (importada.length === 0) return vazio;
 
   const municipio = busca.cidade ? chaveDeMunicipio(busca.cidade) : null;
   const marcadores = cnaes.map(() => "?").join(",");
+  const condicoes = [uf ? "uf = ?" : null, municipio ? "municipio = ?" : null, `cnae IN (${marcadores})`]
+    .filter(Boolean)
+    .join(" AND ");
   const { rows } = await banco.execute({
-    sql: `SELECT cnpj, nome, cnae, municipio, logradouro, numero, complemento, bairro, cep,
+    sql: `SELECT cnpj, nome, cnae, uf, municipio, logradouro, numero, complemento, bairro, cep,
                  telefone_1, telefone_2, email, inicio_atividade
           FROM receita_estabelecimentos
-          WHERE uf = ? ${municipio ? "AND municipio = ?" : ""} AND cnae IN (${marcadores})
+          WHERE ${condicoes}
           ORDER BY (email IS NULL), (telefone_1 IS NULL), inicio_atividade DESC`,
-    args: [uf, ...(municipio ? [municipio] : []), ...cnaes],
+    args: [...(uf ? [uf] : []), ...(municipio ? [municipio] : []), ...cnaes],
   });
   const estabelecimentos = rows.map((r) => ({ ...r }) as unknown as Estabelecimento);
 
@@ -92,14 +97,14 @@ export async function complementarComReceita(
   // nome+município normalizados. É o que permite casar "Barbearia do Zé"
   // (OSM) com "BARBEARIA DO ZE LTDA" (Receita).
   const { rows: carteira } = await banco.execute({
-    sql: `SELECT id, nome, cidade, telefone, email FROM empresas
-          WHERE pais = 'BR' AND estado = ? AND cnpj IS NULL`,
-    args: [uf],
+    sql: `SELECT id, nome, estado, cidade, telefone, email FROM empresas
+          WHERE pais = 'BR' ${uf ? "AND estado = ?" : ""} AND cnpj IS NULL`,
+    args: uf ? [uf] : [],
   });
   const porChave = new Map<string, { id: string; telefone: string | null; email: string | null }>();
   for (const r of carteira) {
-    if (!r.cidade) continue;
-    const chave = `${chaveDeNome(String(r.nome))}|${chaveDeMunicipio(String(r.cidade))}`;
+    if (!r.cidade || !r.estado) continue;
+    const chave = `${chaveDeNome(String(r.nome))}|${String(r.estado).toUpperCase()}|${chaveDeMunicipio(String(r.cidade))}`;
     if (!porChave.has(chave)) {
       porChave.set(chave, {
         id: String(r.id),
@@ -113,7 +118,7 @@ export async function complementarComReceita(
   const novos: Estabelecimento[] = [];
 
   for (const e of candidatos) {
-    const chave = `${chaveDeNome(e.nome)}|${e.municipio}`;
+    const chave = `${chaveDeNome(e.nome)}|${e.uf}|${e.municipio}`;
     const existente = chave.startsWith("|") ? undefined : porChave.get(chave);
 
     if (existente) {
@@ -201,7 +206,7 @@ async function inserir(banco: Client, busca: Busca, segmento: Segmento, novos: E
         busca.id,
         e.cnpj,
         caixaMista(e.nome),
-        busca.estado,
+        e.uf,
         busca.cidade ?? normalizarLocalidade(e.municipio),
         montarEndereco(e),
         telefone,

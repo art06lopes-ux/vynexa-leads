@@ -60,11 +60,20 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
   const segmento = acharSegmento(busca.segmento);
   if (!segmento) throw new Error(`Segmento desconhecido: ${busca.segmento}`);
 
-  const lugar = await resolverLugar({
-    pais: busca.pais,
-    estado: busca.estado,
-    cidade: busca.cidade,
-  });
+  // "Todo o Brasil": o OSM fica de fora. Uma consulta à Overpass sobre o
+  // país inteiro estoura o timeout dela e volta vazia; a base da Receita
+  // cobre todos os municípios, interior incluído, sem pedir nada a
+  // ninguém. Fora do Brasil não há Receita, então o país inteiro vai ao
+  // OSM como sempre.
+  const brasilInteiro = busca.pais === "BR" && !busca.estado;
+
+  const lugar = brasilInteiro
+    ? null
+    : await resolverLugar({
+        pais: busca.pais,
+        estado: busca.estado,
+        cidade: busca.cidade,
+      });
 
   // `alvo` 0 significa "todas as empresas mapeadas na região". Aí não há
   // escada de expansão: o operador quer o que existe ali dentro, não o
@@ -73,11 +82,11 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
   const todas = payload.alvo === 0;
   const alvo = todas ? Number.POSITIVE_INFINITY : payload.alvo;
   let melhor: ElementoOsm[] = [];
-  let bboxUsada: Bbox = lugar.bbox;
+  let bboxUsada: Bbox | null = lugar?.bbox ?? null;
   let expansoes = 0;
 
-  for (const km of todas ? [0] : DEGRAUS_KM) {
-    const bbox = km === 0 ? lugar.bbox : expandirBbox(lugar.bbox, km);
+  for (const km of lugar === null ? [] : todas ? [0] : DEGRAUS_KM) {
+    const bbox = km === 0 ? lugar!.bbox : expandirBbox(lugar!.bbox, km);
 
     // Teto generoso na consulta: o corte para o alvo acontece depois de
     // descartar elementos sem nome e os já conhecidos.
@@ -153,12 +162,12 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
               concluido_em = ?
           WHERE id = ?`,
     args: [
-      lugar.rotulo,
-      bboxUsada.sul,
-      bboxUsada.oeste,
-      bboxUsada.norte,
-      bboxUsada.leste,
-      raioAproximadoKm(bboxUsada),
+      lugar?.rotulo ?? "Brasil (todos os estados)",
+      bboxUsada?.sul ?? null,
+      bboxUsada?.oeste ?? null,
+      bboxUsada?.norte ?? null,
+      bboxUsada?.leste ?? null,
+      bboxUsada ? raioAproximadoKm(bboxUsada) : null,
       expansoes,
       recorte.length + receita.encontradas,
       novos.length + receita.novas,
@@ -171,9 +180,12 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
   const resumoReceita = receita.disponivel
     ? ` · Receita: ${receita.encontradas} no CNAE, ${receita.novas} novas, ${receita.enriquecidas} enriquecidas`
     : busca.pais === "BR"
-      ? " · Receita: estado não importado"
+      ? " · Receita: base ainda não importada"
       : "";
-  return `OSM: ${recorte.length} encontradas (${novos.length} novas) em ${lugar.rotulo}${resumoReceita}`;
+  const resumoOsm = lugar
+    ? `OSM: ${recorte.length} encontradas (${novos.length} novas) em ${lugar.rotulo}`
+    : "Brasil inteiro (só Receita)";
+  return `${resumoOsm}${resumoReceita}`;
 }
 
 /**

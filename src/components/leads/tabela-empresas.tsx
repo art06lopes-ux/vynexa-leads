@@ -152,7 +152,10 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
 
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
-                      {linkZap && (
+                      {/* O botão existe em toda linha: com número vira wa.me;
+                          sem número fica apagado e diz por quê. Esconder
+                          deixava a impressão de que a função faltava. */}
+                      {linkZap ? (
                         <a
                           href={linkZap}
                           target="_blank"
@@ -163,6 +166,14 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
                           <MessageCircle className="size-4" aria-hidden="true" />
                           <span className="sr-only">Abrir WhatsApp de {e.nome}</span>
                         </a>
+                      ) : (
+                        <span
+                          title={telefone ? "Número não discável — confira e preencha à mão" : "Sem telefone na fonte"}
+                          className="flex size-11 cursor-not-allowed items-center justify-center rounded-md text-muted-foreground/40"
+                        >
+                          <MessageCircle className="size-4" aria-hidden="true" />
+                          <span className="sr-only">WhatsApp indisponível para {e.nome}</span>
+                        </span>
                       )}
 
                       <AcaoLead empresa={e} />
@@ -240,7 +251,7 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-                {linkZap && (
+                {linkZap ? (
                   <a
                     href={linkZap}
                     target="_blank"
@@ -250,6 +261,11 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
                     <MessageCircle className="size-3.5" aria-hidden="true" />
                     WhatsApp
                   </a>
+                ) : (
+                  <span className="inline-flex h-11 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground/50">
+                    <MessageCircle className="size-3.5" aria-hidden="true" />
+                    {telefone ? "WhatsApp: número não discável" : "WhatsApp: sem telefone"}
+                  </span>
                 )}
                 <AcaoLead empresa={e} />
 

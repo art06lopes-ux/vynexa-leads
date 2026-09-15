@@ -67,7 +67,7 @@ export function CardReceita({ resumo, ufs }: { resumo: ResumoReceita; ufs: strin
         <div className="flex flex-col gap-2 rounded-lg border border-border bg-card/50 px-4 py-3 text-sm">
           <p className="font-medium">Como importar</p>
           <ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
-            <li>Salve os estados acima.</li>
+            <li>Salve os estados acima (ou deixe vazio para todo o Brasil).</li>
             <li>
               Abra o fluxo <em>receita</em> no GitHub e clique em <em>Run workflow</em>. Leva de
               20 a 60 minutos; esta tela mostra o andamento.

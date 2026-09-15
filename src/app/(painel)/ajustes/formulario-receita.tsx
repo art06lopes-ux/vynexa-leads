@@ -21,7 +21,7 @@ export function FormularioReceita({ ufs }: { ufs: string }) {
   return (
     <form action={acao} className="flex flex-col gap-2 sm:flex-row sm:items-end">
       <div className="flex flex-1 flex-col gap-2">
-        <Label htmlFor={id}>Estados a importar</Label>
+        <Label htmlFor={id}>Estados a importar (vazio = todo o Brasil)</Label>
         <Input
           id={id}
           name="receita_ufs"
@@ -31,8 +31,9 @@ export function FormularioReceita({ ufs }: { ufs: string }) {
           className="h-11 uppercase"
         />
         <p className="text-xs text-muted-foreground">
-          Siglas separadas por vírgula. Cada estado ocupa de 50 a 800 MB no banco; o plano
-          gratuito do Turso tem 5 GB — SP sozinho fica perto de 2 GB.
+          Siglas separadas por vírgula, ou vazio para o país inteiro. Só entram os CNAEs dos
+          segmentos que a ferramenta prospecta — é o que faz o Brasil inteiro caber no plano
+          gratuito do Turso.
         </p>
       </div>
       <Button type="submit" disabled={pendente} className="h-11 cursor-pointer gap-2">

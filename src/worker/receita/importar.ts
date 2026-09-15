@@ -31,6 +31,7 @@ import { pipeline } from "node:stream/promises";
 import type { Client } from "@libsql/client";
 
 import { agora, getBanco, novoId } from "@/db/cliente";
+import { CNAES_POR_SEGMENTO } from "@/lib/receita/cnaes";
 import { chaveDeMunicipio, limparRazaoSocial } from "@/lib/receita/texto";
 
 const BASE = "https://arquivos.receitafederal.gov.br/public.php/dav/files/YggdBLfdninEJX9";
@@ -63,6 +64,18 @@ const C = {
 } as const;
 
 const SITUACAO_ATIVA = "02";
+
+/**
+ * Só os CNAEs que a ferramenta sabe prospectar. É o que faz o Brasil
+ * inteiro caber no plano gratuito do Turso: dos ~22 milhões de
+ * estabelecimentos ativos, os segmentos mapeados são uma fração.
+ */
+const CNAES = new Set(Object.values(CNAES_POR_SEGMENTO).flat());
+
+const TODAS_UFS = [
+  "AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE",
+  "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO",
+];
 const LOTE = 400;
 const REGEX_EMAIL = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
 
@@ -93,10 +106,6 @@ async function main() {
   await mkdir(pasta, { recursive: true });
 
   const ufs = await resolverUfs(banco);
-  if (ufs.length === 0) {
-    console.log("Nenhum estado configurado em Ajustes (receita_ufs). Nada a importar.");
-    return;
-  }
 
   const referencia = process.env.RECEITA_REFERENCIA?.trim() || (await referenciaMaisRecente());
   console.log(`Referência ${referencia} · estados: ${ufs.join(", ")}`);
@@ -141,6 +150,7 @@ async function main() {
           continue;
         }
         if (campos[C.situacao] !== SITUACAO_ATIVA) continue;
+        if (!CNAES.has(campos[C.cnae]!)) continue;
         const uf = campos[C.uf]!;
         if (!quer.has(uf)) continue;
 
@@ -249,7 +259,10 @@ async function main() {
       args: [referencia, agora()],
     });
   } catch (erro) {
-    const mensagem = erro instanceof Error ? erro.message : String(erro);
+    // `fetch failed` sozinho não diz nada; a causa (DNS, TLS, conexão
+    // recusada) está em `cause`, e é ela que precisa ficar registrada.
+    const causa = erro instanceof Error && erro.cause instanceof Error ? ` (${erro.cause.message})` : "";
+    const mensagem = (erro instanceof Error ? erro.message : String(erro)) + causa;
     for (const id of importacoes.values()) {
       await banco.execute({
         sql: `UPDATE receita_importacoes SET status = 'erro', erro = ?, concluido_em = ? WHERE id = ? AND status = 'em_andamento'`,
@@ -260,11 +273,13 @@ async function main() {
   }
 }
 
+/** Lista vazia em Ajustes significa o Brasil inteiro. */
 async function resolverUfs(banco: Client): Promise<string[]> {
   const bruto =
     process.env.RECEITA_UFS?.trim() ||
     String((await banco.execute(`SELECT valor FROM configuracoes WHERE chave = 'receita_ufs'`)).rows[0]?.valor ?? "");
-  return [...new Set(bruto.toUpperCase().split(/[,\s;]+/).filter((u) => /^[A-Z]{2}$/.test(u)))];
+  const lista = [...new Set(bruto.toUpperCase().split(/[,\s;]+/).filter((u) => /^[A-Z]{2}$/.test(u)))];
+  return lista.length === 0 || lista.includes("BR") ? TODAS_UFS : lista;
 }
 
 /**

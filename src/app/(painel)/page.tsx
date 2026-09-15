@@ -164,8 +164,9 @@ function CacadasRecentes({ buscas }: { buscas: Busca[] }) {
               </span>
               <p className="font-medium">Nenhuma caçada ainda</p>
               <p className="max-w-md text-sm text-muted-foreground">
-                Comece por uma cidade e um segmento, para ver quanta coisa o OpenStreetMap tem mapeado
-                da sua região.
+                Escolha um segmento e um lugar — uma cidade, um estado ou o Brasil inteiro. As
+                empresas vêm do OpenStreetMap e da base oficial de CNPJs da Receita Federal, com
+                telefone e e-mail cadastrados.
               </p>
               <Button render={<Link href="/buscar" />} nativeButton={false} className="mt-1 h-11 cursor-pointer">
                 Fazer a primeira

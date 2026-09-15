@@ -5,7 +5,7 @@ import type { Busca, PayloadBusca } from "@/db/tipos";
 import { classificarStatusSite } from "@/lib/leads/classificacao";
 import { normalizarLocalidade } from "@/lib/geo/localidade";
 import { idiomaDoPais } from "@/lib/geo/paises";
-import { acharSegmento } from "@/lib/osm/segmentos";
+import { acharSegmento, type Segmento } from "@/lib/osm/segmentos";
 import { expandirBbox, raioAproximadoKm, resolverLugar, type Bbox } from "@/lib/osm/nominatim";
 import { buscarEstabelecimentos, type ElementoOsm } from "@/lib/osm/overpass";
 import { complementarComReceita } from "@/worker/handlers/receita";
@@ -60,6 +60,14 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
   const segmento = acharSegmento(busca.segmento);
   if (!segmento) throw new Error(`Segmento desconhecido: ${busca.segmento}`);
 
+  const todas = payload.alvo === 0;
+  const alvo = todas ? Number.POSITIVE_INFINITY : payload.alvo;
+
+  // Continuação de uma caçada grande: o OSM já passou, falta a Receita.
+  if (payload.somenteReceita) {
+    return continuarReceita(banco, busca, segmento, payload, alvo);
+  }
+
   // "Todo o Brasil": o OSM fica de fora. Uma consulta à Overpass sobre o
   // país inteiro estoura o timeout dela e volta vazia; a base da Receita
   // cobre todos os municípios, interior incluído, sem pedir nada a
@@ -79,8 +87,6 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
   // escada de expansão: o operador quer o que existe ali dentro, não o
   // que existe a 60 km. Uma consulta só, com teto alto o bastante para
   // qualquer cidade brasileira em um segmento.
-  const todas = payload.alvo === 0;
-  const alvo = todas ? Number.POSITIVE_INFINITY : payload.alvo;
   let melhor: ElementoOsm[] = [];
   let bboxUsada: Bbox | null = lugar?.bbox ?? null;
   let expansoes = 0;
@@ -137,29 +143,22 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
     busca,
     segmento,
     todas ? Number.MAX_SAFE_INTEGER : Math.max(0, alvo - recorte.length),
+    null,
   );
 
-  if (novos.length > 0 || receita.novas > 0) {
-    // Quem tem site próprio e não tem e-mail no OSM ganha uma visita ao
-    // site em busca de contato. É de onde sai o e-mail das empresas
-    // internacionais. Um job só; ele se reenfileira enquanto houver fila.
-    await banco.execute({
-      sql: `INSERT INTO jobs (id, tipo, payload, status) VALUES (?, 'enriquecer_email', ?, 'pendente')`,
-      args: [novoId(), JSON.stringify({ limite: 15 })],
-    });
-  }
+  if (novos.length > 0 || receita.novas > 0) await pedirEnriquecimento(banco);
 
+  // O que o OSM trouxe é gravado agora; a parte da Receita é somada por
+  // fatia, então os contadores são incrementos e não valores absolutos.
   await banco.execute({
     sql: `UPDATE buscas
-          SET status = 'concluida',
-              rotulo_resolvido = ?,
+          SET rotulo_resolvido = ?,
               bbox_sul = ?, bbox_oeste = ?, bbox_norte = ?, bbox_leste = ?,
               raio_final_km = ?,
               expansoes = ?,
-              quantidade_encontrada = ?,
-              quantidade_nova = ?,
-              quantidade_receita = ?,
-              concluido_em = ?
+              quantidade_encontrada = quantidade_encontrada + ?,
+              quantidade_nova = quantidade_nova + ?,
+              quantidade_receita = quantidade_receita + ?
           WHERE id = ?`,
     args: [
       lugar?.rotulo ?? "Brasil (todos os estados)",
@@ -172,13 +171,15 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
       recorte.length + receita.encontradas,
       novos.length + receita.novas,
       receita.novas,
-      agora(),
       busca.id,
     ],
   });
 
+  const continua = await agendarProximaFatia(banco, payload, receita, receita.novas);
+  if (!continua) await concluir(banco, busca.id);
+
   const resumoReceita = receita.disponivel
-    ? ` · Receita: ${receita.encontradas} no CNAE, ${receita.novas} novas, ${receita.enriquecidas} enriquecidas`
+    ? ` · Receita: ${receita.encontradas} lidas, ${receita.novas} novas, ${receita.enriquecidas} enriquecidas${continua ? " (continua na próxima rodada)" : ""}`
     : busca.pais === "BR"
       ? " · Receita: base ainda não importada"
       : "";
@@ -186,6 +187,85 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
     ? `OSM: ${recorte.length} encontradas (${novos.length} novas) em ${lugar.rotulo}`
     : "Brasil inteiro (só Receita)";
   return `${resumoOsm}${resumoReceita}`;
+}
+
+/** Fatia seguinte da Receita, retomando do cursor gravado no payload. */
+async function continuarReceita(
+  banco: Client,
+  busca: Busca,
+  segmento: Segmento,
+  payload: PayloadBusca,
+  alvo: number,
+): Promise<string> {
+  const acumulado = payload.receitaAcumulado ?? 0;
+  const receita = await complementarComReceita(
+    banco,
+    busca,
+    segmento,
+    Number.isFinite(alvo) ? Math.max(0, alvo - acumulado) : Number.MAX_SAFE_INTEGER,
+    payload.receitaCursor ?? null,
+  );
+
+  if (receita.novas > 0) await pedirEnriquecimento(banco);
+
+  await banco.execute({
+    sql: `UPDATE buscas
+          SET quantidade_encontrada = quantidade_encontrada + ?,
+              quantidade_nova = quantidade_nova + ?,
+              quantidade_receita = quantidade_receita + ?
+          WHERE id = ?`,
+    args: [receita.encontradas, receita.novas, receita.novas, busca.id],
+  });
+
+  const continua = await agendarProximaFatia(banco, payload, receita, acumulado + receita.novas);
+  if (!continua) await concluir(banco, busca.id);
+
+  return `Receita (fatia): ${receita.encontradas} lidas, ${receita.novas} novas, ${receita.enriquecidas} enriquecidas · total ${acumulado + receita.novas}${continua ? " · continua" : " · concluída"}`;
+}
+
+async function agendarProximaFatia(
+  banco: Client,
+  payload: PayloadBusca,
+  receita: { proximoCursor: string | null },
+  acumulado: number,
+): Promise<boolean> {
+  if (!receita.proximoCursor) return false;
+  const proximo: PayloadBusca = {
+    buscaId: payload.buscaId,
+    alvo: payload.alvo,
+    somenteReceita: true,
+    receitaCursor: receita.proximoCursor,
+    receitaAcumulado: acumulado,
+  };
+  await banco.execute({
+    sql: `INSERT INTO jobs (id, tipo, payload, status) VALUES (?, 'busca', ?, 'pendente')`,
+    args: [novoId(), JSON.stringify(proximo)],
+  });
+  return true;
+}
+
+async function concluir(banco: Client, buscaId: string): Promise<void> {
+  await banco.execute({
+    sql: `UPDATE buscas SET status = 'concluida', concluido_em = ? WHERE id = ?`,
+    args: [agora(), buscaId],
+  });
+}
+
+/**
+ * Quem tem site próprio e não tem e-mail ganha uma visita ao site em
+ * busca de contato; quem veio da Receita com e-mail de domínio próprio
+ * tem o domínio conferido. Um job só; ele se reenfileira enquanto houver
+ * fila — e só entra se não houver um pendente, para não empilhar.
+ */
+async function pedirEnriquecimento(banco: Client): Promise<void> {
+  const { rows } = await banco.execute(
+    `SELECT 1 FROM jobs WHERE tipo = 'enriquecer_email' AND status = 'pendente' LIMIT 1`,
+  );
+  if (rows.length > 0) return;
+  await banco.execute({
+    sql: `INSERT INTO jobs (id, tipo, payload, status) VALUES (?, 'enriquecer_email', ?, 'pendente')`,
+    args: [novoId(), JSON.stringify({ limite: 15 })],
+  });
 }
 
 /**

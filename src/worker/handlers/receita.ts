@@ -43,26 +43,43 @@ type Estabelecimento = {
 };
 
 export type ResultadoReceita = {
-  /** Estabelecimentos da Receita que casaram com o segmento e o lugar. */
+  /** Estabelecimentos da Receita lidos nesta fatia. */
   encontradas: number;
   /** Empresas já na carteira que ganharam contato. */
   enriquecidas: number;
   /** Empresas inseridas a partir da Receita. */
   novas: number;
-  /** Nulo quando o estado ainda não foi importado. */
+  /** Falso quando a base ainda não foi importada. */
   disponivel: boolean;
+  /**
+   * Último CNPJ processado quando a fatia acabou antes da base. Nulo
+   * quando não há mais nada a ler — ou quando o alvo foi atingido.
+   */
+  proximoCursor: string | null;
 };
+
+/**
+ * Linhas por rodada do worker. Uma caçada de "restaurante" no Brasil
+ * inteiro passa de 300 mil estabelecimentos; enfiar tudo num job só
+ * estouraria os 8 minutos do runner. Em fatias de 20 mil, cada rodada
+ * fecha em menos de um minuto e a próxima retoma do cursor.
+ */
+const FATIA = Number(process.env.RECEITA_FATIA) || 20_000; // env só para testar as fatias com base pequena
+
+/** Linhas lidas da base por página. */
+const PAGINA = Math.min(5_000, FATIA);
 
 export async function complementarComReceita(
   banco: Client,
   busca: Busca,
   segmento: Segmento,
   limite: number,
+  cursor: string | null = null,
 ): Promise<ResultadoReceita> {
-  const vazio: ResultadoReceita = { encontradas: 0, enriquecidas: 0, novas: 0, disponivel: false };
+  const vazio: ResultadoReceita = { encontradas: 0, enriquecidas: 0, novas: 0, disponivel: false, proximoCursor: null };
 
   const cnaes = cnaesDoSegmento(segmento.slug);
-  if (busca.pais !== "BR" || cnaes.length === 0 || limite <= 0) return vazio;
+  if (busca.pais !== "BR" || cnaes.length === 0) return vazio;
 
   // Sem estado é o Brasil inteiro: a base cobre todos os municípios.
   const uf = busca.estado ? busca.estado.toUpperCase() : null;
@@ -74,20 +91,38 @@ export async function complementarComReceita(
 
   const municipio = busca.cidade ? chaveDeMunicipio(busca.cidade) : null;
   const marcadores = cnaes.map(() => "?").join(",");
-  const condicoes = [uf ? "uf = ?" : null, municipio ? "municipio = ?" : null, `cnae IN (${marcadores})`]
+  const condicoes = [uf ? "uf = ?" : null, municipio ? "municipio = ?" : null, `cnae IN (${marcadores})`, "cnpj > ?"]
     .filter(Boolean)
     .join(" AND ");
-  const { rows } = await banco.execute({
-    sql: `SELECT cnpj, nome, cnae, uf, municipio, logradouro, numero, complemento, bairro, cep,
-                 telefone_1, telefone_2, email, inicio_atividade
-          FROM receita_estabelecimentos
-          WHERE ${condicoes}
-          ORDER BY (email IS NULL), (telefone_1 IS NULL), inicio_atividade DESC`,
-    args: [...(uf ? [uf] : []), ...(municipio ? [municipio] : []), ...cnaes],
-  });
-  const estabelecimentos = rows.map((r) => ({ ...r }) as unknown as Estabelecimento);
 
-  const resultado: ResultadoReceita = { ...vazio, disponivel: true, encontradas: estabelecimentos.length };
+  // Páginas por CNPJ crescente: é o único jeito de retomar de onde parou
+  // sem reler o que já foi feito.
+  const estabelecimentos: Estabelecimento[] = [];
+  let ultimo = cursor ?? "";
+  let acabou = false;
+  while (estabelecimentos.length < FATIA) {
+    const { rows } = await banco.execute({
+      sql: `SELECT cnpj, nome, cnae, uf, municipio, logradouro, numero, complemento, bairro, cep,
+                   telefone_1, telefone_2, email, inicio_atividade
+            FROM receita_estabelecimentos
+            WHERE ${condicoes}
+            ORDER BY cnpj LIMIT ?`,
+      args: [...(uf ? [uf] : []), ...(municipio ? [municipio] : []), ...cnaes, ultimo, PAGINA],
+    });
+    for (const r of rows) estabelecimentos.push({ ...r } as unknown as Estabelecimento);
+    if (rows.length < PAGINA) {
+      acabou = true;
+      break;
+    }
+    ultimo = String(rows.at(-1)!.cnpj);
+  }
+
+  const resultado: ResultadoReceita = {
+    ...vazio,
+    disponivel: true,
+    encontradas: estabelecimentos.length,
+    proximoCursor: acabou || estabelecimentos.length === 0 ? null : estabelecimentos.at(-1)!.cnpj,
+  };
   if (estabelecimentos.length === 0) return resultado;
 
   const conhecidos = await cnpjsConhecidos(banco, estabelecimentos.map((e) => e.cnpj));
@@ -144,6 +179,10 @@ export async function complementarComReceita(
 
     if (novos.length < limite) novos.push(e);
   }
+
+  // Alvo atingido: o que sobrou da base não interessa mais nesta caçada.
+  // (Com alvo já cheio pelo OSM, esta fatia ainda serviu para enriquecer.)
+  if (novos.length >= limite) resultado.proximoCursor = null;
 
   for (let i = 0; i < atualizacoes.length; i += 100) {
     await banco.batch(atualizacoes.slice(i, i + 100), "write");

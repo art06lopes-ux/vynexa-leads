@@ -76,6 +76,14 @@ export type PayloadBusca = {
   buscaId: string;
   /** Meta de resultados; o worker expande o raio até chegar perto disto. */
   alvo: number;
+  /**
+   * Continuação: a caçada já passou pelo OSM e está varrendo a base da
+   * Receita em fatias. `receitaCursor` é o último CNPJ processado.
+   */
+  somenteReceita?: boolean;
+  receitaCursor?: string;
+  /** Quantas empresas da Receita já entraram nas fatias anteriores. */
+  receitaAcumulado?: number;
 };
 
 export type Contadores = {

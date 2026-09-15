@@ -48,7 +48,9 @@ export function CardReceita({ resumo, ufs }: { resumo: ResumoReceita; ufs: strin
           <div className="rounded-lg border border-border bg-black/20 px-4 py-3">
             <dt className="olho-mudo">Referência</dt>
             <dd className="num mt-1 text-2xl font-semibold">{resumo.referencia ?? "—"}</dd>
-            <dd className="text-xs text-muted-foreground">pasta mensal da Receita</dd>
+            <dd className="text-xs text-muted-foreground">
+              {resumo.origemArquivos ? `arquivos: ${resumo.origemArquivos}` : "pasta mensal da Receita"}
+            </dd>
           </div>
           <div className="rounded-lg border border-border bg-black/20 px-4 py-3">
             <dt className="olho-mudo">Estados importados</dt>

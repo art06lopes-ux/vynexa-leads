@@ -11,6 +11,13 @@
  * login, sem custo). Layout dos arquivos conferido contra o arquivo real
  * de 2026-09 — os índices de coluna abaixo vêm dele, não de memória.
  *
+ * O servidor da Receita (SERPRO) não responde a partir dos runners do
+ * GitHub — "fetch failed" em dois segundos, toda vez, enquanto daqui do
+ * Brasil responde em meio segundo. Quando isso acontece o importador
+ * cai para o espelho público da Casa dos Dados, que é uma cópia
+ * byte a byte dos mesmos zips numa CDN. A origem usada fica registrada
+ * em Ajustes; o conteúdo é o mesmo, a diferença é quem serviu.
+ *
  * Tamanho: ~5,3 GB de zip só de estabelecimentos, ~17 GB de CSV
  * descompactado. Nada disso é guardado: cada zip é baixado, lido em
  * fluxo com `unzip -p` e apagado antes do próximo. Na memória fica só o
@@ -34,7 +41,40 @@ import { agora, getBanco, novoId } from "@/db/cliente";
 import { CNAES_POR_SEGMENTO } from "@/lib/receita/cnaes";
 import { chaveDeMunicipio, limparRazaoSocial } from "@/lib/receita/texto";
 
-const BASE = "https://arquivos.receitafederal.gov.br/public.php/dav/files/YggdBLfdninEJX9";
+type Origem = {
+  nome: string;
+  /** Pastas disponíveis: [referência AAAA-MM, URL base da pasta]. */
+  listar(): Promise<Array<[string, string]>>;
+};
+
+const OFICIAL: Origem = {
+  nome: "Receita Federal (arquivos.receitafederal.gov.br)",
+  async listar() {
+    const base = "https://arquivos.receitafederal.gov.br/public.php/dav/files/YggdBLfdninEJX9";
+    // O servidor é um Nextcloud; a listagem sai por WebDAV (PROPFIND).
+    const r = await fetch(`${base}/`, {
+      method: "PROPFIND",
+      headers: { Depth: "1" },
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!r.ok) throw new Error(`listagem devolveu ${r.status}`);
+    const xml = await r.text();
+    return [...xml.matchAll(/\/(\d{4}-\d{2})\/</g)].map((m) => [m[1]!, `${base}/${m[1]}`]);
+  },
+};
+
+const ESPELHO: Origem = {
+  nome: "espelho Casa dos Dados (dados-abertos-rf-cnpj.casadosdados.com.br)",
+  async listar() {
+    const base = "https://dados-abertos-rf-cnpj.casadosdados.com.br/arquivos";
+    const r = await fetch(`${base}/`, { signal: AbortSignal.timeout(30_000) });
+    if (!r.ok) throw new Error(`listagem devolveu ${r.status}`);
+    const html = await r.text();
+    // As pastas do espelho têm o dia da cópia: 2026-08-09. A referência
+    // é o mês, como na Receita.
+    return [...html.matchAll(/href="(\d{4}-\d{2})-\d{2}\/"/g)].map((m) => [m[1]!, `${base}/${m[0].slice(6, -2)}`]);
+  },
+};
 const ARQUIVOS_ESTAB = Array.from({ length: 10 }, (_, i) => `Estabelecimentos${i}.zip`);
 const ARQUIVOS_EMPRESAS = Array.from({ length: 10 }, (_, i) => `Empresas${i}.zip`);
 
@@ -107,8 +147,8 @@ async function main() {
 
   const ufs = await resolverUfs(banco);
 
-  const referencia = process.env.RECEITA_REFERENCIA?.trim() || (await referenciaMaisRecente());
-  console.log(`Referência ${referencia} · estados: ${ufs.join(", ")}`);
+  const { referencia, pastaRemota, origem } = await escolherPasta(process.env.RECEITA_REFERENCIA?.trim() || null);
+  console.log(`Referência ${referencia} · origem: ${origem} · estados: ${ufs.join(", ")}`);
 
   const importacoes = new Map<string, string>();
   for (const uf of ufs) {
@@ -121,7 +161,7 @@ async function main() {
   }
 
   try {
-    const municipios = await lerMunicipios(pasta, referencia, usarLocal);
+    const municipios = await lerMunicipios(pasta, pastaRemota, usarLocal);
     console.log(`${municipios.size} municípios.`);
 
     const quer = new Set(ufs);
@@ -130,7 +170,7 @@ async function main() {
     const contagem = new Map<string, number>(ufs.map((u) => [u, 0]));
 
     for (const nome of ARQUIVOS_ESTAB) {
-      const caminho = await obterArquivo(pasta, referencia, nome, usarLocal);
+      const caminho = await obterArquivo(pasta, pastaRemota, nome, usarLocal);
       if (!caminho) {
         console.log(`  ${nome}: ausente, pulado.`);
         continue;
@@ -191,7 +231,7 @@ async function main() {
       const razoes = new Map<string, string>();
 
       for (const nome of ARQUIVOS_EMPRESAS) {
-        const caminho = await obterArquivo(pasta, referencia, nome, usarLocal);
+        const caminho = await obterArquivo(pasta, pastaRemota, nome, usarLocal);
         if (!caminho) {
           console.log(`  ${nome}: ausente, pulado.`);
           continue;
@@ -236,10 +276,11 @@ async function main() {
         args: [uf],
       });
       // O que não veio nesta referência saiu da base (baixado, mudou de
-      // estado) e sai daqui também.
+      // estado) e sai daqui também. O mesmo para CNAE que deixou de ser
+      // prospectado — senão a lista de segmentos só cresceria o banco.
       await banco.execute({
-        sql: `DELETE FROM receita_estabelecimentos WHERE uf = ? AND referencia <> ?`,
-        args: [uf, referencia],
+        sql: `DELETE FROM receita_estabelecimentos WHERE uf = ? AND (referencia <> ? OR cnae NOT IN (${[...CNAES].map(() => "?").join(",")}))`,
+        args: [uf, referencia, ...CNAES],
       });
       const { rows } = await banco.execute({
         sql: `SELECT COUNT(*) AS n FROM receita_estabelecimentos WHERE uf = ?`,
@@ -253,11 +294,16 @@ async function main() {
       console.log(`${uf}: ${n.toLocaleString("pt-BR")} estabelecimentos ativos na base.`);
     }
 
-    await banco.execute({
-      sql: `INSERT INTO configuracoes (chave, valor, atualizado_em) VALUES ('receita_referencia', ?, ?)
-            ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor, atualizado_em = excluded.atualizado_em`,
-      args: [referencia, agora()],
-    });
+    for (const [chave, valor] of [
+      ["receita_referencia", referencia],
+      ["receita_origem_arquivos", origem],
+    ]) {
+      await banco.execute({
+        sql: `INSERT INTO configuracoes (chave, valor, atualizado_em) VALUES (?, ?, ?)
+              ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor, atualizado_em = excluded.atualizado_em`,
+        args: [chave, valor, agora()],
+      });
+    }
   } catch (erro) {
     // `fetch failed` sozinho não diz nada; a causa (DNS, TLS, conexão
     // recusada) está em `cause`, e é ela que precisa ficar registrada.
@@ -283,26 +329,33 @@ async function resolverUfs(banco: Client): Promise<string[]> {
 }
 
 /**
- * A pasta mais recente no repositório da Receita.
- *
- * O servidor é um Nextcloud; a listagem sai por WebDAV (PROPFIND), não
- * por HTML. As pastas se chamam AAAA-MM.
+ * Escolhe a pasta (mês) e de onde baixar: a Receita se responder, o
+ * espelho se não. Pedindo uma referência específica, procura nas duas.
  */
-async function referenciaMaisRecente(): Promise<string> {
-  const r = await fetch(`${BASE}/`, {
-    method: "PROPFIND",
-    headers: { Depth: "1" },
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!r.ok) throw new Error(`Receita: listagem devolveu ${r.status}.`);
-  const xml = await r.text();
-  const pastas = [...xml.matchAll(/\/(\d{4}-\d{2})\/</g)].map((m) => m[1]!);
-  if (pastas.length === 0) throw new Error("Receita: nenhuma pasta AAAA-MM na listagem.");
-  return pastas.sort().at(-1)!;
+async function escolherPasta(
+  pedida: string | null,
+): Promise<{ referencia: string; pastaRemota: string; origem: string }> {
+  const falhas: string[] = [];
+  for (const origem of [OFICIAL, ESPELHO]) {
+    try {
+      const pastas = (await origem.listar()).sort((a, b) => a[0].localeCompare(b[0]));
+      const escolhida = pedida ? pastas.find(([ref]) => ref === pedida) : pastas.at(-1);
+      if (!escolhida) {
+        falhas.push(`${origem.nome}: sem a pasta ${pedida ?? "mais recente"}`);
+        continue;
+      }
+      return { referencia: escolhida[0], pastaRemota: escolhida[1], origem: origem.nome };
+    } catch (erro) {
+      const causa = erro instanceof Error && erro.cause instanceof Error ? ` (${erro.cause.message})` : "";
+      falhas.push(`${origem.nome}: ${erro instanceof Error ? erro.message : String(erro)}${causa}`);
+      console.log(`  ${falhas.at(-1)}`);
+    }
+  }
+  throw new Error(`Nenhuma origem respondeu — ${falhas.join("; ")}`);
 }
 
 /** Baixa (ou localiza) um arquivo. Devolve null se não existir. */
-async function obterArquivo(pasta: string, referencia: string, nome: string, usarLocal: boolean): Promise<string | null> {
+async function obterArquivo(pasta: string, pastaRemota: string, nome: string, usarLocal: boolean): Promise<string | null> {
   const destino = join(pasta, nome);
 
   if (usarLocal) {
@@ -314,7 +367,7 @@ async function obterArquivo(pasta: string, referencia: string, nome: string, usa
     }
   }
 
-  const url = `${BASE}/${referencia}/${nome}`;
+  const url = `${pastaRemota}/${nome}`;
   const r = await fetch(url, { signal: AbortSignal.timeout(60 * 60_000) });
   if (r.status === 404) return null;
   if (!r.ok || !r.body) throw new Error(`Receita: ${nome} devolveu ${r.status}.`);
@@ -323,8 +376,8 @@ async function obterArquivo(pasta: string, referencia: string, nome: string, usa
   return destino;
 }
 
-async function lerMunicipios(pasta: string, referencia: string, usarLocal: boolean): Promise<Map<string, string>> {
-  const caminho = await obterArquivo(pasta, referencia, "Municipios.zip", usarLocal);
+async function lerMunicipios(pasta: string, pastaRemota: string, usarLocal: boolean): Promise<Map<string, string>> {
+  const caminho = await obterArquivo(pasta, pastaRemota, "Municipios.zip", usarLocal);
   if (!caminho) throw new Error("Receita: Municipios.zip não encontrado.");
   const mapa = new Map<string, string>();
   for await (const linha of linhasDoZip(caminho)) {

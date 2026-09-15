@@ -113,7 +113,17 @@ const TODAS_UFS = [
   "AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE",
   "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO",
 ];
-const LOTE = 400;
+/**
+ * Linhas por INSERT e INSERTs em voo ao mesmo tempo.
+ *
+ * O gargalo da importação não é ler o CSV, é a ida ao Turso: do runner
+ * do GitHub cada requisição leva ~100 ms de rede, e 900 mil linhas em
+ * lotes de 400, um de cada vez, foram 1h30 só de espera. Lotes de 1000
+ * (18 mil variáveis, abaixo do teto de 32 mil do SQLite) e quatro em
+ * voo dividem isso por dez.
+ */
+const LOTE = 1_000;
+const EM_VOO = 4;
 const REGEX_EMAIL = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
 
 type Linha = {
@@ -186,6 +196,7 @@ async function main() {
       let aceitas = 0;
       let malformadas = 0;
       let lote: Linha[] = [];
+      let emVoo: Promise<void>[] = [];
 
       const inicio = Date.now();
       for await (const linha of linhasDoZip(caminho)) {
@@ -213,11 +224,16 @@ async function main() {
         aceitas += 1;
 
         if (lote.length >= LOTE) {
-          await gravarLote(banco, lote, referencia);
+          emVoo.push(gravarLote(banco, lote, referencia));
           lote = [];
+          if (emVoo.length >= EM_VOO) {
+            await Promise.all(emVoo);
+            emVoo = [];
+          }
         }
       }
-      if (lote.length > 0) await gravarLote(banco, lote, referencia);
+      if (lote.length > 0) emVoo.push(gravarLote(banco, lote, referencia));
+      await Promise.all(emVoo);
 
       const seg = Math.round((Date.now() - inicio) / 1000);
       console.log(

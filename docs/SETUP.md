@@ -229,7 +229,9 @@ Não precisa de credencial nova. O que precisa:
    60 minutos: baixa ~6 GB de zip, lê ~17 GB de CSV em fluxo e grava só
    o recorte. A tela de Ajustes mostra o andamento e o resultado.
 3. Depois disso o fluxo repete sozinho todo dia 15, com a pasta mais
-   nova. Estabelecimento que fechou sai da base; novo entra.
+   nova. Cada linha tem um hash: só o que abriu, fechou ou mudou de
+   contato é reescrito — é o que faz a atualização mensal caber na cota
+   de escrita do plano gratuito do Turso (10 milhões de linhas/mês).
 
 Com a base no lugar, toda caçada no Brasil ganha uma segunda etapa:
 para cada estabelecimento da Receita no município e nos CNAEs do

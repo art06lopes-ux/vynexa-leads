@@ -119,7 +119,7 @@ const TODAS_UFS = [
  * O gargalo da importação não é ler o CSV, é a ida ao Turso: do runner
  * do GitHub cada requisição leva ~100 ms de rede, e 900 mil linhas em
  * lotes de 400, um de cada vez, foram 1h30 só de espera. Lotes de 1000
- * (18 mil variáveis, abaixo do teto de 32 mil do SQLite) e quatro em
+ * (19 mil variáveis, abaixo do teto de 32 mil do SQLite) e quatro em
  * voo dividem isso por dez.
  */
 const LOTE = 1_000;
@@ -130,6 +130,8 @@ type Linha = {
   cnpj: string;
   basico: string;
   nome: string;
+  razaoSocial: string | null;
+  hash: string;
   cnae: string;
   cnaesSec: string | null;
   uf: string;
@@ -190,48 +192,108 @@ async function main() {
     console.log(`${municipios.size} municípios.`);
 
     const quer = new Set(ufs);
-    const semFantasia: Array<{ cnpj: string; basico: string }> = [];
+
+    // ---- Passagem 1: quem não tem nome fantasia? ------------------------
+    // Só o CNPJ básico de cada um, para a passagem 2 saber o que procurar
+    // nos arquivos de Empresas. Nada é gravado ainda.
     const basicosPendentes = new Set<string>();
-    const contagem = new Map<string, number>(ufs.map((u) => [u, 0]));
+    let aceitasTotal = 0;
+    for (const nome of ARQUIVOS_ESTAB) {
+      const caminho = await obterArquivo(pasta, pastaRemota, nome, usarLocal);
+      if (!caminho) continue;
+      const inicio = Date.now();
+      let aceitas = 0;
+      for await (const linha of linhasDoZip(caminho)) {
+        const campos = separar(linha);
+        if (campos.length !== 30 || campos[C.situacao] !== SITUACAO_ATIVA) continue;
+        if (!CNAES.has(campos[C.cnae]!) || !quer.has(campos[C.uf]!)) continue;
+        aceitas += 1;
+        if (campos[C.fantasia]!.trim() === "") basicosPendentes.add(campos[C.basico]!);
+      }
+      aceitasTotal += aceitas;
+      console.log(`  ${nome}: ${aceitas.toLocaleString("pt-BR")} no recorte (${Math.round((Date.now() - inicio) / 1000)}s)`);
+    }
+    console.log(
+      `${aceitasTotal.toLocaleString("pt-BR")} estabelecimentos no recorte; ${basicosPendentes.size.toLocaleString("pt-BR")} sem nome fantasia.`,
+    );
+
+    // ---- Passagem 2: razão social de quem precisa -----------------------
+    // Ler os 10 arquivos de Empresas só para isso parece caro, mas é o
+    // único jeito: o nome de um MEI vive lá, e sem nome não há o que
+    // prospectar. Ler é barato; o que custa é escrever, e isto evita uma
+    // segunda escrita em 80% das linhas.
+    const razoes = new Map<string, string>();
+    if (basicosPendentes.size > 0) {
+      for (const nome of ARQUIVOS_EMPRESAS) {
+        const caminho = await obterArquivo(pasta, pastaRemota, nome, usarLocal);
+        if (!caminho) {
+          console.log(`  ${nome}: ausente, pulado.`);
+          continue;
+        }
+        for await (const linha of linhasDoZip(caminho)) {
+          const fim = linha.indexOf('";"');
+          if (fim < 2) continue;
+          const basico = linha.slice(1, fim);
+          if (!basicosPendentes.has(basico)) continue;
+          const razao = limparRazaoSocial(separar(linha)[1] ?? "");
+          if (razao) razoes.set(basico, razao);
+        }
+        if (!usarLocal) await rm(caminho, { force: true });
+      }
+      console.log(`  ${razoes.size.toLocaleString("pt-BR")} razões sociais encontradas.`);
+    }
+
+    // ---- O que já está na base -----------------------------------------
+    // Um hash por linha: quem não mudou desde a última importação não é
+    // reescrito. É o que faz a atualização mensal caber na cota de
+    // escrita do plano gratuito — na primeira vez tudo entra; depois só
+    // o que abriu, fechou ou trocou de telefone.
+    const existentes = await hashesExistentes(banco, ufs);
+    console.log(`${existentes.size.toLocaleString("pt-BR")} já na base.`);
+
+    // ---- Passagem 3: gravar --------------------------------------------
+    const contagem = new Map<string, { novas: number; alteradas: number; iguais: number }>(
+      ufs.map((u) => [u, { novas: 0, alteradas: 0, iguais: 0 }]),
+    );
+    let semNome = 0;
 
     for (const nome of ARQUIVOS_ESTAB) {
       const caminho = await obterArquivo(pasta, pastaRemota, nome, usarLocal);
-      if (!caminho) {
-        console.log(`  ${nome}: ausente, pulado.`);
-        continue;
-      }
-
-      let lidas = 0;
-      let aceitas = 0;
-      let malformadas = 0;
+      if (!caminho) continue;
+      const inicio = Date.now();
       let lote: Linha[] = [];
       let emVoo: Promise<void>[] = [];
+      let gravadas = 0;
 
-      const inicio = Date.now();
       for await (const linha of linhasDoZip(caminho)) {
-        lidas += 1;
         const campos = separar(linha);
-        if (campos.length !== 30) {
-          malformadas += 1;
-          continue;
-        }
-        if (campos[C.situacao] !== SITUACAO_ATIVA) continue;
-        if (!CNAES.has(campos[C.cnae]!)) continue;
-        const uf = campos[C.uf]!;
-        if (!quer.has(uf)) continue;
+        if (campos.length !== 30 || campos[C.situacao] !== SITUACAO_ATIVA) continue;
+        if (!CNAES.has(campos[C.cnae]!) || !quer.has(campos[C.uf]!)) continue;
 
         const registro = montar(campos, municipios);
         if (!registro) continue;
-
         if (registro.nome === "") {
-          semFantasia.push({ cnpj: registro.cnpj, basico: registro.basico });
-          basicosPendentes.add(registro.basico);
+          const razao = razoes.get(registro.basico);
+          if (!razao) {
+            semNome += 1;
+            continue;
+          }
+          registro.nome = razao;
+          registro.razaoSocial = razao;
         }
 
-        lote.push(registro);
-        contagem.set(uf, (contagem.get(uf) ?? 0) + 1);
-        aceitas += 1;
+        const c = contagem.get(registro.uf)!;
+        const anterior = existentes.get(registro.cnpj);
+        existentes.delete(registro.cnpj); // o que sobrar no mapa saiu da base
+        if (anterior === registro.hash) {
+          c.iguais += 1;
+          continue;
+        }
+        if (anterior === undefined) c.novas += 1;
+        else c.alteradas += 1;
 
+        lote.push(registro);
+        gravadas += 1;
         if (lote.length >= LOTE) {
           emVoo.push(gravarLote(banco, lote, referencia));
           lote = [];
@@ -244,85 +306,38 @@ async function main() {
       if (lote.length > 0) emVoo.push(gravarLote(banco, lote, referencia));
       await Promise.all(emVoo);
 
-      const seg = Math.round((Date.now() - inicio) / 1000);
-      console.log(
-        `  ${nome}: ${lidas.toLocaleString("pt-BR")} linhas, ${aceitas.toLocaleString("pt-BR")} aceitas` +
-          (malformadas > 0 ? `, ${malformadas} malformadas` : "") +
-          ` (${seg}s)`,
-      );
-
+      console.log(`  ${nome}: ${gravadas.toLocaleString("pt-BR")} gravadas (${Math.round((Date.now() - inicio) / 1000)}s)`);
       if (!usarLocal) await rm(caminho, { force: true });
     }
+    if (semNome > 0) console.log(`${semNome.toLocaleString("pt-BR")} sem nome em nenhuma das fontes, descartadas.`);
 
-    // Razão social só para quem não tem nome fantasia. Ler os 10 arquivos
-    // de Empresas só para isso parece caro, mas é o único jeito: o nome
-    // de um MEI vive lá, e um estabelecimento sem nome não serve.
-    if (basicosPendentes.size > 0) {
-      console.log(`${semFantasia.length.toLocaleString("pt-BR")} sem nome fantasia; buscando razão social…`);
-      const razoes = new Map<string, string>();
-
-      for (const nome of ARQUIVOS_EMPRESAS) {
-        const caminho = await obterArquivo(pasta, pastaRemota, nome, usarLocal);
-        if (!caminho) {
-          console.log(`  ${nome}: ausente, pulado.`);
-          continue;
-        }
-        for await (const linha of linhasDoZip(caminho)) {
-          const fim = linha.indexOf('";"');
-          if (fim < 2) continue;
-          const basico = linha.slice(1, fim);
-          if (!basicosPendentes.has(basico)) continue;
-          const campos = separar(linha);
-          const razao = limparRazaoSocial(campos[1] ?? "");
-          if (razao) razoes.set(basico, razao);
-        }
-        if (!usarLocal) await rm(caminho, { force: true });
-      }
-
-      let atualizadas = 0;
-      for (let i = 0; i < semFantasia.length; i += LOTE) {
-        const fatia = semFantasia.slice(i, i + LOTE);
-        const statements = fatia
-          .map((p) => {
-            const razao = razoes.get(p.basico);
-            if (!razao) return null;
-            return {
-              sql: `UPDATE receita_estabelecimentos SET nome = ?, razao_social = ? WHERE cnpj = ? AND nome = ''`,
-              args: [razao, razao, p.cnpj],
-            };
-          })
-          .filter((s): s is { sql: string; args: string[] } => s !== null);
-        if (statements.length > 0) {
-          await banco.batch(statements, "write");
-          atualizadas += statements.length;
-        }
-      }
-      console.log(`  ${atualizadas.toLocaleString("pt-BR")} nomes preenchidos pela razão social.`);
+    // ---- Quem saiu -------------------------------------------------------
+    // O que ficou no mapa não apareceu nesta referência: baixou, mudou
+    // de estado ou de CNAE. Sai daqui também.
+    const sairam = [...existentes.keys()];
+    for (let i = 0; i < sairam.length; i += LOTE) {
+      const fatia = sairam.slice(i, i + LOTE);
+      await banco.execute({
+        sql: `DELETE FROM receita_estabelecimentos WHERE cnpj IN (${fatia.map(() => "?").join(",")})`,
+        args: fatia,
+      });
     }
+    if (sairam.length > 0) console.log(`${sairam.length.toLocaleString("pt-BR")} saíram da base.`);
 
-    // Sem nome de nenhuma das duas fontes não há o que prospectar.
     for (const uf of ufs) {
-      await banco.execute({
-        sql: `DELETE FROM receita_estabelecimentos WHERE uf = ? AND nome = ''`,
-        args: [uf],
-      });
-      // O que não veio nesta referência saiu da base (baixado, mudou de
-      // estado) e sai daqui também. O mesmo para CNAE que deixou de ser
-      // prospectado — senão a lista de segmentos só cresceria o banco.
-      await banco.execute({
-        sql: `DELETE FROM receita_estabelecimentos WHERE uf = ? AND (referencia <> ? OR cnae NOT IN (${[...CNAES].map(() => "?").join(",")}))`,
-        args: [uf, referencia, ...CNAES],
-      });
       const { rows } = await banco.execute({
         sql: `SELECT COUNT(*) AS n FROM receita_estabelecimentos WHERE uf = ?`,
         args: [uf],
       });
       const n = Number(rows[0]?.n ?? 0);
+      const c = contagem.get(uf)!;
       await banco.execute({
         sql: `UPDATE receita_importacoes SET status = 'concluida', linhas = ?, concluido_em = ? WHERE id = ?`,
         args: [n, agora(), importacoes.get(uf)!],
       });
-      console.log(`${uf}: ${n.toLocaleString("pt-BR")} estabelecimentos ativos na base.`);
+      console.log(
+        `${uf}: ${n.toLocaleString("pt-BR")} na base · ${c.novas.toLocaleString("pt-BR")} novas, ${c.alteradas.toLocaleString("pt-BR")} alteradas, ${c.iguais.toLocaleString("pt-BR")} iguais`,
+      );
     }
 
     for (const [chave, valor] of [
@@ -518,10 +533,12 @@ function montar(c: string[], municipios: Map<string, string>): Linha | null {
   const tipo = ouNulo(c[C.tipoLogradouro]);
   const logradouro = ouNulo(c[C.logradouro]);
 
-  return {
+  const registro: Linha = {
     cnpj,
     basico: c[C.basico]!,
     nome: c[C.fantasia]!.trim(),
+    razaoSocial: null,
+    hash: "",
     cnae,
     cnaesSec: ouNulo(c[C.cnaesSec]),
     uf: c[C.uf]!,
@@ -537,18 +554,53 @@ function montar(c: string[], municipios: Map<string, string>): Linha | null {
     email: REGEX_EMAIL.test(emailBruto) ? emailBruto : null,
     inicio: data(c[C.inicio]!),
   };
+  // O nome entra no hash só quando vem do próprio arquivo (fantasia);
+  // a razão social é preenchida depois e não muda o que interessa.
+  registro.hash = fnv1a(
+    [registro.nome, registro.cnae, registro.municipioCodigo, registro.logradouro, registro.numero,
+     registro.complemento, registro.bairro, registro.cep, registro.tel1, registro.tel2, registro.email, registro.inicio].join("\u001f"),
+  );
+  return registro;
+}
+
+/** FNV-1a de 32 bits em hex: barato e suficiente para "mudou ou não". */
+function fnv1a(texto: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < texto.length; i += 1) {
+    h ^= texto.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0");
+}
+
+/** cnpj → hash de tudo que está na base para estes estados. */
+async function hashesExistentes(banco: Client, ufs: string[]): Promise<Map<string, string>> {
+  const mapa = new Map<string, string>();
+  for (const uf of ufs) {
+    let ultimo = "";
+    for (;;) {
+      const { rows } = await banco.execute({
+        sql: `SELECT cnpj, hash FROM receita_estabelecimentos WHERE uf = ? AND cnpj > ? ORDER BY cnpj LIMIT 20000`,
+        args: [uf, ultimo],
+      });
+      for (const r of rows) mapa.set(String(r.cnpj), String(r.hash ?? ""));
+      if (rows.length < 20000) break;
+      ultimo = String(rows.at(-1)!.cnpj);
+    }
+  }
+  return mapa;
 }
 
 async function gravarLote(banco: Client, lote: Linha[], referencia: string): Promise<void> {
-  const marcadores = lote.map(() => "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").join(",");
+  const marcadores = lote.map(() => "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").join(",");
   const args = lote.flatMap((l) => [
-    l.cnpj, l.nome, null, l.cnae, l.cnaesSec, l.uf, l.municipioCodigo, l.municipio,
-    l.logradouro, l.numero, l.complemento, l.bairro, l.cep, l.tel1, l.tel2, l.email, l.inicio, referencia,
+    l.cnpj, l.nome, l.razaoSocial, l.cnae, l.cnaesSec, l.uf, l.municipioCodigo, l.municipio,
+    l.logradouro, l.numero, l.complemento, l.bairro, l.cep, l.tel1, l.tel2, l.email, l.inicio, referencia, l.hash,
   ]);
   await banco.execute({
     sql: `INSERT OR REPLACE INTO receita_estabelecimentos (
             cnpj, nome, razao_social, cnae, cnaes_secundarios, uf, municipio_codigo, municipio,
-            logradouro, numero, complemento, bairro, cep, telefone_1, telefone_2, email, inicio_atividade, referencia
+            logradouro, numero, complemento, bairro, cep, telefone_1, telefone_2, email, inicio_atividade, referencia, hash
           ) VALUES ${marcadores}`,
     args,
   });

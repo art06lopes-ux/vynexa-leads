@@ -22,7 +22,7 @@ export default async function LayoutPainel({ children }: LayoutProps<"/">) {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="vidro riscos sticky top-0 z-40 border-x-0 border-t-0">
+      <header className="vidro sticky top-0 z-40 border-x-0 border-t-0">
         <div className="relative flex h-16 w-full items-center gap-3 px-4 sm:gap-4 sm:px-6">
           <Marca className="shrink-0" />
 
@@ -35,12 +35,12 @@ export default async function LayoutPainel({ children }: LayoutProps<"/">) {
 
           {/* "Ao vivo": o painel é servidor-renderizado a cada abertura,
               sem cache — o chip diz isso em vez de deixar a dúvida. */}
-          <span className="ao-vivo ml-auto hidden items-center gap-2 rounded-full border border-neon/25 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-foreground/80 md:inline-flex">
+          <span className="ao-vivo ml-auto hidden items-center gap-2 rounded-full border border-border px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-foreground/80 md:inline-flex">
             Ao vivo
           </span>
 
           <span
-            className="hidden size-9 shrink-0 items-center justify-center rounded-full border border-neon/30 bg-primary/15 text-xs font-bold text-neon shadow-[var(--neon-brilho)] sm:inline-flex"
+            className="hidden size-9 shrink-0 items-center justify-center rounded-full border border-border bg-primary/12 text-xs font-bold text-acento sm:inline-flex"
             title={empresa}
             aria-label={empresa}
           >

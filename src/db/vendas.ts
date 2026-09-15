@@ -1,6 +1,6 @@
 import "server-only";
 
-import { agora, getBanco, novoId } from "@/db/cliente";
+import { agora, getBanco, novoId, planos } from "@/db/cliente";
 import { PERIODOS, type ChavePeriodo, type PontoReceita } from "@/lib/vendas/periodos";
 
 export type StatusVenda = "pendente" | "pago" | "cancelado" | "reembolsado";
@@ -228,5 +228,5 @@ export async function listarVendas(limite = 30): Promise<Venda[]> {
           LIMIT ?`,
     args: [limite],
   });
-  return rows as unknown as Venda[];
+  return planos<Venda>(rows);
 }

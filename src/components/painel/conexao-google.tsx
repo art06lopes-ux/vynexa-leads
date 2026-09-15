@@ -59,7 +59,7 @@ export function ConexaoGoogle({
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm">
-        Conectado como <span className="font-semibold text-neon">{conta.email}</span>
+        Conectado como <span className="font-semibold text-acento">{conta.email}</span>
         <span className="num text-muted-foreground"> · desde {conta.conectadoEm.slice(0, 10)}</span>
       </p>
 

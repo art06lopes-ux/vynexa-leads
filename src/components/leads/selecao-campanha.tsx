@@ -114,7 +114,7 @@ export function BarraCampanha() {
     <div className="pointer-events-none fixed inset-x-0 bottom-24 z-30 flex justify-center px-4">
       <div className="vidro brasa pointer-events-auto flex items-center gap-3 rounded-2xl px-4 py-2.5">
         <p className="num text-sm">
-          <span className="font-semibold text-neon">{total}</span> selecionada{total > 1 ? "s" : ""}
+          <span className="font-semibold text-acento">{total}</span> selecionada{total > 1 ? "s" : ""}
         </p>
 
         <Dialog>

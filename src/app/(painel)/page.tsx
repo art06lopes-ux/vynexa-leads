@@ -148,7 +148,7 @@ function CacadasRecentes({ buscas }: { buscas: Busca[] }) {
         extra={
           <Link
             href="/historico"
-            className="cursor-pointer text-xs text-muted-foreground underline-offset-4 transition-colors duration-200 hover:text-neon hover:underline"
+            className="cursor-pointer text-xs text-muted-foreground underline-offset-4 transition-colors duration-200 hover:text-acento hover:underline"
           >
             Ver histórico completo
           </Link>
@@ -159,8 +159,8 @@ function CacadasRecentes({ buscas }: { buscas: Busca[] }) {
         <CardContent className="pt-2">
           {buscas.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-12 text-center">
-              <span className="moldura flex size-16 items-center justify-center rounded-lg border border-neon/20 bg-black/25">
-                <Radar className="size-7 text-neon" aria-hidden="true" />
+              <span className="flex size-16 items-center justify-center rounded-lg border border-border bg-black/25">
+                <Radar className="size-7 text-muted-foreground" aria-hidden="true" />
               </span>
               <p className="font-medium">Nenhuma caçada ainda</p>
               <p className="max-w-md text-sm text-muted-foreground">

@@ -66,7 +66,7 @@ export default async function PaginaCampanha({ params }: PageProps<"/campanhas/[
           rotulo="Falhas"
           valor={campanha.falhas}
           formato="inteiro"
-          tom={campanha.falhas > 0 ? "neon" : "neutro"}
+          tom={campanha.falhas > 0 ? "acento" : "neutro"}
         />
       </div>
 

@@ -1,10 +1,8 @@
 import type { ReactNode } from "react";
 
-import { TextoEmbaralhado } from "@/components/motion/texto-embaralhado";
-
 /**
  * Cabeçalho de página: rótulo-olho, título grande, ações à direita, fio
- * neon embaixo. É a mesma peça em todas as telas — a consistência é o
+ * fino embaixo. É a mesma peça em todas as telas — a consistência é o
  * que faz o site parecer um produto e não um conjunto de páginas.
  */
 export function CabecalhoPagina({
@@ -23,7 +21,7 @@ export function CabecalhoPagina({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <p className="olho">
-            <TextoEmbaralhado texto={olho} />
+            {olho}
           </p>
           <h1 className="mt-1.5 text-3xl font-bold tracking-tight sm:text-4xl">{titulo}</h1>
           {descricao && <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">{descricao}</p>}

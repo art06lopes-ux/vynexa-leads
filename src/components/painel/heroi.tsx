@@ -15,7 +15,7 @@ export type MetricaHeroi = {
 
 /**
  * Painel-herói, na composição da referência: rótulo-olho centrado,
- * título, data, o número dentro de uma moldura com cantos, a variação
+ * título, data, o número dentro de um quadro, a variação
  * contra ontem, e três métricas alinhadas no rodapé.
  *
  * Centrado de propósito, ao contrário do resto da página: é o único
@@ -46,12 +46,12 @@ export function Heroi({
   return (
     <section
       aria-label={titulo}
-      className={cn("heroi riscos rounded-2xl px-5 pb-5 pt-7 sm:px-8 sm:pb-6 sm:pt-9", className)}
+      className={cn("heroi rounded-2xl px-5 pb-5 pt-7 sm:px-8 sm:pb-6 sm:pt-9", className)}
     >
       <div className="relative flex flex-col items-center text-center">
         <p className="olho flex flex-wrap items-center justify-center gap-3">
           <TextoEmbaralhado texto={olho} />
-          <span className="ao-vivo inline-flex items-center gap-1.5 rounded-full border border-neon/30 px-2 py-0.5 tracking-[0.15em] text-foreground/80">
+          <span className="ao-vivo inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 tracking-[0.15em] text-foreground/80">
             AO VIVO
           </span>
         </p>
@@ -59,15 +59,15 @@ export function Heroi({
         <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">{titulo}</h2>
         {subtitulo && <p className="num mt-1 text-xs text-muted-foreground">{subtitulo}</p>}
 
-        {/* A moldura com cantos: o quadro do número principal. */}
-        <div className="moldura mt-6 w-full max-w-xl rounded-lg border border-neon/20 bg-black/25 px-6 py-6 sm:px-10 sm:py-8">
+        {/* O quadro do número principal. */}
+        <div className="mt-6 w-full max-w-xl rounded-lg border border-border bg-black/25 px-6 py-6 sm:px-10 sm:py-8">
           <p className="olho-mudo mb-2">Faturamento confirmado</p>
           <p className="flex flex-wrap items-end justify-center gap-x-4 gap-y-2">
             <NumeroAnimado
               valor={centavos}
               formato="dinheiro"
               duracao={1.4}
-              className="texto-neon text-5xl font-bold tracking-tight sm:text-6xl lg:text-7xl"
+              className="text-acento text-5xl font-bold tracking-tight sm:text-6xl lg:text-7xl"
             />
           </p>
 
@@ -97,7 +97,7 @@ export function Heroi({
       </div>
 
       {metricas && metricas.length > 0 && (
-        <dl className="relative mt-6 grid grid-cols-1 divide-y divide-neon/15 border-t border-neon/15 pt-1 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+        <dl className="relative mt-6 grid grid-cols-1 divide-y divide-border border-t border-border pt-1 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
           {metricas.map((m) => (
             <div key={m.olho} className="flex flex-col items-center gap-1 px-4 py-4 text-center">
               <dt className="olho-mudo">{m.olho}</dt>

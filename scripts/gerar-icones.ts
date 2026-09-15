@@ -15,12 +15,12 @@ import { initWasm, Resvg } from "@resvg/resvg-wasm";
 const MARCA = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#f87171"/>
-      <stop offset="100%" stop-color="#b91c1c"/>
+      <stop offset="0%" stop-color="#f3c96b"/>
+      <stop offset="100%" stop-color="#c98a12"/>
     </linearGradient>
   </defs>
   <rect width="32" height="32" rx="7" fill="url(#g)"/>
-  <path d="M9 10.5 L16 22 L23 10.5" fill="none" stroke="#0c0a0a" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M9 10.5 L16 22 L23 10.5" fill="none" stroke="#1a1408" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
 /**
@@ -31,12 +31,12 @@ const MARCA = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 const MARCA_MASKABLE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#f87171"/>
-      <stop offset="100%" stop-color="#b91c1c"/>
+      <stop offset="0%" stop-color="#f3c96b"/>
+      <stop offset="100%" stop-color="#c98a12"/>
     </linearGradient>
   </defs>
   <rect width="40" height="40" fill="url(#g)"/>
-  <path d="M13 14.5 L20 26 L27 14.5" fill="none" stroke="#0c0a0a" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M13 14.5 L20 26 L27 14.5" fill="none" stroke="#1a1408" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
 const TAMANHOS = [192, 512];

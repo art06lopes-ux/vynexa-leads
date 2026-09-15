@@ -52,8 +52,8 @@ export default async function PaginaCampanhas() {
       {campanhas.length === 0 ? (
         <Card className="vidro">
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <span className="moldura flex size-16 items-center justify-center rounded-lg border border-neon/20 bg-black/25">
-              <Mail className="size-7 text-neon" aria-hidden="true" />
+            <span className="flex size-16 items-center justify-center rounded-lg border border-border bg-black/25">
+              <Mail className="size-7 text-muted-foreground" aria-hidden="true" />
             </span>
             <p className="font-medium">Nenhuma campanha ainda</p>
             <p className="max-w-md text-sm text-muted-foreground">
@@ -95,7 +95,7 @@ export default async function PaginaCampanhas() {
 
                   <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/8" aria-hidden="true">
                     <div
-                      className="h-full rounded-full bg-neon shadow-[var(--neon-brilho)]"
+                      className="h-full rounded-full bg-acento"
                       style={{ width: `${pct}%` }}
                     />
                   </div>

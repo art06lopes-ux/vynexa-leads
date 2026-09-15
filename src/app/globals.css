@@ -5,22 +5,22 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Identidade Vynexa Dev: preto quente com vermelho.
+ * Identidade Vynexa Dev: grafite com âmbar.
  *
  * A ferramenta é escura por definição, não por preferência do sistema:
- * é um painel de trabalho usado por horas seguidas e a identidade da
- * marca é escura. Por isso `:root` já carrega o tema escuro e `.dark`
- * repete os mesmos valores — os componentes do shadcn que consultam a
- * variante continuam funcionando, e não existe um modo claro pela metade.
+ * é um painel de trabalho usado por horas seguidas. Por isso `:root` já
+ * carrega o tema escuro e `.dark` repete os mesmos valores — os
+ * componentes do shadcn que consultam a variante continuam funcionando,
+ * e não existe um modo claro pela metade.
  *
- * Contraste medido, não estimado: foreground #F5F2F2 sobre #0C0A0A =
- * 17,7:1; muted-foreground #A89F9F sobre card #171313 = 7,1:1; branco
- * sobre primary #DC2626 = 4,8:1. Todos acima do mínimo 4.5:1 da WCAG AA.
+ * O acento aparece em três lugares: o número principal, o botão de ação
+ * e o ponto "ao vivo". Fora disso a página é grafite, texto e espaço.
+ * Um acento usado em tudo deixa de destacar qualquer coisa.
  *
- * O vermelho do botão é #DC2626 e não #EF4444 por um motivo medido: o
- * segundo dá apenas 3,8:1 com texto branco e reprovaria. Vermelho vivo
- * sobre preto é armadilha conhecida de contraste — a versão viva fica
- * para texto e ícone sobre o fundo escuro, onde alcança 7,1:1.
+ * Contraste medido, não estimado: foreground #F2F0EB sobre #0F0F10 =
+ * 17,3:1; muted-foreground #9C9A94 sobre card #17181A = 6,3:1; acento
+ * #E0A526 sobre o fundo = 8,6:1; texto #1A1408 sobre o botão âmbar =
+ * 8,3:1. Todos acima do mínimo 4.5:1 da WCAG AA.
  */
 
 @theme inline {
@@ -58,7 +58,7 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --color-neon: var(--neon);
+  --color-acento: var(--acento);
 
   /* Escala densa (dashboard): passos de 8 a 32px, e não de 24 a 96px.
      Uma tela de prospecção vive de caber muita linha na dobra. */
@@ -79,59 +79,56 @@
 
 :root,
 .dark {
-  --background: #0c0a0a;
-  --foreground: #f5f2f2;
+  --background: #0f0f10;
+  --foreground: #f2f0eb;
 
-  --card: #171313;
-  --card-foreground: #f5f2f2;
-  --popover: #1a1515;
-  --popover-foreground: #f5f2f2;
+  --card: #17181a;
+  --card-foreground: #f2f0eb;
+  --popover: #1b1c1f;
+  --popover-foreground: #f2f0eb;
 
-  --primary: #dc2626;
-  --primary-foreground: #ffffff;
+  --primary: #e0a526;
+  --primary-foreground: #1a1408;
 
-  --secondary: #241c1c;
-  --secondary-foreground: #ece7e7;
+  --secondary: #222326;
+  --secondary-foreground: #e8e6e1;
 
-  --muted: #191414;
-  --muted-foreground: #a89f9f;
+  --muted: #1c1d20;
+  --muted-foreground: #9c9a94;
 
-  --accent: #2a2020;
-  --accent-foreground: #f5f2f2;
+  --accent: #26272b;
+  --accent-foreground: #f2f0eb;
 
-  /* Mais claro que o primary de propósito. Numa marca vermelha, erro e
-     ação principal correriam o risco de se confundir; a diferença de
-     luminosidade separa os dois, e todo estado de erro vem acompanhado
-     de ícone e texto — a cor nunca carrega o significado sozinha. */
-  --destructive: #fca5a5;
+  /* Erro é vermelho e só erro é vermelho: com o acento em âmbar, a cor
+     de falha volta a ter o significado que tem em todo lugar. Sempre
+     acompanhada de ícone e texto. */
+  --destructive: #f87171;
 
-  --border: rgba(245, 235, 235, 0.13);
-  --input: rgba(245, 235, 235, 0.2);
-  --ring: #ef4444;
+  --border: rgba(242, 240, 235, 0.1);
+  --input: rgba(242, 240, 235, 0.16);
+  --ring: #e0a526;
 
-  --chart-1: #ef4444;
-  --chart-2: #f87171;
-  --chart-3: #fb923c;
-  --chart-4: #a89f9f;
-  --chart-5: #fbbf24;
+  --chart-1: #e0a526;
+  --chart-2: #f3c96b;
+  --chart-3: #9c9a94;
+  --chart-4: #60a5fa;
+  --chart-5: #4ade80;
 
   --radius: 0.75rem;
 
-  --sidebar: #120f0f;
-  --sidebar-foreground: #d6cfcf;
-  --sidebar-primary: #dc2626;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #241c1c;
-  --sidebar-accent-foreground: #f5f2f2;
-  --sidebar-border: rgba(245, 235, 235, 0.12);
-  --sidebar-ring: #ef4444;
+  --sidebar: #131316;
+  --sidebar-foreground: #d3d1cc;
+  --sidebar-primary: #e0a526;
+  --sidebar-primary-foreground: #1a1408;
+  --sidebar-accent: #222326;
+  --sidebar-accent-foreground: #f2f0eb;
+  --sidebar-border: rgba(242, 240, 235, 0.1);
+  --sidebar-ring: #e0a526;
 
-  /* Neon: só para brilho, borda e acento. Medido 5,5:1 sobre o fundo,
-     então serve como texto de destaque — mas nunca como fundo de botão
-     com texto branco, onde reprovaria. */
-  --neon: #ff3b3b;
-  --neon-brilho: 0 0 10px rgba(255, 59, 59, 0.55), 0 0 28px rgba(255, 59, 59, 0.22);
-  --neon-brilho-forte: 0 0 14px rgba(255, 59, 59, 0.8), 0 0 48px rgba(255, 59, 59, 0.35);
+  /* O acento. Mesmo valor do primary — existe como token próprio para
+     que "cor de destaque em texto" e "cor de fundo de botão" possam
+     divergir um dia sem trocar em vinte arquivos. */
+  --acento: #e0a526;
 
   /* Cores dos status. Cada uma vem acompanhada de rótulo em texto na
      interface — a cor reforça, nunca carrega sozinha o significado. */
@@ -153,31 +150,11 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    /* Brasa vermelha no topo: dá profundidade ao preto chapado sem custo
-       de renderização (é um gradiente fixo, não um blur animado). */
-    background-image:
-      radial-gradient(60rem 32rem at 15% -12%, rgba(220, 38, 38, 0.22), transparent 60%),
-      radial-gradient(48rem 28rem at 92% -6%, rgba(255, 59, 59, 0.1), transparent 60%);
+    /* Um único gradiente quase imperceptível no topo, para o grafite não
+       ser chapado. Sem grade, sem brasa: textura de fundo compete com
+       tabela. */
+    background-image: radial-gradient(70rem 30rem at 50% -14%, rgba(242, 240, 235, 0.045), transparent 65%);
     background-attachment: fixed;
-    position: relative;
-  }
-
-  /* Grade técnica atrás de tudo. Linhas a 2% de opacidade: presentes o
-     bastante para dar textura, discretas o bastante para não competir
-     com tabela. A máscara radial apaga a grade nas bordas, onde ela só
-     chamaria atenção para o canto. */
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background-image:
-      linear-gradient(rgba(255, 59, 59, 0.045) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 59, 59, 0.045) 1px, transparent 1px);
-    background-size: 44px 44px;
-    mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, black 20%, transparent 75%);
-    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, black 20%, transparent 75%);
   }
 
   /* O anel de foco é a única pista de navegação por teclado. Reforçado,
@@ -194,68 +171,52 @@
 }
 
 @layer components {
-  /* Superfície de vidro: usada em cabeçalho e cartões elevados.
-     `backdrop-blur` custa pouco aqui porque as superfícies são poucas e
-     não se movem. */
+  /* Superfície elevada: usada em cabeçalho, cartões e dock. Borda de 1px
+     e fundo um tom acima do chão — é isso que separa um bloco do outro,
+     não sombra nem brilho. */
   .vidro {
     @apply border border-white/8 bg-white/4 backdrop-blur-xl;
   }
 
-  /* Brasa: fio de luz neon na borda superior do cartão, e o brilho
-     cresce no hover. Um `box-shadow` e um pseudo-elemento — só a
-     transição da sombra anima, o layout não muda. */
-  .brasa {
-    position: relative;
-    box-shadow: 0 0 0 1px rgba(255, 59, 59, 0.2), 0 18px 40px -24px rgba(255, 59, 59, 0.55);
-    transition: box-shadow 250ms ease, transform 250ms ease;
-  }
-
-  .brasa::before {
-    content: "";
-    position: absolute;
-    inset-inline: 10%;
-    top: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--neon), transparent);
-    opacity: 0.9;
-    filter: drop-shadow(0 0 6px var(--neon));
-  }
-
-  /* Hover Animation (guia, cat. 04): levanta 2px e acende. Só no
+  /* Cartão que reage ao ponteiro: levanta 2px e a borda clareia. Só no
      ponteiro fino — no toque não existe hover, e o estado ficaria preso. */
+  .brasa {
+    transition: border-color 200ms ease, transform 200ms ease;
+  }
+
   @media (hover: hover) and (pointer: fine) {
     .brasa:hover {
       transform: translateY(-2px);
-      box-shadow: 0 0 0 1px rgba(255, 59, 59, 0.45), var(--neon-brilho), 0 24px 48px -24px rgba(255, 59, 59, 0.6);
+      border-color: rgba(242, 240, 235, 0.18);
     }
   }
 
-  /* Chip "ao vivo": ponto que pulsa (Loop, cat. 05). */
+  /* Chip "ao vivo": ponto âmbar que pulsa. */
   .ao-vivo::before {
     content: "";
     display: inline-block;
     width: 0.5rem;
     height: 0.5rem;
     border-radius: 9999px;
-    background: var(--neon);
-    box-shadow: var(--neon-brilho);
-    animation: pulso-vivo 1.6s ease-in-out infinite;
+    background: var(--acento);
+    animation: pulso-vivo 1.8s ease-in-out infinite;
   }
 
   @keyframes pulso-vivo {
     0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.45; transform: scale(0.8); }
+    50% { opacity: 0.4; transform: scale(0.8); }
   }
 
   /* Rótulo-olho: o texto minúsculo em caixa alta com espaçamento largo
      que encabeça cada bloco. É a peça que mais separa "painel" de
-     "formulário": dá ritmo e diz o que cada número é antes do número. */
+     "formulário": dá ritmo e diz o que cada número é antes do número.
+     `.olho` é o rótulo do bloco principal; `.olho-mudo`, dos demais. */
   .olho {
     font-size: 0.65rem;
     font-weight: 600;
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: color-mix(in oklch, var(--neon) 85%, white);
+    color: var(--acento);
   }
 
   .olho-mudo {
@@ -266,104 +227,36 @@
     color: var(--muted-foreground);
   }
 
-  /* Moldura com cantos: quatro traços em L nos cantos do bloco, como o
-     quadro do número principal da referência. Só bordas, sem fundo. */
+  /* Quadro do número principal: só um fundo mais escuro e borda. As
+     classes abaixo existem para os componentes que já as usam; todas
+     ficaram silenciosas de propósito. */
   .moldura {
     position: relative;
   }
-  .moldura::before,
-  .moldura::after {
-    content: "";
-    position: absolute;
-    width: 18px;
-    height: 18px;
-    border-color: var(--neon);
-    border-style: solid;
-    opacity: 0.9;
-    filter: drop-shadow(0 0 6px var(--neon));
-    pointer-events: none;
-  }
-  .moldura::before {
-    top: -1px;
-    left: -1px;
-    border-width: 2px 0 0 2px;
-    border-top-left-radius: 6px;
-  }
-  .moldura::after {
-    bottom: -1px;
-    right: -1px;
-    border-width: 0 2px 2px 0;
-    border-bottom-right-radius: 6px;
-  }
 
-  /* Linha de seção: fio neon fino com um ponto aceso na ponta. */
   .fio {
     height: 1px;
-    background: linear-gradient(90deg, var(--neon), rgba(255, 59, 59, 0.25) 40%, transparent);
-    position: relative;
-  }
-  .fio::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: -2px;
-    width: 5px;
-    height: 5px;
-    border-radius: 9999px;
-    background: var(--neon);
-    box-shadow: var(--neon-brilho);
+    background: var(--border);
   }
 
-  /* Riscos diagonais de luz no cabeçalho, como na referência. Duas
-     faixas finas, quase transparentes, deslocadas para o canto direito. */
   .riscos::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background:
-      linear-gradient(115deg, transparent 62%, rgba(255, 59, 59, 0.10) 62.4%, transparent 63.2%),
-      linear-gradient(115deg, transparent 68%, rgba(255, 59, 59, 0.06) 68.3%, transparent 69%),
-      linear-gradient(115deg, transparent 74%, rgba(255, 255, 255, 0.04) 74.2%, transparent 74.8%);
+    content: none;
   }
 
-  /* Texto neon: cor de destaque com halo. */
-  .texto-neon {
-    color: var(--neon);
-    text-shadow: 0 0 12px rgba(255, 59, 59, 0.6), 0 0 32px rgba(255, 59, 59, 0.25);
-  }
-
-  /* Painel-herói: o bloco grande do topo, com moldura neon e brilho
-     interno vindo do canto — o efeito do "Vendas hoje" da referência. */
+  /* Painel-herói: o bloco grande do topo. Borda e fundo um pouco mais
+     escuros que o cartão comum, e um brilho âmbar quase invisível no
+     canto — o único lugar da página onde o acento toca o fundo. */
   .heroi {
     position: relative;
     overflow: hidden;
-    border: 1px solid rgba(255, 59, 59, 0.28);
+    border: 1px solid rgba(242, 240, 235, 0.1);
     background:
-      radial-gradient(70% 120% at 0% 0%, rgba(255, 59, 59, 0.22), transparent 55%),
-      radial-gradient(50% 90% at 100% 100%, rgba(220, 38, 38, 0.14), transparent 60%),
-      rgba(23, 19, 19, 0.7);
-    box-shadow: var(--neon-brilho), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  }
-
-  /* Varredura de luz que atravessa o herói uma vez (Reveal + Loop lento). */
-  .heroi::after {
-    content: "";
-    position: absolute;
-    inset: -40% -60%;
-    background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.05) 50%, transparent 60%);
-    animation: varredura 7s ease-in-out infinite;
-    pointer-events: none;
-  }
-
-  @keyframes varredura {
-    0% { transform: translateX(-30%); }
-    50%, 100% { transform: translateX(30%); }
+      radial-gradient(60% 100% at 0% 0%, rgba(224, 165, 38, 0.08), transparent 55%),
+      #141416;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .heroi::after,
   .ao-vivo::before {
     animation: none !important;
   }

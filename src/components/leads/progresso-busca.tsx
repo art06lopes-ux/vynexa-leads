@@ -3,7 +3,6 @@
 import { Check, LoaderCircle, Radar } from "lucide-react";
 
 import { Particulas } from "@/components/motion/particulas";
-import { TextoEmbaralhado } from "@/components/motion/texto-embaralhado";
 import { cn } from "@/lib/utils";
 
 export type EstagioBusca = "pendente" | "em_andamento" | "concluida";
@@ -77,7 +76,7 @@ export function ProgressoBusca({
 
       <div className="relative min-w-0 flex-1">
         <p className="truncate font-medium">
-          {local ? <TextoEmbaralhado texto={local} /> : "Localizando a região…"}
+          {local ?? "Localizando a região…"}
         </p>
 
         <ol className="mt-3 flex flex-col gap-2">

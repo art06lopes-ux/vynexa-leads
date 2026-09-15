@@ -128,13 +128,13 @@ export function Dock() {
               // para os dois lados empurrando os vizinhos.
               className={cn(
                 "group relative flex h-14 w-[2.9rem] origin-bottom cursor-pointer flex-col items-center justify-center gap-1 rounded-xl text-[0.6rem] font-medium will-change-transform sm:w-[4.25rem] sm:text-[0.65rem]",
-                ativo ? "bg-primary/18 text-foreground" : "text-muted-foreground hover:text-foreground",
+                ativo ? "bg-white/8 text-foreground" : "text-muted-foreground hover:text-foreground",
               )}
             >
               <Icone
                 className={cn(
                   "size-5",
-                  ativo && "text-neon drop-shadow-[0_0_8px_var(--neon)]",
+                  ativo && "text-acento",
                 )}
                 aria-hidden="true"
               />
@@ -146,7 +146,7 @@ export function Dock() {
               {ativo && (
                 <span
                   aria-hidden="true"
-                  className="absolute -bottom-1 size-1 rounded-full bg-neon shadow-[var(--neon-brilho)]"
+                  className="absolute -bottom-1 size-1 rounded-full bg-acento"
                 />
               )}
             </Link>

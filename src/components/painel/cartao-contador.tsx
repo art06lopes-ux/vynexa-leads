@@ -19,7 +19,7 @@ const TONS = {
   bom: "text-emerald-300",
   atencao: "text-amber-300",
   info: "text-sky-300",
-  neon: "text-neon",
+  acento: "text-acento",
 } as const;
 
 export function CartaoContador({
@@ -55,7 +55,7 @@ export function CartaoContador({
     <div
       className={cn(
         "vidro brasa flex h-full flex-col justify-between gap-3 rounded-xl",
-        destaque ? "moldura p-6" : "p-4",
+        destaque ? "p-6" : "p-4",
       )}
     >
       <div className="flex items-center justify-between gap-2">
@@ -70,7 +70,7 @@ export function CartaoContador({
       <p
         className={cn(
           "font-semibold tracking-tight",
-          destaque ? "texto-neon text-4xl sm:text-5xl" : "text-2xl sm:text-3xl",
+          destaque ? "text-acento text-4xl sm:text-5xl" : "text-2xl sm:text-3xl",
         )}
       >
         {valorTexto ?? <NumeroAnimado valor={valor} formato={formato} />}

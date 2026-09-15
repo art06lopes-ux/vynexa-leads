@@ -20,7 +20,7 @@ type Formato = "inteiro" | "dinheiro";
  * - Linha de comparação (período anterior) tracejada e apagada, para o
  *   "hoje vs. antes" da referência. Duas séries pedem legenda; uma não.
  * - Crosshair no hover mostrando as duas séries do mesmo dia.
- * - A linha principal se traça na entrada (Draw SVG) com halo neon.
+ * - A linha principal se traça na entrada (Draw SVG).
  *
  * SVG à mão. Uma biblioteca de gráfico pesaria mais que a página.
  */
@@ -132,7 +132,7 @@ export function GraficoLinha({
           {temComparacao && (
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
-                <span className="inline-block h-0.5 w-4 rounded bg-neon shadow-[var(--neon-brilho)]" aria-hidden="true" />
+                <span className="inline-block h-0.5 w-4 rounded bg-acento" aria-hidden="true" />
                 {rotuloSerie}
               </span>
               <span className="inline-flex items-center gap-1.5">
@@ -146,7 +146,7 @@ export function GraficoLinha({
               <>
                 <span className="text-foreground">{formatarDia(ponto.dia)}</span>
                 {" · "}
-                <span className="font-semibold text-neon">{formatar(ponto.valor, formato)}</span>
+                <span className="font-semibold text-acento">{formatar(ponto.valor, formato)}</span>
                 {pontoComp && (
                   <>
                     {" · antes "}
@@ -169,16 +169,9 @@ export function GraficoLinha({
         onMouseLeave={() => setAtivo(null)}
       >
         <defs>
-          <filter id={`${id}-brilho`} x="-10%" y="-50%" width="120%" height="200%">
-            <feGaussianBlur stdDeviation="3" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
           <linearGradient id={`${id}-area`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--neon)" stopOpacity="0.38" />
-            <stop offset="100%" stopColor="var(--neon)" stopOpacity="0" />
+            <stop offset="0%" stopColor="var(--acento)" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="var(--acento)" stopOpacity="0" />
           </linearGradient>
         </defs>
 
@@ -201,13 +194,13 @@ export function GraficoLinha({
         )}
 
         <path ref={refArea} d={area} fill={`url(#${id}-area)`} />
-        <path ref={refLinha} d={linha} fill="none" stroke="var(--neon)" strokeWidth="2.25" strokeLinejoin="round" strokeLinecap="round" filter={`url(#${id}-brilho)`} />
+        <path ref={refLinha} d={linha} fill="none" stroke="var(--acento)" strokeWidth="2.25" strokeLinejoin="round" strokeLinecap="round" />
 
         {ativo !== null && serie[ativo] && (
           <>
-            <line x1={x(ativo)} y1={M.topo} x2={x(ativo)} y2={M.topo + h} stroke="var(--neon)" strokeOpacity="0.35" strokeDasharray="2 3" />
+            <line x1={x(ativo)} y1={M.topo} x2={x(ativo)} y2={M.topo + h} stroke="var(--acento)" strokeOpacity="0.35" strokeDasharray="2 3" />
             {pontoComp && <circle cx={x(ativo)} cy={y(pontoComp.valor)} r="3.5" fill="var(--card)" stroke="currentColor" strokeOpacity="0.5" strokeWidth="1.5" />}
-            <circle cx={x(ativo)} cy={y(serie[ativo].valor)} r="5.5" fill="var(--neon)" stroke="var(--card)" strokeWidth="2" filter={`url(#${id}-brilho)`} />
+            <circle cx={x(ativo)} cy={y(serie[ativo].valor)} r="5.5" fill="var(--acento)" stroke="var(--card)" strokeWidth="2" />
           </>
         )}
 

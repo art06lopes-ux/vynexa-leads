@@ -17,8 +17,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Prospecção e vendas da Vynexa Dev.",
     start_url: "/?fonte=pwa",
     display: "standalone",
-    background_color: "#0c0a0a",
-    theme_color: "#0c0a0a",
+    background_color: "#0f0f10",
+    theme_color: "#0f0f10",
     lang: "pt-BR",
     icons: [
       { src: "/icones/icone-192.png", sizes: "192x192", type: "image/png" },

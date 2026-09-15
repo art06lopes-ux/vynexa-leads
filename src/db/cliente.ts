@@ -13,6 +13,23 @@ import { createClient, type Client } from "@libsql/client";
 let cache: Client | null = null;
 
 /**
+ * Copia uma linha do libSQL para um objeto simples.
+ *
+ * As linhas que o cliente devolve carregam índice numérico e `length`
+ * além das colunas — é um objeto "parecido com array". O React se recusa
+ * a mandar isso de Server Component para Client Component ("Only plain
+ * objects can be passed") e, em produção, derruba a tela. Espalhar copia
+ * só as colunas, que é o que a interface precisa.
+ */
+export function plano<T>(linha: unknown): T {
+  return { ...(linha as object) } as T;
+}
+
+export function planos<T>(linhas: ArrayLike<unknown>): T[] {
+  return Array.from(linhas, (l) => plano<T>(l));
+}
+
+/**
  * Remove TODO espaço em branco, não só nas pontas.
  *
  * `trim()` sozinho não bastava: colar uma credencial de um campo que

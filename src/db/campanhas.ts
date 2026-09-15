@@ -1,6 +1,6 @@
 import "server-only";
 
-import { agora, getBanco, novoId } from "@/db/cliente";
+import { agora, getBanco, novoId, plano, planos } from "@/db/cliente";
 
 export type StatusCampanha = "rascunho" | "em_envio" | "concluida" | "pausada";
 
@@ -107,7 +107,7 @@ export async function listarCampanhas(): Promise<Campanha[]> {
     `SELECT id, nome, descricao, status, total_leads, enviados, falhas, criado_em
      FROM campanhas ORDER BY criado_em DESC LIMIT 50`,
   );
-  return rows as unknown as Campanha[];
+  return planos<Campanha>(rows);
 }
 
 export async function obterCampanha(id: string): Promise<{ campanha: Campanha; envios: EnvioListado[] } | null> {
@@ -116,7 +116,7 @@ export async function obterCampanha(id: string): Promise<{ campanha: Campanha; e
     sql: `SELECT id, nome, descricao, status, total_leads, enviados, falhas, criado_em FROM campanhas WHERE id = ?`,
     args: [id],
   });
-  const campanha = c[0] as unknown as Campanha | undefined;
+  const campanha = c[0] ? plano<Campanha>(c[0]) : undefined;
   if (!campanha) return null;
 
   const { rows } = await banco.execute({
@@ -130,7 +130,7 @@ export async function obterCampanha(id: string): Promise<{ campanha: Campanha; e
     args: [id],
   });
 
-  return { campanha, envios: rows as unknown as EnvioListado[] };
+  return { campanha, envios: planos<EnvioListado>(rows) };
 }
 
 export async function alternarPausa(id: string): Promise<StatusCampanha | null> {

@@ -78,7 +78,7 @@ export function Particulas({ densidade = 60, className }: { densidade?: number; 
           const dy = a.y - b.y;
           const d = Math.hypot(dx, dy);
           if (d > LIMITE) continue;
-          ctx!.strokeStyle = `rgba(255, 59, 59, ${(1 - d / LIMITE) * 0.18})`;
+          ctx!.strokeStyle = `rgba(224, 165, 38, ${(1 - d / LIMITE) * 0.16})`;
           ctx!.lineWidth = 1;
           ctx!.beginPath();
           ctx!.moveTo(a.x, a.y);
@@ -88,8 +88,8 @@ export function Particulas({ densidade = 60, className }: { densidade?: number; 
       }
 
       for (const p of pontos) {
-        ctx!.fillStyle = "rgba(255, 59, 59, 0.7)";
-        ctx!.shadowColor = "rgba(255, 59, 59, 0.8)";
+        ctx!.fillStyle = "rgba(224, 165, 38, 0.65)";
+        ctx!.shadowColor = "rgba(224, 165, 38, 0.6)";
         ctx!.shadowBlur = 6;
         ctx!.beginPath();
         ctx!.arc(p.x, p.y, p.r, 0, Math.PI * 2);

@@ -2,7 +2,7 @@ import "server-only";
 
 import type { InValue } from "@libsql/client";
 
-import { agora, getBanco, novoId } from "@/db/cliente";
+import { agora, getBanco, novoId, plano, planos } from "@/db/cliente";
 import type { Busca, Contadores, Empresa, PayloadBusca, StatusLead } from "@/db/tipos";
 import { normalizarTelefone } from "@/lib/leads/whatsapp";
 
@@ -69,7 +69,7 @@ export async function obterBusca(id: string): Promise<Busca | null> {
           FROM buscas WHERE id = ?`,
     args: [id],
   });
-  return (rows[0] as unknown as Busca) ?? null;
+  return rows[0] ? plano<Busca>(rows[0]) : null;
 }
 
 export async function listarBuscasRecentes(limite = 8): Promise<Busca[]> {
@@ -80,7 +80,7 @@ export async function listarBuscasRecentes(limite = 8): Promise<Busca[]> {
           FROM buscas ORDER BY criado_em DESC LIMIT ?`,
     args: [limite],
   });
-  return rows as unknown as Busca[];
+  return planos<Busca>(rows);
 }
 
 // ---------------------------------------------------------------------
@@ -195,7 +195,7 @@ export async function listarEmpresas(
   ]);
 
   return {
-    itens: rows as unknown as EmpresaListada[],
+    itens: planos<EmpresaListada>(rows),
     total: Number(contagem[0]?.n ?? 0),
   };
 }
@@ -212,7 +212,7 @@ export async function listarEmpresasParaExportar(filtros: Filtros): Promise<Empr
           ORDER BY e.criado_em DESC`,
     args,
   });
-  return rows as unknown as EmpresaListada[];
+  return planos<EmpresaListada>(rows);
 }
 
 // ---------------------------------------------------------------------

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CircleAlert, Radar } from "lucide-react";
 
+import { CabecalhoPagina } from "@/components/painel/cabecalho-pagina";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { listarBuscasRecentes } from "@/db/consultas";
@@ -24,12 +25,11 @@ export default async function PaginaHistorico() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Histórico de caçadas</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Toda busca já executada, com região resolvida, alcance final e quanto veio de novo.
-        </p>
-      </header>
+      <CabecalhoPagina
+        olho="Operação"
+        titulo="Histórico de caçadas"
+        descricao="Toda busca já executada, com região resolvida, alcance final e quanto veio de novo."
+      />
 
       {buscas.length === 0 ? (
         <Card>

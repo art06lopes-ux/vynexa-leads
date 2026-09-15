@@ -3,6 +3,7 @@ import { CircleAlert, CircleCheck } from "lucide-react";
 
 import { FormularioAjustes } from "@/app/(painel)/ajustes/formulario-ajustes";
 import { BotaoNotificacoes } from "@/components/painel/botao-notificacoes";
+import { CabecalhoPagina } from "@/components/painel/cabecalho-pagina";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { diagnosticarIntegracoes, lerConfiguracoes } from "@/db/configuracoes";
 
@@ -12,17 +13,16 @@ export const dynamic = "force-dynamic";
 export default async function PaginaAjustes() {
   const [config, integracoes] = await Promise.all([
     lerConfiguracoes(),
-    Promise.resolve(diagnosticarIntegracoes()),
+    diagnosticarIntegracoes(),
   ]);
 
   return (
     <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Ajustes</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          O que dá para mudar sem republicar o site. Credenciais continuam em variável de ambiente.
-        </p>
-      </header>
+      <CabecalhoPagina
+        olho="Sistema"
+        titulo="Ajustes"
+        descricao="O que dá para mudar sem republicar o site. Credenciais continuam em variável de ambiente."
+      />
 
       <FormularioAjustes valores={config} />
 

@@ -33,10 +33,12 @@ export function Marca({ className, mostrarTexto = true }: { className?: string; 
         />
       </svg>
       {mostrarTexto && (
-        <span className="flex flex-col leading-none">
-          <span className="text-[0.95rem] font-bold tracking-tight text-foreground">Vynexa</span>
-          <span className="text-[0.7rem] font-medium tracking-[0.18em] text-muted-foreground">
-            LEADS
+        <span className="hidden items-baseline gap-1.5 leading-none sm:flex">
+          <span className="font-mono text-xs text-neon" aria-hidden="true">
+            &lt;/&gt;
+          </span>
+          <span className="text-[0.95rem] font-bold uppercase tracking-[0.18em] text-foreground">
+            Vynexa
           </span>
         </span>
       )}

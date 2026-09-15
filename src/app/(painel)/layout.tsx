@@ -22,11 +22,16 @@ export default async function LayoutPainel({ children }: LayoutProps<"/">) {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="vidro sticky top-0 z-40 border-x-0 border-t-0">
-        <div className="flex h-16 w-full items-center gap-3 px-4 sm:gap-4 sm:px-6">
-          <Marca className="shrink-0" mostrarTexto={false} />
+      <header className="vidro riscos sticky top-0 z-40 border-x-0 border-t-0">
+        <div className="relative flex h-16 w-full items-center gap-3 px-4 sm:gap-4 sm:px-6">
+          <Marca className="shrink-0" />
 
-          <BuscaGlobal />
+          <div className="hidden flex-1 justify-center md:flex">
+            <BuscaGlobal />
+          </div>
+          <div className="flex-1 md:hidden">
+            <BuscaGlobal />
+          </div>
 
           {/* "Ao vivo": o painel é servidor-renderizado a cada abertura,
               sem cache — o chip diz isso em vez de deixar a dúvida. */}

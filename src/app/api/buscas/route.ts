@@ -19,7 +19,8 @@ const Esquema = z.object({
   pais: z.string().length(2),
   estado: z.string().trim().max(80).nullish(),
   cidade: z.string().trim().max(120).nullish(),
-  alvo: z.coerce.number().int().min(5).max(200).default(50),
+  // 0 = todas as empresas mapeadas na região, sem teto de negócio.
+  alvo: z.coerce.number().int().min(0).max(500).default(0),
 });
 
 export async function POST(request: Request) {

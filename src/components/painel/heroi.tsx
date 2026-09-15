@@ -2,81 +2,113 @@
 
 import { TrendingDown, TrendingUp } from "lucide-react";
 
-import { NumeroAnimado } from "@/components/motion/numero-animado";
+import { NumeroAnimado, type FormatoNumero } from "@/components/motion/numero-animado";
 import { TextoEmbaralhado } from "@/components/motion/texto-embaralhado";
 import { cn } from "@/lib/utils";
 
+export type MetricaHeroi = {
+  olho: string;
+  valor: number;
+  formato: FormatoNumero;
+  detalhe?: string;
+};
+
 /**
- * Painel-herói: o número que a tela lidera.
+ * Painel-herói, na composição da referência: rótulo-olho centrado,
+ * título, data, o número dentro de uma moldura com cantos, a variação
+ * contra ontem, e três métricas alinhadas no rodapé.
  *
- * É o "Vendas hoje R$ 3.123,00" da referência: moldura neon, brilho vindo
- * do canto, rótulo embaralhando ao entrar, número subindo até o valor.
- * Existe um só por tela, por definição — dois heróis é nenhum.
- *
- * O número usa a fonte proporcional (sem `tabular-nums`): em corpo
- * grande, dar a todo dígito a largura do zero deixa "121" frouxo.
+ * Centrado de propósito, ao contrário do resto da página: é o único
+ * bloco que se quer ver de longe, e centro é o que o olho encontra
+ * primeiro. Existe um por tela — dois heróis é nenhum.
  */
 export function Heroi({
-  rotuloSuperior,
-  rotulo,
+  olho,
+  titulo,
+  subtitulo,
   centavos,
   variacao,
-  detalhe,
+  rotuloVariacao = "vs. ontem",
+  metricas,
   className,
 }: {
-  rotuloSuperior: string;
-  rotulo: string;
+  olho: string;
+  titulo: string;
+  subtitulo?: string;
   centavos: number;
-  /** Percentual contra o período anterior. Nulo quando não há base. */
   variacao?: number | null;
-  detalhe?: string;
+  rotuloVariacao?: string;
+  metricas?: MetricaHeroi[];
   className?: string;
 }) {
   const subiu = (variacao ?? 0) >= 0;
 
   return (
     <section
-      aria-label={rotulo}
-      className={cn("heroi rounded-2xl px-6 py-7 sm:px-8 sm:py-9", className)}
+      aria-label={titulo}
+      className={cn("heroi riscos rounded-2xl px-5 pb-5 pt-7 sm:px-8 sm:pb-6 sm:pt-9", className)}
     >
-      <p className="flex flex-wrap items-center gap-3 text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-neon/90">
-        <TextoEmbaralhado texto={rotuloSuperior} />
-        <span className="ao-vivo inline-flex items-center gap-1.5 rounded-full border border-neon/30 px-2 py-0.5 text-[0.65rem] tracking-[0.15em] text-foreground/80">
-          AO VIVO
-        </span>
-      </p>
-
-      <h2 className="mt-1 text-lg font-medium text-foreground/90">{rotulo}</h2>
-
-      <p className="mt-4 flex flex-wrap items-end gap-x-4 gap-y-2">
-        <NumeroAnimado
-          valor={centavos}
-          formato="dinheiro"
-          duracao={1.3}
-          className="texto-neon text-5xl font-bold tracking-tight sm:text-6xl"
-        />
-
-        {variacao !== null && variacao !== undefined && (
-          <span
-            className={cn(
-              "mb-2 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-sm font-semibold",
-              subiu
-                ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
-                : "border-destructive/30 bg-destructive/10 text-destructive",
-            )}
-          >
-            {subiu ? (
-              <TrendingUp className="size-4" aria-hidden="true" />
-            ) : (
-              <TrendingDown className="size-4" aria-hidden="true" />
-            )}
-            {subiu ? "+" : ""}
-            {variacao}% vs. ontem
+      <div className="relative flex flex-col items-center text-center">
+        <p className="olho flex flex-wrap items-center justify-center gap-3">
+          <TextoEmbaralhado texto={olho} />
+          <span className="ao-vivo inline-flex items-center gap-1.5 rounded-full border border-neon/30 px-2 py-0.5 tracking-[0.15em] text-foreground/80">
+            AO VIVO
           </span>
-        )}
-      </p>
+        </p>
 
-      {detalhe && <p className="mt-3 text-sm text-muted-foreground">{detalhe}</p>}
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">{titulo}</h2>
+        {subtitulo && <p className="num mt-1 text-xs text-muted-foreground">{subtitulo}</p>}
+
+        {/* A moldura com cantos: o quadro do número principal. */}
+        <div className="moldura mt-6 w-full max-w-xl rounded-lg border border-neon/20 bg-black/25 px-6 py-6 sm:px-10 sm:py-8">
+          <p className="olho-mudo mb-2">Faturamento confirmado</p>
+          <p className="flex flex-wrap items-end justify-center gap-x-4 gap-y-2">
+            <NumeroAnimado
+              valor={centavos}
+              formato="dinheiro"
+              duracao={1.4}
+              className="texto-neon text-5xl font-bold tracking-tight sm:text-6xl lg:text-7xl"
+            />
+          </p>
+
+          <p className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="ao-vivo" aria-hidden="true" />
+              Atualização automática
+            </span>
+            {variacao !== null && variacao !== undefined && (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 font-semibold",
+                  subiu ? "text-emerald-300" : "text-destructive",
+                )}
+              >
+                {subiu ? (
+                  <TrendingUp className="size-3.5" aria-hidden="true" />
+                ) : (
+                  <TrendingDown className="size-3.5" aria-hidden="true" />
+                )}
+                {subiu ? "+" : ""}
+                {variacao}% {rotuloVariacao}
+              </span>
+            )}
+          </p>
+        </div>
+      </div>
+
+      {metricas && metricas.length > 0 && (
+        <dl className="relative mt-6 grid grid-cols-1 divide-y divide-neon/15 border-t border-neon/15 pt-1 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          {metricas.map((m) => (
+            <div key={m.olho} className="flex flex-col items-center gap-1 px-4 py-4 text-center">
+              <dt className="olho-mudo">{m.olho}</dt>
+              <dd className="text-xl font-semibold tracking-tight sm:text-2xl">
+                <NumeroAnimado valor={m.valor} formato={m.formato} duracao={1.2} />
+              </dd>
+              {m.detalhe && <dd className="text-xs text-muted-foreground">{m.detalhe}</dd>}
+            </div>
+          ))}
+        </dl>
+      )}
     </section>
   );
 }

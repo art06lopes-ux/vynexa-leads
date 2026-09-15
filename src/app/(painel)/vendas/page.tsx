@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import { Link2, Receipt, TrendingUp, Wallet } from "lucide-react";
+import { Link2, Receipt, Wallet } from "lucide-react";
 
 import { Entrada } from "@/components/motion/entrada";
+import { CabecalhoPagina, TituloSecao } from "@/components/painel/cabecalho-pagina";
 import { Heroi } from "@/components/painel/heroi";
 import { FormularioCheckout } from "@/app/(painel)/vendas/formulario-checkout";
 import { FormularioVendaManual } from "@/app/(painel)/vendas/formulario-venda-manual";
 import { SeletorPeriodo } from "@/app/(painel)/vendas/seletor-periodo";
-import { GraficoReceita } from "@/components/painel/grafico-receita";
-import { CartaoContador, NumeroPrincipal } from "@/components/painel/cartao-contador";
+import { GraficoLinha } from "@/components/painel/grafico-linha";
+import { CartaoContador } from "@/components/painel/cartao-contador";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ehPeriodo,
@@ -19,6 +20,15 @@ import {
   type ChavePeriodo,
 } from "@/db/vendas";
 import { emModoTeste, formatarDinheiro } from "@/lib/pagamento/stripe";
+
+function dataHoje(): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date());
+}
 
 export const metadata: Metadata = { title: "Vendas" };
 export const dynamic = "force-dynamic";
@@ -47,16 +57,14 @@ export default async function PaginaVendas({ searchParams }: PageProps<"/vendas"
 
   return (
     <Entrada className="flex flex-col gap-6">
-      <header data-entrada className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Vendas</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Registre o que já caiu na conta, ou gere um link de cartão pela Stripe.
-          </p>
-        </div>
-
-        <SeletorPeriodo atual={periodo} />
-      </header>
+      <div data-entrada>
+        <CabecalhoPagina
+          olho="Sala de receita"
+          titulo="Vendas"
+          descricao="Registre o que já caiu na conta, ou gere um link de cartão pela Stripe."
+          acoes={<SeletorPeriodo atual={periodo} />}
+        />
+      </div>
 
       {teste && (
         // Aviso permanente e impossível de ignorar: em modo de teste a
@@ -70,55 +78,54 @@ export default async function PaginaVendas({ searchParams }: PageProps<"/vendas"
 
       <div data-entrada>
         <Heroi
-          rotuloSuperior="Sala de receita"
-          rotulo="Vendas hoje"
+          olho="Sala de receita · Vynexa Dev"
+          titulo="Vendas hoje"
+          subtitulo={dataHoje()}
           centavos={hoje.hojeCentavos}
           variacao={hoje.variacao}
-          detalhe={
-            hoje.vendasHoje === 0
-              ? "Nenhuma venda confirmada hoje ainda."
-              : `${hoje.vendasHoje} ${hoje.vendasHoje === 1 ? "venda confirmada" : "vendas confirmadas"} hoje.`
-          }
+          metricas={[
+            { olho: "Vendas confirmadas", valor: hoje.vendasHoje, formato: "inteiro", detalhe: "hoje" },
+            { olho: "Ticket médio", valor: resumo.ticketCentavos, formato: "dinheiro", detalhe: PERIODOS[periodo].rotulo.toLowerCase() },
+            { olho: `Recebido · ${PERIODOS[periodo].rotulo.toLowerCase()}`, valor: resumo.totalCentavos, formato: "dinheiro", detalhe: `${resumo.quantidade} venda(s)` },
+          ]}
         />
       </div>
 
-      <section data-entrada aria-label="Resumo financeiro" className="grid gap-3 lg:grid-cols-3">
-        <NumeroPrincipal
-          rotulo={`Recebido · ${PERIODOS[periodo].rotulo.toLowerCase()}`}
-          valorTexto={formatarDinheiro(resumo.totalCentavos)}
-          detalhe="Manual e Stripe, só o que já foi pago."
-        />
-
-        <div className="grid gap-3 sm:grid-cols-3 lg:col-span-2">
-          <CartaoContador rotulo="Vendas" valor={resumo.quantidade} Icone={Receipt} tom="bom" />
-          <CartaoContador
-            rotulo="Ticket médio"
-            valor={0}
-            valorTexto={formatarDinheiro(resumo.ticketCentavos)}
-            Icone={TrendingUp}
-            tom="info"
-          />
-          <CartaoContador
-            rotulo="Links em aberto"
-            valor={resumo.pendentes}
-            Icone={Wallet}
-            tom={resumo.pendentes > 0 ? "atencao" : "neutro"}
-            detalhe="Aguardando pagamento."
-          />
+      <section data-entrada aria-label="Tendência" className="flex flex-col gap-3">
+        <TituloSecao olho="Desempenho por período" titulo="Tendência de vendas" />
+        <div className="grid gap-3 lg:grid-cols-5">
+          <div className="lg:col-span-4">
+            <Card className="vidro brasa h-full">
+              <CardContent className="pt-5">
+                <GraficoLinha
+                  olho="Receita confirmada ao longo do período"
+                  titulo={`Receita por dia · ${PERIODOS[periodo].rotulo.toLowerCase()}`}
+                  serie={serie.atual}
+                  comparacao={serie.anterior}
+                  rotuloSerie="Período atual"
+                  rotuloComparacao="Período anterior"
+                  formato="dinheiro"
+                />
+              </CardContent>
+            </Card>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+            <CartaoContador rotulo="Vendas no período" valor={resumo.quantidade} formato="inteiro" Icone={Receipt} tom="bom" />
+            <CartaoContador
+              rotulo="Links em aberto"
+              valor={resumo.pendentes}
+              formato="inteiro"
+              Icone={Wallet}
+              tom={resumo.pendentes > 0 ? "atencao" : "neutro"}
+              detalhe="aguardando pagamento"
+            />
+          </div>
         </div>
       </section>
 
-      {resumo.quantidade > 0 && (
-        <div data-entrada>
-          <Card className="vidro brasa">
-            <CardContent className="pt-6">
-              <GraficoReceita serie={serie} />
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      <div data-entrada className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
+      <section data-entrada className="flex flex-col gap-3">
+        <TituloSecao olho="Lançamentos" titulo="Registrar e acompanhar" />
+        <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
         <div className="flex flex-col gap-6">
           {/* Manual em cima: é o caso comum (Pix direto). O checkout da
               Stripe fica para quem só paga no cartão. */}
@@ -184,7 +191,8 @@ export default async function PaginaVendas({ searchParams }: PageProps<"/vendas"
             )}
           </CardContent>
         </Card>
-      </div>
+        </div>
+      </section>
     </Entrada>
   );
 }

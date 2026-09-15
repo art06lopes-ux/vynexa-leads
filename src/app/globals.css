@@ -247,6 +247,86 @@
     50% { opacity: 0.45; transform: scale(0.8); }
   }
 
+  /* Rótulo-olho: o texto minúsculo em caixa alta com espaçamento largo
+     que encabeça cada bloco. É a peça que mais separa "painel" de
+     "formulário": dá ritmo e diz o que cada número é antes do número. */
+  .olho {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: color-mix(in oklch, var(--neon) 85%, white);
+  }
+
+  .olho-mudo {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+
+  /* Moldura com cantos: quatro traços em L nos cantos do bloco, como o
+     quadro do número principal da referência. Só bordas, sem fundo. */
+  .moldura {
+    position: relative;
+  }
+  .moldura::before,
+  .moldura::after {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-color: var(--neon);
+    border-style: solid;
+    opacity: 0.9;
+    filter: drop-shadow(0 0 6px var(--neon));
+    pointer-events: none;
+  }
+  .moldura::before {
+    top: -1px;
+    left: -1px;
+    border-width: 2px 0 0 2px;
+    border-top-left-radius: 6px;
+  }
+  .moldura::after {
+    bottom: -1px;
+    right: -1px;
+    border-width: 0 2px 2px 0;
+    border-bottom-right-radius: 6px;
+  }
+
+  /* Linha de seção: fio neon fino com um ponto aceso na ponta. */
+  .fio {
+    height: 1px;
+    background: linear-gradient(90deg, var(--neon), rgba(255, 59, 59, 0.25) 40%, transparent);
+    position: relative;
+  }
+  .fio::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: -2px;
+    width: 5px;
+    height: 5px;
+    border-radius: 9999px;
+    background: var(--neon);
+    box-shadow: var(--neon-brilho);
+  }
+
+  /* Riscos diagonais de luz no cabeçalho, como na referência. Duas
+     faixas finas, quase transparentes, deslocadas para o canto direito. */
+  .riscos::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(115deg, transparent 62%, rgba(255, 59, 59, 0.10) 62.4%, transparent 63.2%),
+      linear-gradient(115deg, transparent 68%, rgba(255, 59, 59, 0.06) 68.3%, transparent 69%),
+      linear-gradient(115deg, transparent 74%, rgba(255, 255, 255, 0.04) 74.2%, transparent 74.8%);
+  }
+
   /* Texto neon: cor de destaque com halo. */
   .texto-neon {
     color: var(--neon);

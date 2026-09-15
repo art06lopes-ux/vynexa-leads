@@ -157,35 +157,34 @@ export async function obterResumo(periodo: ChavePeriodo): Promise<ResumoVendas> 
 }
 
 /**
- * Receita por dia. Dias sem venda entram como zero.
+ * Receita confirmada por dia — período atual e o anterior, alinhados.
  *
- * Sem esse preenchimento a linha ligaria uma venda de segunda direto na
- * de sexta, escondendo os dias parados — que é exatamente a informação
- * que um gráfico de receita precisa mostrar.
+ * Dias sem venda entram como zero: a linha precisa mostrar os dias
+ * parados, que é exatamente a informação de um gráfico de receita.
  */
-export async function obterSerieReceita(periodo: ChavePeriodo): Promise<PontoReceita[]> {
+export async function obterSerieReceita(
+  periodo: ChavePeriodo,
+): Promise<{ atual: PontoReceita[]; anterior: PontoReceita[] }> {
   const dias = PERIODOS[periodo].dias;
 
   const { rows } = await getBanco().execute({
     sql: `SELECT date(pago_em) AS dia, SUM(valor_centavos) AS total
           FROM vendas
           WHERE status = 'pago' AND pago_em >= date('now', ?)
-          GROUP BY dia ORDER BY dia`,
-    args: [`-${dias - 1} days`],
+          GROUP BY dia`,
+    args: [`-${dias * 2 - 1} days`],
   });
 
   const porDia = new Map(rows.map((r) => [String(r.dia), Number(r.total)]));
-  const serie: PontoReceita[] = [];
-  const hoje = new Date();
+  const janela = (deslocamento: number): PontoReceita[] =>
+    Array.from({ length: dias }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - deslocamento - (dias - 1 - i));
+      const chave = d.toISOString().slice(0, 10);
+      return { dia: chave, valor: porDia.get(chave) ?? 0 };
+    });
 
-  for (let i = dias - 1; i >= 0; i -= 1) {
-    const d = new Date(hoje);
-    d.setDate(d.getDate() - i);
-    const chave = d.toISOString().slice(0, 10);
-    serie.push({ dia: chave, centavos: porDia.get(chave) ?? 0 });
-  }
-
-  return serie;
+  return { atual: janela(0), anterior: janela(dias) };
 }
 
 /**

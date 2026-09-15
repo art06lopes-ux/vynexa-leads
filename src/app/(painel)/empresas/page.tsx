@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { Building2, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Filtros } from "@/components/leads/filtros";
+import { CabecalhoPagina } from "@/components/painel/cabecalho-pagina";
 import { TabelaEmpresas } from "@/components/leads/tabela-empresas";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -60,13 +61,11 @@ export default async function PaginaEmpresas({ searchParams }: PageProps<"/empre
 
   return (
     <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Empresas</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Tudo o que veio do OpenStreetMap, sem duplicatas. Os filtros vão para a URL — o CSV sai
-          com exatamente o que estiver na tela.
-        </p>
-      </header>
+      <CabecalhoPagina
+        olho="Carteira"
+        titulo="Empresas"
+        descricao="Tudo o que veio do OpenStreetMap, sem duplicatas. Os filtros vão para a URL — o CSV sai com exatamente o que estiver na tela."
+      />
 
       <Card>
         <CardContent className="pt-6">

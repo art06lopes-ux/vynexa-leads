@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { FormularioBusca } from "@/app/(painel)/buscar/formulario-busca";
+import { CabecalhoPagina } from "@/components/painel/cabecalho-pagina";
 import { Card, CardContent } from "@/components/ui/card";
 import { listarEstados, type UF } from "@/lib/geo/ibge";
 
@@ -22,13 +23,11 @@ export default async function PaginaBusca() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Buscar empresas</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          A consulta ao OpenStreetMap roda em segundo plano. Você pode sair desta tela — o resultado
-          aparece no painel quando terminar.
-        </p>
-      </header>
+      <CabecalhoPagina
+        olho="Radar de prospecção"
+        titulo="Caçar empresas"
+        descricao="A consulta ao OpenStreetMap roda em segundo plano. Pode sair desta tela — o resultado aparece no painel quando terminar."
+      />
 
       <FormularioBusca estados={estados} erroIbge={erroIbge} />
 

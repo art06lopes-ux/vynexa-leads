@@ -15,7 +15,8 @@ import { PAISES } from "@/lib/geo/paises";
 import { SEGMENTOS } from "@/lib/osm/segmentos";
 import { cn } from "@/lib/utils";
 
-const QUANTIDADES = [25, 50, 100, 200];
+/** 0 = todas as mapeadas na região. É o padrão: teto é exceção, não regra. */
+const QUANTIDADES = [0, 50, 100, 200] as const;
 const PAISES_INTERNACIONAIS = PAISES.filter((p) => p.codigo !== "BR");
 
 type Progresso = {
@@ -45,7 +46,7 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
   const [tagChave, setTagChave] = useState("");
   const [tagValor, setTagValor] = useState("");
 
-  const [alvo, setAlvo] = useState(50);
+  const [alvo, setAlvo] = useState<number>(0);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [progresso, setProgresso] = useState<Progresso | null>(null);
@@ -372,10 +373,15 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
                         : "text-muted-foreground hover:bg-accent hover:text-foreground",
                     )}
                   >
-                    {valor}
+                    {valor === 0 ? "Todas" : valor}
                   </button>
                 ))}
               </div>
+              <p className="text-xs text-muted-foreground">
+                {alvo === 0
+                  ? "Tudo o que o OpenStreetMap tem mapeado na região, sem corte."
+                  : "Teto por busca; abre o raio se vier pouco."}
+              </p>
             </div>
           </div>
 

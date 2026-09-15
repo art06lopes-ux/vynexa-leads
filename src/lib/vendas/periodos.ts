@@ -20,4 +20,4 @@ export function ehPeriodo(valor: string | undefined): valor is ChavePeriodo {
   return valor !== undefined && valor in PERIODOS;
 }
 
-export type PontoReceita = { dia: string; centavos: number };
+export type PontoReceita = { dia: string; valor: number };

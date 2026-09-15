@@ -32,6 +32,16 @@ const FRACAO_ACEITAVEL = 0.6;
  */
 const GANHO_MINIMO = 3;
 
+/**
+ * Teto da consulta quando o operador pede "todas".
+ *
+ * Não é limite de negócio, é proteção da Overpass: uma consulta sem teto
+ * num estado inteiro pode estourar o timeout dela e devolver nada.
+ * Manaus inteira, todos os segmentos juntos, deu 757 — cinco mil cobre
+ * qualquer cidade do país em um segmento com folga larga.
+ */
+const TETO_ABSOLUTO = 5000;
+
 export async function processarBusca(banco: Client, payload: PayloadBusca): Promise<string> {
   const { rows } = await banco.execute({
     sql: `SELECT id, segmento, pais, estado, cidade, status FROM buscas WHERE id = ?`,
@@ -55,17 +65,26 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
     cidade: busca.cidade,
   });
 
-  const alvo = payload.alvo;
+  // `alvo` 0 significa "todas as empresas mapeadas na região". Aí não há
+  // escada de expansão: o operador quer o que existe ali dentro, não o
+  // que existe a 60 km. Uma consulta só, com teto alto o bastante para
+  // qualquer cidade brasileira em um segmento.
+  const todas = payload.alvo === 0;
+  const alvo = todas ? Number.POSITIVE_INFINITY : payload.alvo;
   let melhor: ElementoOsm[] = [];
   let bboxUsada: Bbox = lugar.bbox;
   let expansoes = 0;
 
-  for (const km of DEGRAUS_KM) {
+  for (const km of todas ? [0] : DEGRAUS_KM) {
     const bbox = km === 0 ? lugar.bbox : expandirBbox(lugar.bbox, km);
 
     // Teto generoso na consulta: o corte para o alvo acontece depois de
     // descartar elementos sem nome e os já conhecidos.
-    const { elementos } = await buscarEstabelecimentos([segmento], bbox, Math.max(alvo * 4, 200));
+    const { elementos } = await buscarEstabelecimentos(
+      [segmento],
+      bbox,
+      todas ? TETO_ABSOLUTO : Math.max(alvo * 4, 200),
+    );
 
     const ganho = elementos.length - melhor.length;
 
@@ -87,7 +106,7 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
     if (km > 0 && ganho < GANHO_MINIMO) break;
   }
 
-  const recorte = melhor.slice(0, alvo);
+  const recorte = todas ? melhor : melhor.slice(0, alvo);
   const conhecidos = await osmIdsConhecidos(
     banco,
     recorte.map((e) => e.osmId),

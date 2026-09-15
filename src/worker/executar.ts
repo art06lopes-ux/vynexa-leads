@@ -11,6 +11,8 @@ import { agora, getBanco } from "@/db/cliente";
 import type { Job, PayloadBusca } from "@/db/tipos";
 import { processarAnaliseIA, type PayloadAnalise } from "@/worker/handlers/analise-ia";
 import { processarBusca } from "@/worker/handlers/busca";
+import { processarEnvio, processarGeracao, type PayloadCampanha } from "@/worker/handlers/campanha";
+import { processarEnriquecimento, type PayloadEnriquecer } from "@/worker/handlers/enriquecer-email";
 
 /**
  * Orçamento de tempo.
@@ -162,10 +164,12 @@ function despachar(banco: ReturnType<typeof getBanco>, job: Job): Promise<string
       return processarBusca(banco, JSON.parse(job.payload) as PayloadBusca);
     case "analise_ia":
       return processarAnaliseIA(banco, JSON.parse(job.payload) as PayloadAnalise);
+    case "enriquecer_email":
+      return processarEnriquecimento(banco, JSON.parse(job.payload) as PayloadEnriquecer);
+    case "gerar_emails":
+      return processarGeracao(banco, JSON.parse(job.payload) as PayloadCampanha);
     case "envio_email":
-      // Etapa 3. Falhar explicitamente é melhor que marcar como concluído
-      // em silêncio e o job sumir sem ter feito nada.
-      return Promise.reject(new Error(`Handler '${job.tipo}' ainda não implementado.`));
+      return processarEnvio(banco, JSON.parse(job.payload) as PayloadCampanha);
     default:
       return Promise.reject(new Error(`Tipo de job desconhecido: ${job.tipo}`));
   }

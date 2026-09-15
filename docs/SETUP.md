@@ -86,6 +86,9 @@ secret**, cadastre três segredos:
 | `TURSO_AUTH_TOKEN` | o token do passo 2 |
 | `OSM_CONTATO` | seu e-mail |
 | `GEMINI_API_KEY` | a chave do passo 3.1 |
+| `GOOGLE_CLIENT_ID` | do passo 3.4 |
+| `GOOGLE_CLIENT_SECRET` | do passo 3.4 |
+| `SEGREDO_SESSAO` | o mesmo da Vercel — decifra o token do Gmail |
 
 O workflow está em `.github/workflows/worker.yml`. Ele roda a cada 5
 minutos e também pode ser disparado à mão em **Actions → worker → Run
@@ -169,6 +172,46 @@ sem serviço de terceiro: quem entrega é o Google (Android) e a Apple
 
 A chave privada é segredo; a pública vai ao navegador e é pública mesmo.
 
+## 3.4 Gmail para campanhas (Etapa 3)
+
+Envio de e-mail personalizado pelo **seu** Gmail. Gratuito: credencial
+OAuth de um projeto no Google Cloud não pede cartão.
+
+1. <https://console.cloud.google.com> → **New project** → nome `vynexa-leads`.
+2. **APIs & Services → Library** → procure **Gmail API** → **Enable**.
+3. **APIs & Services → OAuth consent screen**:
+   - User type: **External** · nome do app: `Vynexa Leads` · seu e-mail
+     nos dois campos de contato.
+   - Em **Scopes**, adicione `.../auth/gmail.send` e `.../auth/userinfo.email`.
+   - Em **Test users**, adicione o Gmail que vai enviar. Em modo de teste
+     o app funciona **só para os usuários listados** — para uma conta só,
+     é tudo o que precisa. Não peça verificação do Google.
+4. **APIs & Services → Credentials → Create credentials → OAuth client ID**:
+   - Application type: **Web application**.
+   - **Authorized redirect URIs**: `https://vynexa-leads.vercel.app/api/google/callback`
+     e, para testar local, `http://localhost:3100/api/google/callback`.
+5. Copie **Client ID** e **Client secret**. Cadastre:
+   - na Vercel: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+   - nos segredos do GitHub (o worker envia): `GOOGLE_CLIENT_ID`,
+     `GOOGLE_CLIENT_SECRET` e também `SEGREDO_SESSAO` — o token fica
+     cifrado com ele, e o worker precisa decifrar.
+6. No site: **Ajustes → Conectar Gmail** → autorize.
+
+### Limites e cuidados
+
+- O Gmail pessoal corta em **500 destinatários por dia**. A ferramenta
+  usa **100**, com 20 segundos entre cada envio — deliberadamente: conta
+  nova disparando 500 e-mails frios acorda com tudo caindo em spam.
+- O refresh token é guardado **cifrado** (AES-GCM) no Turso. Trocar
+  `SEGREDO_SESSAO` invalida a conexão; reconecte depois.
+- A permissão pedida é **só enviar**. A ferramenta não lê a caixa de
+  entrada. Você pode revogar a qualquer momento em
+  <https://myaccount.google.com/permissions>.
+- Em modo de teste do consent screen, o Google expira o refresh token em
+  **7 dias**. Se as campanhas pararem com "invalid_grant", é só
+  reconectar em Ajustes. Para não expirar, publique o app na tela de
+  consentimento (não exige verificação enquanto o escopo for só o seu).
+
 ## 4. Vercel
 
 1. <https://vercel.com> → **Add New** → **Project** → importe o repositório.
@@ -186,6 +229,8 @@ A chave privada é segredo; a pública vai ao navegador e é pública mesmo.
    | `STRIPE_WEBHOOK_SECRET` | o signing secret do passo 3.2 |
    | `VAPID_PUBLIC_KEY` | do passo 3.3 |
    | `VAPID_PRIVATE_KEY` | do passo 3.3 |
+   | `GOOGLE_CLIENT_ID` | do passo 3.4 |
+   | `GOOGLE_CLIENT_SECRET` | do passo 3.4 |
 
 3. Deploy.
 

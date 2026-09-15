@@ -7,7 +7,7 @@ import { exigirSessao } from "@/server/sessao";
 import type { EstadoAcao } from "@/server/estado-acao";
 
 /** Só estas chaves podem ser gravadas pela interface. */
-const PERMITIDAS = new Set(["empresa_nome", "moeda_padrao"]);
+const PERMITIDAS = new Set(["empresa_nome", "moeda_padrao", "remetente_nome"]);
 
 export async function salvarAjustes(
   _anterior: EstadoAcao,

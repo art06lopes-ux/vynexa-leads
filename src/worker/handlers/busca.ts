@@ -115,6 +115,14 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
 
   if (novos.length > 0) {
     await inserirEmpresas(banco, busca, novos);
+
+    // Quem tem site próprio e não tem e-mail no OSM ganha uma visita ao
+    // site em busca de contato. É de onde sai o e-mail das empresas
+    // internacionais. Um job só; ele se reenfileira enquanto houver fila.
+    await banco.execute({
+      sql: `INSERT INTO jobs (id, tipo, payload, status) VALUES (?, 'enriquecer_email', ?, 'pendente')`,
+      args: [novoId(), JSON.stringify({ limite: 15 })],
+    });
   }
 
   await banco.execute({

@@ -89,7 +89,10 @@ npm run worker               # processa a fila, noutro terminal
 | Vendas: registro manual (Pix, transferência, dinheiro) | pronto |
 | Vendas: checkout por cartão via Stripe + webhook | verificado em modo teste |
 | PWA instalável + push de venda no celular | pronto, falta ativar por aparelho |
-| **3 — Campanhas de e-mail (Gmail)** | não iniciada |
+| **3 — Campanhas de e-mail (Gmail)** | implementada; envio real depende das credenciais OAuth |
+| E-mail do site da empresa (robots.txt respeitado) | pronto |
+| Campanha: seleção, e-mail por IA no idioma do lead, fila com teto diário | pronto |
+| WhatsApp direto em cada linha | pronto |
 
 O cliente do Gemini foi escrito a partir da documentação — endpoint
 `/v1beta/interactions`, saída em `output_text` —, mas nenhuma chamada real

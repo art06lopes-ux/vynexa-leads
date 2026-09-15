@@ -26,7 +26,20 @@ export function FormularioAjustes({ valores }: { valores: Record<string, string>
       </CardHeader>
       <CardContent>
         <form action={acao} className="flex flex-col gap-4">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor={`${idBase}-remetente`}>Seu nome</Label>
+              <Input
+                id={`${idBase}-remetente`}
+                name="remetente_nome"
+                defaultValue={valores.remetente_nome ?? ""}
+                placeholder="Pedro"
+                maxLength={60}
+                className="h-11"
+              />
+              <p className="text-xs text-muted-foreground">Assina os e-mails das campanhas.</p>
+            </div>
+
             <div className="flex flex-col gap-2">
               <Label htmlFor={`${idBase}-nome`}>Nome da empresa</Label>
               <Input

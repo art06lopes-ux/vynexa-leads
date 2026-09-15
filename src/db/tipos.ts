@@ -1,6 +1,6 @@
 export type StatusBusca = "pendente" | "em_andamento" | "concluida" | "erro";
 export type StatusJob = "pendente" | "em_andamento" | "concluido" | "erro";
-export type TipoJob = "busca" | "analise_ia" | "envio_email";
+export type TipoJob = "busca" | "analise_ia" | "enriquecer_email" | "gerar_emails" | "envio_email";
 export type StatusSite = "sem_site" | "rede_social" | "tem_site" | "sem_dado";
 export type StatusLead = "novo" | "contatado" | "respondeu" | "fechado" | "nao_interessado";
 export type Canal = "whatsapp" | "email";

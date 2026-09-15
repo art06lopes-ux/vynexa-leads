@@ -3,6 +3,8 @@ import { CircleAlert, CircleCheck } from "lucide-react";
 
 import { FormularioAjustes } from "@/app/(painel)/ajustes/formulario-ajustes";
 import { BotaoNotificacoes } from "@/components/painel/botao-notificacoes";
+import { ConexaoGoogle } from "@/components/painel/conexao-google";
+import { contaConectada } from "@/lib/google/oauth";
 import { CabecalhoPagina } from "@/components/painel/cabecalho-pagina";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { diagnosticarIntegracoes, lerConfiguracoes } from "@/db/configuracoes";
@@ -10,11 +12,15 @@ import { diagnosticarIntegracoes, lerConfiguracoes } from "@/db/configuracoes";
 export const metadata: Metadata = { title: "Ajustes" };
 export const dynamic = "force-dynamic";
 
-export default async function PaginaAjustes() {
-  const [config, integracoes] = await Promise.all([
+export default async function PaginaAjustes({ searchParams }: PageProps<"/ajustes">) {
+  const sp = await searchParams;
+  const [config, integracoes, conta] = await Promise.all([
     lerConfiguracoes(),
     diagnosticarIntegracoes(),
+    contaConectada(),
   ]);
+  const avisoGoogle = typeof sp.msg === "string" ? sp.msg : null;
+  const googleOk = sp.google === "ok";
 
   return (
     <div className="flex flex-col gap-6">
@@ -25,6 +31,26 @@ export default async function PaginaAjustes() {
       />
 
       <FormularioAjustes valores={config} />
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Gmail para campanhas</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {avisoGoogle && (
+            <p
+              className={
+                googleOk
+                  ? "rounded-md border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-sm text-emerald-200"
+                  : "rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              }
+            >
+              {avisoGoogle}
+            </p>
+          )}
+          <ConexaoGoogle conta={conta} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

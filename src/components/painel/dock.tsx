@@ -7,6 +7,7 @@ import {
   Building2,
   History,
   LayoutDashboard,
+  Mail,
   Radar,
   Settings,
   Wallet,
@@ -34,6 +35,7 @@ const ITENS = [
   { href: "/buscar", rotulo: "Caçar", Icone: Radar },
   { href: "/empresas", rotulo: "Empresas", Icone: Building2 },
   { href: "/vendas", rotulo: "Vendas", Icone: Wallet },
+  { href: "/campanhas", rotulo: "Campanhas", Icone: Mail },
   { href: "/historico", rotulo: "Histórico", Icone: History },
   { href: "/ajustes", rotulo: "Ajustes", Icone: Settings },
 ] as const;
@@ -125,7 +127,7 @@ export function Dock() {
               // `origin-bottom`: cresce para cima, como no macOS, e não
               // para os dois lados empurrando os vizinhos.
               className={cn(
-                "group relative flex h-14 w-[3.25rem] origin-bottom cursor-pointer flex-col items-center justify-center gap-1 rounded-xl text-[0.6rem] font-medium will-change-transform sm:w-[4.25rem] sm:text-[0.65rem]",
+                "group relative flex h-14 w-[2.9rem] origin-bottom cursor-pointer flex-col items-center justify-center gap-1 rounded-xl text-[0.6rem] font-medium will-change-transform sm:w-[4.25rem] sm:text-[0.65rem]",
                 ativo ? "bg-primary/18 text-foreground" : "text-muted-foreground hover:text-foreground",
               )}
             >

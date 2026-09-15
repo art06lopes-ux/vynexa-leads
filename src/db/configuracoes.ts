@@ -111,6 +111,14 @@ export async function diagnosticarIntegracoes(): Promise<EstadoIntegracao[]> {
               : "Nenhuma análise executada ainda. A chave vive no worker (GitHub), não aqui — use o botão \"Analisar com IA\" no painel.",
     },
     {
+      nome: "Gmail (campanhas)",
+      ligada: tem("GOOGLE_CLIENT_ID") && tem("GOOGLE_CLIENT_SECRET"),
+      detalhe:
+        tem("GOOGLE_CLIENT_ID") && tem("GOOGLE_CLIENT_SECRET")
+          ? "Credenciais OAuth presentes. Conecte a conta acima."
+          : "Faltam GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET — crie no Google Cloud, sem custo.",
+    },
+    {
       nome: "Checkout (Stripe)",
       ligada: chaveStripe !== "",
       detalhe:

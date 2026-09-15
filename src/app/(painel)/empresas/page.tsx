@@ -64,6 +64,8 @@ export default async function PaginaEmpresas({
         : primeiro(sp.canal) === "email"
           ? "email"
           : undefined,
+    fonte:
+      primeiro(sp.fonte) === "osm" ? "osm" : primeiro(sp.fonte) === "receita" ? "receita" : undefined,
     busca: primeiro(sp.q),
   };
 

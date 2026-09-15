@@ -33,6 +33,8 @@ export function filtrosDaUrl(params: URLSearchParams): Filtros {
     temEmail: booleano("temEmail"),
     temTelefone: booleano("temTelefone"),
     scoreMin: numero(params.get("scoreMin")),
+    fonte:
+      params.get("fonte") === "osm" ? "osm" : params.get("fonte") === "receita" ? "receita" : undefined,
     canal:
       params.get("canal") === "whatsapp"
         ? "whatsapp"

@@ -99,6 +99,8 @@ export type Filtros = {
   /** Score mínimo da análise de IA. 70 é o corte de "oportunidade alta". */
   scoreMin?: number;
   canal?: "whatsapp" | "email";
+  /** De onde a linha veio: mapa ou cadastro da Receita. */
+  fonte?: "osm" | "receita";
   busca?: string;
 };
 
@@ -142,6 +144,10 @@ function montarWhere(f: Filtros): { clausula: string; args: InValue[] } {
   if (f.canal) {
     partes.push("l.canal_recomendado = ?");
     args.push(f.canal);
+  }
+  if (f.fonte) {
+    partes.push("e.fonte = ?");
+    args.push(f.fonte);
   }
 
   if (f.busca) {

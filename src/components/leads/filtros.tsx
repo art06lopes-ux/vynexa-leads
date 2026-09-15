@@ -161,6 +161,22 @@ export function Filtros({ opcoes, total }: { opcoes: Opcoes; total: number }) {
             <option value="email">E-mail</option>
           </select>
         </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`${idBase}-fonte`} className="text-xs text-muted-foreground">
+            Fonte
+          </Label>
+          <select
+            id={`${idBase}-fonte`}
+            value={params.get("fonte") ?? ""}
+            onChange={(e) => aplicar("fonte", e.target.value)}
+            className={classeCampo}
+          >
+            <option value="">Todas</option>
+            <option value="osm">OpenStreetMap</option>
+            <option value="receita">Receita Federal</option>
+          </select>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

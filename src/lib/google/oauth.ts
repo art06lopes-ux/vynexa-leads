@@ -59,8 +59,11 @@ export function urlDeAutorizacao(origem: string, estado: string): string {
   // `offline` + `consent`: é o que garante o refresh_token na resposta.
   // Sem `consent`, o Google só o devolve na primeira autorização, e
   // reconectar depois deixaria a conta sem token de renovação.
+  // `select_account`: mostra o seletor de contas sempre. Sem ele, o
+  // navegador logado na conta pessoal conectaria a conta errada sem
+  // perguntar — e a ferramenta deve enviar pela conta da empresa.
   url.searchParams.set("access_type", "offline");
-  url.searchParams.set("prompt", "consent");
+  url.searchParams.set("prompt", "consent select_account");
   url.searchParams.set("state", estado);
   return url.toString();
 }

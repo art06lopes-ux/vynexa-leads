@@ -27,13 +27,10 @@
  *   RECEITA_UFS=AM,PA npm run receita
  */
 import { spawn } from "node:child_process";
-import { createWriteStream } from "node:fs";
-import { access, mkdir, rm } from "node:fs/promises";
+import { access, mkdir, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
 
 import type { Client } from "@libsql/client";
 
@@ -147,8 +144,17 @@ async function main() {
 
   const ufs = await resolverUfs(banco);
 
-  const { referencia, pastaRemota, origem } = await escolherPasta(process.env.RECEITA_REFERENCIA?.trim() || null);
+  const { referencia, pastas: pastasRemotas, origem } = await escolherPasta(process.env.RECEITA_REFERENCIA?.trim() || null);
   console.log(`Referência ${referencia} · origem: ${origem} · estados: ${ufs.join(", ")}`);
+  const pastaRemota = pastasRemotas;
+
+  // Registrado já no início: se a rodada morrer no meio, Ajustes ainda
+  // diz de onde ela estava tentando baixar.
+  await banco.execute({
+    sql: `INSERT INTO configuracoes (chave, valor, atualizado_em) VALUES ('receita_origem_arquivos', ?, ?)
+          ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor, atualizado_em = excluded.atualizado_em`,
+    args: [origem, agora()],
+  });
 
   const importacoes = new Map<string, string>();
   for (const uf of ufs) {
@@ -329,33 +335,52 @@ async function resolverUfs(banco: Client): Promise<string[]> {
 }
 
 /**
- * Escolhe a pasta (mês) e de onde baixar: a Receita se responder, o
- * espelho se não. Pedindo uma referência específica, procura nas duas.
+ * Escolhe a pasta (mês) e de onde baixar.
+ *
+ * Lista as duas origens e devolve, para a referência escolhida, TODAS as
+ * URLs de pasta que a têm — Receita primeiro, espelho depois. Cada
+ * arquivo tenta na ordem: se a Receita derruba a conexão no meio de um
+ * zip de 2 GB (aconteceu: "read ECONNRESET" aos 10 minutos), o mesmo
+ * arquivo vem do espelho, byte a byte igual.
  */
 async function escolherPasta(
   pedida: string | null,
-): Promise<{ referencia: string; pastaRemota: string; origem: string }> {
+): Promise<{ referencia: string; pastas: string[]; origem: string }> {
   const falhas: string[] = [];
+  const disponiveis: Array<{ ref: string; url: string; origem: string }> = [];
+
   for (const origem of [OFICIAL, ESPELHO]) {
     try {
-      const pastas = (await origem.listar()).sort((a, b) => a[0].localeCompare(b[0]));
-      const escolhida = pedida ? pastas.find(([ref]) => ref === pedida) : pastas.at(-1);
-      if (!escolhida) {
-        falhas.push(`${origem.nome}: sem a pasta ${pedida ?? "mais recente"}`);
-        continue;
-      }
-      return { referencia: escolhida[0], pastaRemota: escolhida[1], origem: origem.nome };
+      for (const [ref, url] of await origem.listar()) disponiveis.push({ ref, url, origem: origem.nome });
     } catch (erro) {
       const causa = erro instanceof Error && erro.cause instanceof Error ? ` (${erro.cause.message})` : "";
       falhas.push(`${origem.nome}: ${erro instanceof Error ? erro.message : String(erro)}${causa}`);
       console.log(`  ${falhas.at(-1)}`);
     }
   }
-  throw new Error(`Nenhuma origem respondeu — ${falhas.join("; ")}`);
+  if (disponiveis.length === 0) throw new Error(`Nenhuma origem respondeu — ${falhas.join("; ")}`);
+
+  const referencia = pedida ?? disponiveis.map((d) => d.ref).sort().at(-1)!;
+  const pastas = disponiveis.filter((d) => d.ref === referencia);
+  if (pastas.length === 0) throw new Error(`Nenhuma origem tem a pasta ${referencia}.`);
+
+  return {
+    referencia,
+    pastas: pastas.map((p) => p.url),
+    origem: pastas.map((p) => p.origem.split(" (")[0]).join(" + "),
+  };
 }
 
-/** Baixa (ou localiza) um arquivo. Devolve null se não existir. */
-async function obterArquivo(pasta: string, pastaRemota: string, nome: string, usarLocal: boolean): Promise<string | null> {
+/**
+ * Baixa (ou localiza) um arquivo. Devolve null se não existir em origem
+ * nenhuma.
+ *
+ * O download é do curl, não do fetch: ele retoma de onde parou (`-C -`)
+ * e tenta de novo sozinho quando a conexão cai — e com 2 GB por arquivo
+ * vindos de um servidor que derruba conexão longa, cair é o normal, não
+ * a exceção. Esgotadas as tentativas numa origem, passa para a próxima.
+ */
+async function obterArquivo(pasta: string, pastasRemotas: string[], nome: string, usarLocal: boolean): Promise<string | null> {
   const destino = join(pasta, nome);
 
   if (usarLocal) {
@@ -367,16 +392,41 @@ async function obterArquivo(pasta: string, pastaRemota: string, nome: string, us
     }
   }
 
-  const url = `${pastaRemota}/${nome}`;
-  const r = await fetch(url, { signal: AbortSignal.timeout(60 * 60_000) });
-  if (r.status === 404) return null;
-  if (!r.ok || !r.body) throw new Error(`Receita: ${nome} devolveu ${r.status}.`);
+  let ausenteEmTodas = true;
+  for (const pastaRemota of pastasRemotas) {
+    const url = `${pastaRemota}/${nome}`;
+    for (let tentativa = 1; tentativa <= 4; tentativa += 1) {
+      const codigo = await curl(url, destino);
+      if (codigo === 0) {
+        const { size } = await stat(destino);
+        console.log(`  ↓ ${nome} (${(size / 1_048_576).toFixed(0)} MB) de ${new URL(url).host}`);
+        return destino;
+      }
+      // 22 = erro HTTP (com -f). 404 numa origem não é 404 nas outras.
+      if (codigo === 22) break;
+      ausenteEmTodas = false;
+      console.log(`  ${nome}: tentativa ${tentativa} falhou (curl ${codigo}); retomando…`);
+    }
+  }
 
-  await pipeline(Readable.fromWeb(r.body as never), createWriteStream(destino));
-  return destino;
+  if (ausenteEmTodas) return null;
+  throw new Error(`${nome}: download falhou em todas as origens.`);
 }
 
-async function lerMunicipios(pasta: string, pastaRemota: string, usarLocal: boolean): Promise<Map<string, string>> {
+/** Exit code do curl. `-C -` retoma; `--retry` cobre quedas curtas. */
+function curl(url: string, destino: string): Promise<number> {
+  return new Promise((resolve) => {
+    const filho = spawn(
+      "curl",
+      ["-fsSL", "--retry", "5", "--retry-delay", "10", "--retry-all-errors", "-C", "-", "--speed-limit", "10000", "--speed-time", "60", "-o", destino, url],
+      { stdio: ["ignore", "ignore", "inherit"] },
+    );
+    filho.on("close", (codigo) => resolve(codigo ?? 1));
+    filho.on("error", () => resolve(1));
+  });
+}
+
+async function lerMunicipios(pasta: string, pastaRemota: string[], usarLocal: boolean): Promise<Map<string, string>> {
   const caminho = await obterArquivo(pasta, pastaRemota, "Municipios.zip", usarLocal);
   if (!caminho) throw new Error("Receita: Municipios.zip não encontrado.");
   const mapa = new Map<string, string>();

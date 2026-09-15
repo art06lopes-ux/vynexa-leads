@@ -86,6 +86,9 @@ export default async function PaginaHistorico() {
                           <span className="text-muted-foreground"> achadas · </span>
                           <span className="font-medium text-emerald-300">{b.quantidade_nova}</span>
                           <span className="text-muted-foreground"> novas</span>
+                          {b.quantidade_receita > 0 && (
+                            <span className="text-muted-foreground"> · {b.quantidade_receita} da Receita</span>
+                          )}
                         </>
                       ) : b.status === "erro" && b.erro ? (
                         <span className="line-clamp-2 text-xs text-destructive" title={b.erro}>

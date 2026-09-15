@@ -26,7 +26,7 @@ export default async function PaginaBusca() {
       <CabecalhoPagina
         olho="Radar de prospecção"
         titulo="Caçar empresas"
-        descricao="A consulta ao OpenStreetMap roda em segundo plano. Pode sair desta tela — o resultado aparece no painel quando terminar."
+        descricao="A consulta roda em segundo plano: OpenStreetMap para localizar e, no Brasil, a base da Receita Federal para telefone e e-mail. Pode sair desta tela — o resultado aparece no painel quando terminar."
       />
 
       <FormularioBusca estados={estados} erroIbge={erroIbge} />

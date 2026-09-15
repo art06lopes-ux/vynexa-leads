@@ -1,7 +1,7 @@
 import type { EsquemaResposta } from "@/lib/ia/gemini";
 import type { Canal, Empresa } from "@/db/tipos";
 import { nomeDoPais } from "@/lib/geo/paises";
-import { normalizarTelefone } from "@/lib/leads/whatsapp";
+import { ehCelularBrasil, normalizarTelefone } from "@/lib/leads/whatsapp";
 import { rotuloDoSegmento } from "@/lib/osm/segmentos";
 
 /**
@@ -57,9 +57,14 @@ const IDIOMAS: Record<string, string> = {
  * precisa de busca manual antes de virar abordagem.
  */
 export function decidirCanal(empresa: Empresa): Canal | null {
-  if (normalizarTelefone(empresa.telefone, empresa.pais) !== null) return "whatsapp";
+  const telefone = normalizarTelefone(empresa.telefone, empresa.pais);
+  // No Brasil, fixo não abre WhatsApp. A Receita traz muito fixo de
+  // salão e oficina; com e-mail disponível, ele é o canal. Sem e-mail,
+  // o fixo ainda é contato — só não é WhatsApp.
+  const abreWhatsapp = telefone !== null && (empresa.pais !== "BR" || ehCelularBrasil(empresa.telefone));
+  if (abreWhatsapp) return "whatsapp";
   if (empresa.email?.trim()) return "email";
-  return null;
+  return telefone !== null ? "whatsapp" : null;
 }
 
 /**
@@ -97,6 +102,11 @@ export function montarInstrucao(empresa: Empresa, canal: Canal | null): string {
   else ausentes.push("e-mail");
   if (empresa.instagram) conhecido.push(`Instagram: ${empresa.instagram}`);
   if (empresa.facebook) conhecido.push(`Facebook: ${empresa.facebook}`);
+  if (empresa.fundada_em) conhecido.push(`Início de atividade (cadastro na Receita Federal): ${empresa.fundada_em}`);
+
+  const fontes = new Set<string>([empresa.fonte === "receita" ? "Receita Federal" : "OpenStreetMap"]);
+  if (empresa.telefone_origem === "receita" || empresa.email_origem === "receita") fontes.add("Receita Federal");
+  if (empresa.email_origem === "site") fontes.add("site da própria empresa");
 
   const presenca = {
     sem_site: "não foi encontrado nenhum site para esta empresa",
@@ -112,7 +122,7 @@ export function montarInstrucao(empresa: Empresa, canal: Canal | null): string {
 
   return `Você trabalha na Vynexa Dev, que cria sites para pequenos negócios. Analise o lead abaixo e escreva a primeira abordagem.
 
-DADOS DISPONÍVEIS SOBRE A EMPRESA (fonte: OpenStreetMap)
+DADOS DISPONÍVEIS SOBRE A EMPRESA (fonte: ${[...fontes].join(" e ")})
 ${conhecido.join("\n")}
 
 Situação de presença digital: ${presenca}.

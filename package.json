@@ -12,7 +12,8 @@
     "db:aplicar": "tsx --env-file-if-exists=.env.local db/aplicar.ts",
     "check": "npm run lint && npm run typecheck && npm run build",
     "push:chaves": "tsx scripts/gerar-chaves-push.ts",
-    "icones": "tsx scripts/gerar-icones.ts"
+    "icones": "tsx scripts/gerar-icones.ts",
+    "receita": "tsx --env-file-if-exists=.env.local src/worker/receita/importar.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

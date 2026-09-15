@@ -8,6 +8,7 @@ import { idiomaDoPais } from "@/lib/geo/paises";
 import { acharSegmento } from "@/lib/osm/segmentos";
 import { expandirBbox, raioAproximadoKm, resolverLugar, type Bbox } from "@/lib/osm/nominatim";
 import { buscarEstabelecimentos, type ElementoOsm } from "@/lib/osm/overpass";
+import { complementarComReceita } from "@/worker/handlers/receita";
 
 /**
  * Degraus da expansão de raio, em quilômetros somados à bbox original.
@@ -115,7 +116,21 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
 
   if (novos.length > 0) {
     await inserirEmpresas(banco, busca, novos);
+  }
 
+  // Segunda fonte, só no Brasil: a base da Receita Federal, se o estado
+  // já foi importado. Ela preenche telefone e e-mail de quem o OSM só
+  // localizou, e acrescenta quem o OSM nem conhece. Entra depois do OSM
+  // de propósito — o casamento por nome precisa das empresas do OSM já
+  // gravadas.
+  const receita = await complementarComReceita(
+    banco,
+    busca,
+    segmento,
+    todas ? Number.MAX_SAFE_INTEGER : Math.max(0, alvo - recorte.length),
+  );
+
+  if (novos.length > 0 || receita.novas > 0) {
     // Quem tem site próprio e não tem e-mail no OSM ganha uma visita ao
     // site em busca de contato. É de onde sai o e-mail das empresas
     // internacionais. Um job só; ele se reenfileira enquanto houver fila.
@@ -134,6 +149,7 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
               expansoes = ?,
               quantidade_encontrada = ?,
               quantidade_nova = ?,
+              quantidade_receita = ?,
               concluido_em = ?
           WHERE id = ?`,
     args: [
@@ -144,14 +160,20 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
       bboxUsada.leste,
       raioAproximadoKm(bboxUsada),
       expansoes,
-      recorte.length,
-      novos.length,
+      recorte.length + receita.encontradas,
+      novos.length + receita.novas,
+      receita.novas,
       agora(),
       busca.id,
     ],
   });
 
-  return `${recorte.length} encontradas (${novos.length} novas) em ${lugar.rotulo}`;
+  const resumoReceita = receita.disponivel
+    ? ` · Receita: ${receita.encontradas} no CNAE, ${receita.novas} novas, ${receita.enriquecidas} enriquecidas`
+    : busca.pais === "BR"
+      ? " · Receita: estado não importado"
+      : "";
+  return `OSM: ${recorte.length} encontradas (${novos.length} novas) em ${lugar.rotulo}${resumoReceita}`;
 }
 
 /**
@@ -185,10 +207,10 @@ async function inserirEmpresas(banco: Client, busca: Busca, novos: ElementoOsm[]
     // se sobrepõem: a checagem por `osmIdsConhecidos` é uma leitura, não
     // um cadeado, e quem garante de fato é o UNIQUE em `osm_id`.
     sql: `INSERT OR IGNORE INTO empresas (
-            id, busca_id, osm_id, nome, pais, estado, cidade, endereco,
-            latitude, longitude, telefone, email, email_origem, website,
+            id, busca_id, fonte, osm_id, nome, pais, estado, cidade, endereco,
+            latitude, longitude, telefone, telefone_origem, email, email_origem, website,
             instagram, facebook, categoria, idioma_abordagem, status_site
-          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          ) VALUES (?,?,'osm',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     args: [
       novoId(),
       busca.id,
@@ -207,6 +229,7 @@ async function inserirEmpresas(banco: Client, busca: Busca, novos: ElementoOsm[]
       e.latitude,
       e.longitude,
       e.telefone,
+      e.telefone === null ? null : "osm",
       e.email,
       e.email === null ? null : "osm",
       e.website,

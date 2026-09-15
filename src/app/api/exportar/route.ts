@@ -64,7 +64,10 @@ const CABECALHOS = [
   "Canal",
   "Status do lead",
   "Idioma",
-  "OpenStreetMap",
+  "Fonte",
+  "CNPJ",
+  "Origem do telefone",
+  "Fonte (link ou CNPJ)",
   "Adicionado em",
 ];
 
@@ -98,7 +101,10 @@ export async function GET(request: Request) {
     e.canal_recomendado,
     e.status_lead,
     e.idioma_abordagem,
-    `https://www.openstreetmap.org/${e.osm_id}`,
+    e.fonte === "receita" ? "Receita Federal" : "OpenStreetMap",
+    e.cnpj,
+    e.telefone_origem,
+    e.osm_id ? `https://www.openstreetmap.org/${e.osm_id}` : e.cnpj,
     e.criado_em,
   ]);
 

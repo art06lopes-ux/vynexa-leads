@@ -1,0 +1,52 @@
+name: receita
+
+# Importa a base de CNPJs da Receita Federal para o Turso.
+#
+# É um job longo (20 a 60 minutos): baixa ~6 GB de zip, lê ~17 GB de CSV
+# em fluxo e grava só o recorte dos estados escolhidos em Ajustes. Não
+# cabe no worker de 5 minutos nem numa função da Vercel — por isso tem
+# fluxo próprio, com timeout largo e sem concorrência com ele mesmo.
+on:
+  schedule:
+    # Dia 15 de cada mês, 06:00 UTC. A Receita publica a pasta nova por
+    # volta do dia 10; no 15 ela já está completa.
+    - cron: "0 6 15 * *"
+  workflow_dispatch:
+    inputs:
+      ufs:
+        description: "Estados (ex.: AM,PA). Vazio usa o que está salvo em Ajustes."
+        required: false
+        default: ""
+      referencia:
+        description: "Pasta da Receita (ex.: 2026-09). Vazio usa a mais recente."
+        required: false
+        default: ""
+
+concurrency:
+  group: receita
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  importar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run receita
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          RECEITA_UFS: ${{ inputs.ufs }}
+          RECEITA_REFERENCIA: ${{ inputs.referencia }}

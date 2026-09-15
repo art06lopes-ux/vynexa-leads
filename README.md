@@ -51,6 +51,7 @@ no GitHub Actions faz a consulta com o tempo que precisar.
 | Banco | Turso (libSQL) — em desenvolvimento, um arquivo SQLite local |
 | Worker | GitHub Actions, cron de 5 minutos |
 | Empresas | OpenStreetMap — Overpass API + Nominatim |
+| Contato (Brasil) | Dados abertos do CNPJ — Receita Federal, importados por mês |
 | Localidades BR | API de Localidades do IBGE |
 | Acesso | senha única em cookie assinado com HMAC |
 | Hospedagem | Vercel, plano Hobby |
@@ -93,6 +94,10 @@ npm run worker               # processa a fila, noutro terminal
 | E-mail do site da empresa (robots.txt respeitado) | pronto |
 | Campanha: seleção, e-mail por IA no idioma do lead, fila com teto diário | pronto |
 | WhatsApp direto em cada linha | pronto |
+| **4 — Receita Federal como fonte de contato** | implementada; primeira importação pendente |
+| Importador mensal no GitHub Actions (fluxo, sem guardar os 17 GB) | pronto, testado com um arquivo real |
+| Caçada casa OSM × Receita por nome e preenche telefone/e-mail com origem | pronto |
+| Site conferido pelo domínio do e-mail (robots.txt respeitado) | pronto |
 
 O cliente do Gemini foi escrito a partir da documentação — endpoint
 `/v1beta/interactions`, saída em `output_text` —, mas nenhuma chamada real

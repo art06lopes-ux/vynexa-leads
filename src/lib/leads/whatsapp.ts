@@ -63,6 +63,18 @@ export function normalizarTelefone(
   return codigo === "BR" ? normalizarBrasil(digitos) : normalizarInternacional(digitos, codigo);
 }
 
+/**
+ * Celular brasileiro: depois do DDD, nove dígitos começando em 9 — ou
+ * oito começando em 6 a 9 (número anterior ao nono dígito). Fixo começa
+ * em 2 a 5. É o que decide se o número abre WhatsApp ou só chamada.
+ */
+export function ehCelularBrasil(bruto: string | null | undefined): boolean {
+  const normalizado = normalizarTelefone(bruto, "BR");
+  if (!normalizado) return false;
+  const local = normalizado.slice(4);
+  return local.length === 9 && local.startsWith("9");
+}
+
 function normalizarBrasil(entrada: string): string | null {
   let digitos = entrada;
 
@@ -78,7 +90,17 @@ function normalizarBrasil(entrada: string): string | null {
   }
 
   if (digitos.length === 10 || digitos.length === 11) {
-    if (DDDS_BRASIL.has(Number(digitos.slice(0, 2)))) return `55${digitos}`;
+    if (!DDDS_BRASIL.has(Number(digitos.slice(0, 2)))) return null;
+    // Celular com 8 dígitos é número anterior ao nono dígito, que a
+    // Anatel acrescentou a todo celular do país entre 2012 e 2016 — a
+    // regra é fixa: "9" na frente dos que começavam em 6, 7, 8 ou 9. A
+    // base da Receita guarda muitos telefones do cadastro original,
+    // ainda sem ele. Aplicar a regra é conversão, não adivinhação; fixo
+    // (começa em 2 a 5) fica como está.
+    if (digitos.length === 10 && /[6-9]/.test(digitos.charAt(2))) {
+      return `55${digitos.slice(0, 2)}9${digitos.slice(2)}`;
+    }
+    return `55${digitos}`;
   }
 
   // 8 ou 9 dígitos: número local sem DDD. Não dá para adivinhar a cidade.

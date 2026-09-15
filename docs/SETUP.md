@@ -212,6 +212,47 @@ OAuth de um projeto no Google Cloud não pede cartão.
   reconectar em Ajustes. Para não expirar, publique o app na tela de
   consentimento (não exige verificação enquanto o escopo for só o seu).
 
+## 3.5 Base de CNPJs da Receita Federal (Etapa 4)
+
+O OpenStreetMap localiza a empresa, mas em 9 de cada 10 não traz
+telefone nem e-mail. A Receita traz os dois, oficiais, para todo
+estabelecimento ativo do país — em dados abertos, sem login e sem
+custo: <https://arquivos.receitafederal.gov.br> (pasta
+`dados_abertos_cnpj`, uma por mês).
+
+Não precisa de credencial nova. O que precisa:
+
+1. Em **Ajustes → Base de CNPJs**, salve os estados a importar (ex.:
+   `AM`). Cada estado ocupa de 50 a 800 MB no Turso; o plano gratuito
+   tem 5 GB e SP sozinho fica perto de 2 GB.
+2. No GitHub, abra **Actions → receita → Run workflow**. Leva de 20 a
+   60 minutos: baixa ~6 GB de zip, lê ~17 GB de CSV em fluxo e grava só
+   o recorte. A tela de Ajustes mostra o andamento e o resultado.
+3. Depois disso o fluxo repete sozinho todo dia 15, com a pasta mais
+   nova. Estabelecimento que fechou sai da base; novo entra.
+
+Com a base no lugar, toda caçada no Brasil ganha uma segunda etapa:
+para cada estabelecimento da Receita no município e nos CNAEs do
+segmento, a ferramenta casa por nome com o que o OSM trouxe e preenche
+telefone, e-mail e CNPJ — marcando a origem —, e insere como empresa
+nova o que o OSM não conhecia. O mapa segmento → CNAE está em
+`src/lib/receita/cnaes.ts`, conferido contra o arquivo oficial.
+
+### O que a Receita não diz
+
+- **Se a empresa tem site.** Quando o e-mail cadastrado está num domínio
+  próprio, o worker visita o domínio (respeitando o robots.txt) e só
+  marca "tem site" se ele responde uma página. E-mail em Gmail ou Hotmail
+  não diz nada, e a linha fica "sem site" pelo mesmo critério do OSM: há
+  contato, não há site conhecido.
+- **De quem é o e-mail.** Em empresa pequena ele costuma ser do dono; em
+  algumas é do contador. A coluna de origem mostra "Receita Federal"
+  para você decidir.
+- **Se o telefone ainda funciona.** É o do cadastro. Celular antigo de 8
+  dígitos ganha o nono dígito pela regra da Anatel (conversão, não
+  suposição); fixo continua fixo, e o canal recomendado passa a ser
+  e-mail.
+
 ## 4. Vercel
 
 1. <https://vercel.com> → **Add New** → **Project** → importe o repositório.
@@ -283,6 +324,10 @@ a cada 5 minutos".
   aparecem nas empresas vêm das tags `contact:instagram` e
   `contact:facebook` do próprio OpenStreetMap, que são dados públicos e
   abertos. A ferramenta não visita essas plataformas.
+- **Receita Federal**: dados abertos do CNPJ, publicados pela própria
+  Receita. Só entram estabelecimentos ativos dos estados escolhidos, e só
+  os campos que o arquivo traz. Nome de MEI sem fantasia vem da razão
+  social, sem o CPF que a Receita cola no fim.
 - **O Google Maps não é usado em lugar nenhum.** Raspar viola os termos de
   uso, e a Places API exige cartão mesmo na cota gratuita.
 - As colunas `avaliacao_nota` e `avaliacao_qtd` existem no banco mas ficam

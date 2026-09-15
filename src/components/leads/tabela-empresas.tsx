@@ -1,4 +1,4 @@
-import { AtSign, ExternalLink, MapPin, MessageCircle, Phone, PhoneOff } from "lucide-react";
+import { AtSign, ExternalLink, Landmark, MapPin, MessageCircle, Phone, PhoneOff } from "lucide-react";
 
 import { AcaoLead, BadgeScore } from "@/components/leads/acao-lead";
 import { BadgeStatusSite } from "@/components/leads/badge-status-site";
@@ -10,6 +10,52 @@ import { rotuloDoSegmento } from "@/lib/osm/segmentos";
 
 function local(e: EmpresaListada): string {
   return [e.cidade, e.estado, nomeDoPais(e.pais)].filter(Boolean).join(", ");
+}
+
+const ORIGEM: Record<string, string> = {
+  osm: "OpenStreetMap",
+  receita: "Receita Federal",
+  site: "site da empresa",
+  manual: "preenchido à mão",
+};
+
+/** "Receita Federal" ao lado do contato: quem lê sabe de onde o dado veio. */
+function Origem({ valor }: { valor: string | null }) {
+  if (!valor || valor === "osm") return null;
+  return (
+    <span className="rounded-sm bg-white/6 px-1 py-px text-[0.6rem] uppercase tracking-wider text-muted-foreground">
+      {ORIGEM[valor] ?? valor}
+    </span>
+  );
+}
+
+/** Link para a fonte de cada linha: o mapa, ou a consulta pública do CNPJ. */
+function LinkFonte({ e, compacto }: { e: EmpresaListada; compacto: boolean }) {
+  const classe = compacto
+    ? "flex size-11 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground"
+    : "inline-flex h-11 cursor-pointer items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground";
+
+  if (e.osm_id) {
+    return (
+      <a href={`https://www.openstreetmap.org/${e.osm_id}`} target="_blank" rel="noopener noreferrer" className={classe}>
+        <MapPin className={compacto ? "size-4" : "size-3.5"} aria-hidden="true" />
+        {compacto ? <span className="sr-only">Ver {e.nome} no OpenStreetMap</span> : "OpenStreetMap"}
+      </a>
+    );
+  }
+  if (e.cnpj) {
+    // A consulta oficial da Receita exige captcha e não aceita o CNPJ na
+    // URL, então aqui fica o número em si — formatado, para copiar.
+    const c = e.cnpj;
+    const formatado = `${c.slice(0, 2)}.${c.slice(2, 5)}.${c.slice(5, 8)}/${c.slice(8, 12)}-${c.slice(12)}`;
+    return (
+      <span title={`CNPJ ${formatado} · fonte: Receita Federal`} className={`${classe} num cursor-default`}>
+        <Landmark className={compacto ? "size-4" : "size-3.5"} aria-hidden="true" />
+        {compacto ? <span className="sr-only">CNPJ {formatado}</span> : formatado}
+      </span>
+    );
+  }
+  return null;
 }
 
 /** Aviso explícito em vez de célula vazia: o operador precisa saber que falta buscar por fora. */
@@ -77,6 +123,7 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
                         <span className="num inline-flex items-center gap-1.5">
                           <Phone className="size-3.5 text-muted-foreground" aria-hidden="true" />
                           {telefone}
+                          <Origem valor={e.telefone_origem} />
                         </span>
                       ) : (
                         <SemDado texto="Sem telefone" />
@@ -85,10 +132,11 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
                       {e.email && (
                         <a
                           href={`mailto:${e.email}`}
-                          className="inline-flex max-w-56 cursor-pointer items-center gap-1.5 truncate text-xs text-muted-foreground transition-colors duration-200 hover:text-foreground"
+                          className="inline-flex max-w-64 cursor-pointer items-center gap-1.5 truncate text-xs text-muted-foreground transition-colors duration-200 hover:text-foreground"
                         >
                           <AtSign className="size-3.5 shrink-0" aria-hidden="true" />
                           <span className="truncate">{e.email}</span>
+                          <Origem valor={e.email_origem} />
                         </a>
                       )}
                     </div>
@@ -131,15 +179,7 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
                           <span className="sr-only">Abrir o site de {e.nome}</span>
                         </a>
                       )}
-                      <a
-                        href={`https://www.openstreetmap.org/${e.osm_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex size-11 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground"
-                      >
-                        <MapPin className="size-4" aria-hidden="true" />
-                        <span className="sr-only">Ver {e.nome} no OpenStreetMap</span>
-                      </a>
+                      <LinkFonte e={e} compacto />
                     </div>
                   </td>
                 </tr>
@@ -181,9 +221,10 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
                   <span className="num inline-flex items-center gap-1.5">
                     <Phone className="size-3.5 text-muted-foreground" aria-hidden="true" />
                     {telefone}
+                    <Origem valor={e.telefone_origem} />
                   </span>
                 ) : (
-                  <SemDado texto="Sem telefone no OpenStreetMap" />
+                  <SemDado texto="Sem telefone na fonte" />
                 )}
 
                 {e.email && (
@@ -193,6 +234,7 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
                   >
                     <AtSign className="size-3.5 shrink-0" aria-hidden="true" />
                     <span className="truncate">{e.email}</span>
+                    <Origem valor={e.email_origem} />
                   </a>
                 )}
               </div>
@@ -222,15 +264,7 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
                     Site
                   </a>
                 )}
-                <a
-                  href={`https://www.openstreetmap.org/${e.osm_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex h-11 cursor-pointer items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground"
-                >
-                  <MapPin className="size-3.5" aria-hidden="true" />
-                  OpenStreetMap
-                </a>
+                <LinkFonte e={e} compacto={false} />
               </div>
             </li>
           );

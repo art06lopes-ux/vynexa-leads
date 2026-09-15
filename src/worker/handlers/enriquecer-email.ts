@@ -2,7 +2,7 @@ import type { Client } from "@libsql/client";
 
 import { agora } from "@/db/cliente";
 import { getOsmUserAgent } from "@/lib/ambiente";
-import { extrairDominio } from "@/lib/leads/classificacao";
+import { ehRedeSocial, extrairDominio } from "@/lib/leads/classificacao";
 
 export type PayloadEnriquecer = { limite: number };
 
@@ -30,6 +30,18 @@ const ORCAMENTO_MS = 3 * 60 * 1000;
 const IGNORAR = /(example\.com|sentry\.io|wixpress|w3\.org|schema\.org|googleapis|\.png$|\.jpg$|\.svg$|\.webp$|noreply|no-reply|donotreply)/i;
 
 const REGEX_EMAIL = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
+
+/**
+ * Provedores de e-mail pessoal. Um e-mail neles não diz nada sobre site;
+ * um e-mail fora deles aponta um domínio que PODE ser o site da empresa
+ * — e isso se confere visitando, não se presume.
+ */
+const PROVEDORES_PESSOAIS = new Set([
+  "gmail.com", "hotmail.com", "outlook.com", "outlook.com.br", "hotmail.com.br", "live.com",
+  "yahoo.com", "yahoo.com.br", "ymail.com", "icloud.com", "me.com", "msn.com", "aol.com",
+  "bol.com.br", "uol.com.br", "terra.com.br", "ig.com.br", "globo.com", "globomail.com",
+  "oi.com.br", "zipmail.com.br", "r7.com", "protonmail.com", "proton.me", "mail.com",
+]);
 
 export async function processarEnriquecimento(banco: Client, payload: PayloadEnriquecer): Promise<string> {
   const limite = Math.min(Math.max(payload.limite, 1), TETO_POR_JOB);
@@ -69,6 +81,11 @@ export async function processarEnriquecimento(banco: Client, payload: PayloadEnr
     if (email) achados += 1;
   }
 
+  // Segunda passada: empresas da Receita cujo e-mail está num domínio
+  // próprio. Se o domínio serve uma página, é o site da empresa — e só
+  // então a linha ganha `website` e muda de "sem site" para "tem site".
+  const dominios = await verificarDominiosDeEmail(banco, limite, inicio);
+
   const { rows: restantes } = await banco.execute(
     `SELECT COUNT(*) AS n FROM empresas
      WHERE website IS NOT NULL AND website <> '' AND (email IS NULL OR email = '')
@@ -77,14 +94,102 @@ export async function processarEnriquecimento(banco: Client, payload: PayloadEnr
   const faltam = Number(restantes[0]?.n ?? 0);
 
   // Continua sozinho enquanto houver site por visitar.
-  if (faltam > 0 && visitados > 0) {
+  if ((faltam > 0 && visitados > 0) || (dominios.restantes > 0 && dominios.verificados > 0)) {
     await banco.execute({
       sql: `INSERT INTO jobs (id, tipo, payload, status) VALUES (?, 'enriquecer_email', ?, 'pendente')`,
       args: [crypto.randomUUID(), JSON.stringify({ limite: TETO_POR_JOB })],
     });
   }
 
-  return `${visitados} site(s) visitado(s), ${achados} e-mail(s) encontrado(s), ${faltam} restante(s)`;
+  return `${visitados} site(s) visitado(s), ${achados} e-mail(s) encontrado(s), ${dominios.verificados} domínio(s) de e-mail conferido(s) (${dominios.comSite} com site), ${faltam} restante(s)`;
+}
+
+async function verificarDominiosDeEmail(
+  banco: Client,
+  limite: number,
+  inicio: number,
+): Promise<{ verificados: number; comSite: number; restantes: number }> {
+  const { rows } = await banco.execute({
+    sql: `SELECT id, email FROM empresas
+          WHERE email_origem = 'receita' AND (website IS NULL OR website = '')
+            AND site_verificado_em IS NULL
+          ORDER BY criado_em DESC LIMIT ?`,
+    args: [limite * 2],
+  });
+
+  let verificados = 0;
+  let comSite = 0;
+
+  for (const r of rows) {
+    if (Date.now() - inicio > ORCAMENTO_MS) break;
+    const id = String(r.id);
+    const dominio = String(r.email).split("@")[1]?.toLowerCase() ?? "";
+
+    if (!dominio || PROVEDORES_PESSOAIS.has(dominio)) {
+      // Nada a conferir: e-mail pessoal não aponta site. Marca como
+      // verificado para não voltar aqui.
+      await banco.execute({
+        sql: `UPDATE empresas SET site_verificado_em = ? WHERE id = ?`,
+        args: [agora(), id],
+      });
+      continue;
+    }
+
+    verificados += 1;
+    const site = await dominioServePagina(dominio).catch(() => null);
+    const status = site ? (ehRedeSocial(site) ? "rede_social" : "tem_site") : null;
+    if (site) comSite += 1;
+
+    await banco.execute({
+      sql: `UPDATE empresas
+            SET website = COALESCE(?, website),
+                status_site = COALESCE(?, status_site),
+                site_verificado_em = ?,
+                atualizado_em = ?
+            WHERE id = ?`,
+      args: [site, status, agora(), agora(), id],
+    });
+  }
+
+  const { rows: sobra } = await banco.execute(
+    `SELECT COUNT(*) AS n FROM empresas
+     WHERE email_origem = 'receita' AND (website IS NULL OR website = '') AND site_verificado_em IS NULL`,
+  );
+  return { verificados, comSite, restantes: Number(sobra[0]?.n ?? 0) };
+}
+
+/** A URL final se o domínio responde HTML; nulo se não responde. */
+async function dominioServePagina(dominio: string): Promise<string | null> {
+  for (const url of [`https://${dominio}`, `https://www.${dominio}`]) {
+    try {
+      // A mesma regra da coleta de e-mail: robots.txt manda. Um domínio
+      // que serve um robots.txt fechado tem site — só não entramos nele.
+      // Domínio que nem responde ao robots.txt cai no catch: não há site.
+      const base = new URL(url);
+      const robots = await fetch(new URL("/robots.txt", base), {
+        headers: { "User-Agent": getOsmUserAgent() },
+        signal: AbortSignal.timeout(8_000),
+        redirect: "follow",
+      });
+      if (robots.ok && !(await robotsPermite(base))) return url;
+
+      const r = await fetch(url, {
+        headers: { "User-Agent": getOsmUserAgent(), Accept: "text/html" },
+        signal: AbortSignal.timeout(10_000),
+        redirect: "follow",
+      });
+      if (!r.ok) continue;
+      if (!(r.headers.get("content-type") ?? "").includes("text/html")) continue;
+      // Página de domínio estacionado é HTML, mas não é site. Os
+      // registradores grandes anunciam isso no título.
+      const inicio = (await r.text()).slice(0, 20_000);
+      if (/domain (is )?(for sale|parked)|sedoparking|parkingcrew|\/parked/i.test(inicio)) continue;
+      return r.url;
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 function normalizarUrl(site: string): URL | null {

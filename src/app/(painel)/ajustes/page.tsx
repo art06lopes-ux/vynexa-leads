@@ -2,22 +2,25 @@ import type { Metadata } from "next";
 import { CircleAlert, CircleCheck } from "lucide-react";
 
 import { FormularioAjustes } from "@/app/(painel)/ajustes/formulario-ajustes";
+import { CardReceita } from "@/app/(painel)/ajustes/receita";
 import { BotaoNotificacoes } from "@/components/painel/botao-notificacoes";
 import { ConexaoGoogle } from "@/components/painel/conexao-google";
 import { contaConectada } from "@/lib/google/oauth";
 import { CabecalhoPagina } from "@/components/painel/cabecalho-pagina";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { diagnosticarIntegracoes, lerConfiguracoes } from "@/db/configuracoes";
+import { resumoReceita } from "@/db/receita";
 
 export const metadata: Metadata = { title: "Ajustes" };
 export const dynamic = "force-dynamic";
 
 export default async function PaginaAjustes({ searchParams }: PageProps<"/ajustes">) {
   const sp = await searchParams;
-  const [config, integracoes, conta] = await Promise.all([
+  const [config, integracoes, conta, receita] = await Promise.all([
     lerConfiguracoes(),
     diagnosticarIntegracoes(),
     contaConectada(),
+    resumoReceita(),
   ]);
   const avisoGoogle = typeof sp.msg === "string" ? sp.msg : null;
   const googleOk = sp.google === "ok";
@@ -31,6 +34,8 @@ export default async function PaginaAjustes({ searchParams }: PageProps<"/ajuste
       />
 
       <FormularioAjustes valores={config} />
+
+      <CardReceita resumo={receita} ufs={config.receita_ufs ?? ""} />
 
       <Card>
         <CardHeader>

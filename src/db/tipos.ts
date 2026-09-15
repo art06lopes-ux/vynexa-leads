@@ -17,15 +17,22 @@ export type Busca = {
   status: StatusBusca;
   quantidade_encontrada: number;
   quantidade_nova: number;
+  quantidade_receita: number;
   erro: string | null;
   criado_em: string;
   concluido_em: string | null;
 };
 
+export type FonteEmpresa = "osm" | "receita";
+export type OrigemTelefone = "osm" | "receita" | "manual";
+export type OrigemEmail = "osm" | "site" | "receita";
+
 export type Empresa = {
   id: string;
   busca_id: string | null;
-  osm_id: string;
+  fonte: FonteEmpresa;
+  osm_id: string | null;
+  cnpj: string | null;
   nome: string;
   pais: string;
   estado: string | null;
@@ -34,13 +41,16 @@ export type Empresa = {
   latitude: number | null;
   longitude: number | null;
   telefone: string | null;
+  telefone_origem: OrigemTelefone | null;
   telefone_manual: number;
   email: string | null;
-  email_origem: "osm" | "site" | null;
+  email_origem: OrigemEmail | null;
   website: string | null;
   instagram: string | null;
   facebook: string | null;
   categoria: string;
+  cnae: string | null;
+  fundada_em: string | null;
   avaliacao_nota: number | null;
   avaliacao_qtd: number | null;
   idioma_abordagem: string;

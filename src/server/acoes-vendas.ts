@@ -18,6 +18,8 @@ const Esquema = z.object({
   clienteNome: z.string().trim().max(120).optional(),
   // "AAAA-MM-DD" do <input type="date">. Vazio = hoje.
   data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal("")).optional(),
+  // Lead do funil que virou esta venda. Vazio quando a venda veio de fora.
+  leadId: z.string().trim().max(60).optional(),
 });
 
 /**
@@ -40,13 +42,14 @@ export async function cadastrarVendaManual(
     meio: form.get("meio"),
     clienteNome: form.get("clienteNome") ?? undefined,
     data: form.get("data") ?? "",
+    leadId: form.get("leadId") ?? undefined,
   });
 
   if (!analise.success) {
     return { mensagem: analise.error.issues[0]?.message ?? "Dados inválidos." };
   }
 
-  const { descricao, valor, meio, clienteNome, data } = analise.data;
+  const { descricao, valor, meio, clienteNome, data, leadId } = analise.data;
 
   const centavos = paraCentavos(valor);
   if (centavos === null || centavos <= 0) {
@@ -57,11 +60,30 @@ export async function cadastrarVendaManual(
   // vendas do mesmo dia. Sem data, é agora.
   const pagoEm = data ? `${data} ${agora().slice(11)}` : agora();
 
-  await getBanco().execute({
-    sql: `INSERT INTO vendas (id, descricao, valor_centavos, moeda, status, origem, meio_pagamento, cliente_nome, pago_em)
-          VALUES (?, ?, ?, 'BRL', 'pago', 'manual', ?, ?, ?)`,
-    args: [novoId(), descricao, centavos, meio, clienteNome || null, pagoEm],
+  const banco = getBanco();
+
+  // Só aceita lead que existe: um id forjado no formulário viraria uma
+  // referência quebrada, e o funil somaria dinheiro em lugar nenhum.
+  let leadValido: string | null = null;
+  if (leadId) {
+    const { rows } = await banco.execute({ sql: `SELECT id FROM leads WHERE id = ?`, args: [leadId] });
+    leadValido = rows[0] ? String(rows[0].id) : null;
+  }
+
+  await banco.execute({
+    sql: `INSERT INTO vendas (id, lead_id, descricao, valor_centavos, moeda, status, origem, meio_pagamento, cliente_nome, pago_em)
+          VALUES (?, ?, ?, ?, 'BRL', 'pago', 'manual', ?, ?, ?)`,
+    args: [novoId(), leadValido, descricao, centavos, meio, clienteNome || null, pagoEm],
   });
+
+  // Venda registrada é lead fechado — sem pedir um segundo clique.
+  if (leadValido) {
+    await banco.execute({
+      sql: `UPDATE leads SET status = 'fechado', status_em = ?, atualizado_em = ? WHERE id = ? AND status <> 'fechado'`,
+      args: [agora(), agora(), leadValido],
+    });
+    revalidatePath("/funil");
+  }
 
   revalidatePath("/vendas");
   revalidatePath("/");

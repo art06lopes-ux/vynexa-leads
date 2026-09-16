@@ -129,7 +129,13 @@ export default async function PaginaVendas({ searchParams }: PageProps<"/vendas"
         <div className="flex flex-col gap-6">
           {/* Manual em cima: é o caso comum (Pix direto). O checkout da
               Stripe fica para quem só paga no cartão. */}
-          <FormularioVendaManual />
+          <FormularioVendaManual
+            lead={
+              typeof sp.lead === "string" && typeof sp.empresa === "string"
+                ? { id: sp.lead.slice(0, 60), empresa: sp.empresa.slice(0, 120) }
+                : null
+            }
+          />
           <FormularioCheckout />
         </div>
 

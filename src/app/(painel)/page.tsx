@@ -6,6 +6,8 @@ import { Entrada } from "@/components/motion/entrada";
 import { BotaoAnalisar } from "@/components/painel/botao-analisar";
 import { CabecalhoPagina, TituloSecao } from "@/components/painel/cabecalho-pagina";
 import { CartaoContador } from "@/components/painel/cartao-contador";
+import { resumoFunil } from "@/db/funil";
+import { CLASSE_ETAPA, ETAPAS, ROTULO_ETAPA } from "@/lib/leads/etapas";
 import { GraficoLinha } from "@/components/painel/grafico-linha";
 import { Heroi } from "@/components/painel/heroi";
 import { Button } from "@/components/ui/button";
@@ -34,8 +36,9 @@ function dataHoje(): string {
 }
 
 export default async function PaginaPainel() {
-  const [contadores, buscas, semAnalise, serie, hoje, semana] = await Promise.all([
+  const [contadores, funil, buscas, semAnalise, serie, hoje, semana] = await Promise.all([
     obterContadores(),
+    resumoFunil(),
     listarBuscasRecentes(6),
     contarSemAnalise(),
     obterSerieLeads(14),
@@ -121,6 +124,36 @@ export default async function PaginaPainel() {
                 />
               </CardContent>
             </Card>
+          </div>
+        </div>
+      </section>
+
+      <section data-entrada aria-label="Funil" className="flex flex-col gap-3">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="olho-mudo">Acompanhamento</p>
+            <h2 className="text-lg font-semibold">Funil de leads</h2>
+          </div>
+          <Link href="/funil" className="text-xs text-muted-foreground underline-offset-4 transition-colors duration-200 hover:text-acento hover:underline">
+            Abrir o funil
+          </Link>
+        </div>
+        <div className="vidro brasa grid grid-cols-2 gap-px overflow-hidden rounded-xl sm:grid-cols-5 lg:grid-cols-7">
+          {ETAPAS.map((e) => (
+            <Link key={e} href={`/funil`} className="flex flex-col gap-1 bg-background/40 px-4 py-3 transition-colors duration-200 hover:bg-white/4">
+              <span className={`inline-flex w-fit rounded-full border px-2 py-0.5 text-[0.65rem] font-semibold ${CLASSE_ETAPA[e]}`}>
+                {ROTULO_ETAPA[e]}
+              </span>
+              <span className="num text-2xl font-semibold">{funil.porEtapa[e]}</span>
+            </Link>
+          ))}
+          <div className="flex flex-col gap-1 bg-background/40 px-4 py-3">
+            <span className="olho-mudo">Resposta</span>
+            <span className="num text-2xl font-semibold">{funil.taxaResposta === null ? "—" : `${funil.taxaResposta}%`}</span>
+          </div>
+          <div className="flex flex-col gap-1 bg-background/40 px-4 py-3">
+            <span className="olho-mudo">Fechamento</span>
+            <span className="num text-2xl font-semibold text-acento">{funil.taxaFechamento === null ? "—" : `${funil.taxaFechamento}%`}</span>
           </div>
         </div>
       </section>

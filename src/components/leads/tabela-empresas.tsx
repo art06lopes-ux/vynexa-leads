@@ -4,7 +4,9 @@ import { AcaoLead, BadgeScore } from "@/components/leads/acao-lead";
 import { BadgeStatusSite } from "@/components/leads/badge-status-site";
 import type { EmpresaListada } from "@/db/consultas";
 import { nomeDoPais } from "@/lib/geo/paises";
+import { LinkContato } from "@/components/leads/link-contato";
 import { CaixaSelecao } from "@/components/leads/selecao-campanha";
+import { SeletorEtapa } from "@/components/leads/seletor-etapa";
 import { formatarTelefone, montarLinkWhatsApp } from "@/lib/leads/whatsapp";
 import { rotuloDoSegmento } from "@/lib/osm/segmentos";
 
@@ -86,6 +88,7 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
               <th scope="col" className="px-4 py-3 font-medium">Contato</th>
               <th scope="col" className="px-4 py-3 font-medium">Presença</th>
               <th scope="col" className="px-4 py-3 font-medium">Oportunidade</th>
+              <th scope="col" className="px-4 py-3 font-medium">Etapa</th>
               <th scope="col" className="px-4 py-3 font-medium">
                 <span className="sr-only">Links</span>
               </th>
@@ -130,14 +133,15 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
                       )}
 
                       {e.email && (
-                        <a
+                        <LinkContato
                           href={`mailto:${e.email}`}
+                          empresaId={e.id}
                           className="inline-flex max-w-64 cursor-pointer items-center gap-1.5 truncate text-xs text-muted-foreground transition-colors duration-200 hover:text-foreground"
                         >
                           <AtSign className="size-3.5 shrink-0" aria-hidden="true" />
                           <span className="truncate">{e.email}</span>
                           <Origem valor={e.email_origem} />
-                        </a>
+                        </LinkContato>
                       )}
                     </div>
                   </td>
@@ -151,21 +155,24 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
                   </td>
 
                   <td className="px-4 py-3">
+                    <SeletorEtapa empresaId={e.id} etapa={e.status_lead} />
+                  </td>
+
+                  <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
                       {/* O botão existe em toda linha: com número vira wa.me;
                           sem número fica apagado e diz por quê. Esconder
                           deixava a impressão de que a função faltava. */}
                       {linkZap ? (
-                        <a
+                        <LinkContato
                           href={linkZap}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          empresaId={e.id}
                           title={`WhatsApp · ${telefone ?? ""}`}
                           className="flex size-11 cursor-pointer items-center justify-center rounded-md text-emerald-300 transition-colors duration-200 hover:bg-emerald-400/10"
                         >
                           <MessageCircle className="size-4" aria-hidden="true" />
                           <span className="sr-only">Abrir WhatsApp de {e.nome}</span>
-                        </a>
+                        </LinkContato>
                       ) : (
                         <span
                           title={telefone ? "Número não discável — confira e preencha à mão" : "Sem telefone na fonte"}
@@ -224,6 +231,7 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
                 <div className="flex shrink-0 flex-col items-end gap-1.5">
                   <BadgeStatusSite status={e.status_site} />
                   <BadgeScore score={e.score_oportunidade} />
+                  <SeletorEtapa empresaId={e.id} etapa={e.status_lead} />
                 </div>
               </div>
 
@@ -239,28 +247,28 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
                 )}
 
                 {e.email && (
-                  <a
+                  <LinkContato
                     href={`mailto:${e.email}`}
+                    empresaId={e.id}
                     className="inline-flex cursor-pointer items-center gap-1.5 truncate text-muted-foreground"
                   >
                     <AtSign className="size-3.5 shrink-0" aria-hidden="true" />
                     <span className="truncate">{e.email}</span>
                     <Origem valor={e.email_origem} />
-                  </a>
+                  </LinkContato>
                 )}
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
                 {linkZap ? (
-                  <a
+                  <LinkContato
                     href={linkZap}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    empresaId={e.id}
                     className="inline-flex h-11 cursor-pointer items-center gap-1.5 rounded-md px-2 text-xs text-emerald-300"
                   >
                     <MessageCircle className="size-3.5" aria-hidden="true" />
                     WhatsApp
-                  </a>
+                  </LinkContato>
                 ) : (
                   <span className="inline-flex h-11 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground/50">
                     <MessageCircle className="size-3.5" aria-hidden="true" />

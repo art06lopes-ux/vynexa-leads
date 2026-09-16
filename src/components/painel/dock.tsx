@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useRef } from "react";
 import {
   Building2,
+  Filter,
   History,
   LayoutDashboard,
   Mail,
@@ -34,6 +35,7 @@ const ITENS = [
   { href: "/", rotulo: "Painel", Icone: LayoutDashboard },
   { href: "/buscar", rotulo: "Caçar", Icone: Radar },
   { href: "/empresas", rotulo: "Empresas", Icone: Building2 },
+  { href: "/funil", rotulo: "Funil", Icone: Filter },
   { href: "/vendas", rotulo: "Vendas", Icone: Wallet },
   { href: "/campanhas", rotulo: "Campanhas", Icone: Mail },
   { href: "/historico", rotulo: "Histórico", Icone: History },

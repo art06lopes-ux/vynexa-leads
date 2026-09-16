@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { nomeDoPais } from "@/lib/geo/paises";
+import { ETAPAS, ROTULO_ETAPA } from "@/lib/leads/etapas";
 import { rotuloDoSegmento } from "@/lib/osm/segmentos";
 
 export type Opcoes = {
@@ -175,6 +176,25 @@ export function Filtros({ opcoes, total }: { opcoes: Opcoes; total: number }) {
             <option value="">Todas</option>
             <option value="osm">OpenStreetMap</option>
             <option value="receita">Receita Federal</option>
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`${idBase}-etapa`} className="text-xs text-muted-foreground">
+            Etapa
+          </Label>
+          <select
+            id={`${idBase}-etapa`}
+            value={params.get("etapa") ?? ""}
+            onChange={(e) => aplicar("etapa", e.target.value)}
+            className={classeCampo}
+          >
+            <option value="">Todas</option>
+            {ETAPAS.map((et) => (
+              <option key={et} value={et}>
+                {ROTULO_ETAPA[et]}
+              </option>
+            ))}
           </select>
         </div>
       </div>

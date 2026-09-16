@@ -1,5 +1,6 @@
 import { listarEmpresasParaExportar, type Filtros } from "@/db/consultas";
 import { gerarCsv } from "@/lib/leads/csv";
+import { lerEtapa } from "@/lib/leads/etapas";
 import { formatarTelefone, normalizarTelefone } from "@/lib/leads/whatsapp";
 import { nomeDoPais } from "@/lib/geo/paises";
 import { rotuloDoSegmento } from "@/lib/osm/segmentos";
@@ -35,6 +36,7 @@ export function filtrosDaUrl(params: URLSearchParams): Filtros {
     scoreMin: numero(params.get("scoreMin")),
     fonte:
       params.get("fonte") === "osm" ? "osm" : params.get("fonte") === "receita" ? "receita" : undefined,
+    etapa: lerEtapa(params.get("etapa")),
     canal:
       params.get("canal") === "whatsapp"
         ? "whatsapp"

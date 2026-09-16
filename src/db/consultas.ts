@@ -101,6 +101,8 @@ export type Filtros = {
   canal?: "whatsapp" | "email";
   /** De onde a linha veio: mapa ou cadastro da Receita. */
   fonte?: "osm" | "receita";
+  /** Etapa do funil. */
+  etapa?: StatusLead;
   busca?: string;
 };
 
@@ -148,6 +150,10 @@ function montarWhere(f: Filtros): { clausula: string; args: InValue[] } {
   if (f.fonte) {
     partes.push("e.fonte = ?");
     args.push(f.fonte);
+  }
+  if (f.etapa) {
+    partes.push("l.status = ?");
+    args.push(f.etapa);
   }
 
   if (f.busca) {

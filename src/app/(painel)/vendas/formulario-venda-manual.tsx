@@ -26,7 +26,12 @@ const MEIOS = [
  * "fechei três sites hoje, vou lançar os três": sobrar o anterior
  * preenchido é o jeito mais fácil de lançar o mesmo duas vezes.
  */
-export function FormularioVendaManual() {
+export function FormularioVendaManual({
+  lead,
+}: {
+  /** Preenchido quando a tela foi aberta a partir do funil ("Registrar venda"). */
+  lead?: { id: string; empresa: string } | null;
+}) {
   const [estado, acao, pendente] = useActionState(cadastrarVendaManual, ESTADO_INICIAL);
   const formulario = useRef<HTMLFormElement>(null);
   const idBase = useId();
@@ -54,11 +59,21 @@ export function FormularioVendaManual() {
 
       <CardContent>
         <form ref={formulario} action={acao} className="flex flex-col gap-4">
+          {lead && (
+            <>
+              <input type="hidden" name="leadId" value={lead.id} />
+              <p className="rounded-md border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-sm text-emerald-200">
+                Venda para <strong>{lead.empresa}</strong>, vinda do funil. Ao salvar, o lead passa a
+                “Fechado” e o valor entra no funil.
+              </p>
+            </>
+          )}
           <div className="flex flex-col gap-2">
             <Label htmlFor={`${idBase}-desc`}>O que foi vendido</Label>
             <Input
               id={`${idBase}-desc`}
               name="descricao"
+              defaultValue={lead ? `Site — ${lead.empresa}` : undefined}
               placeholder="Site institucional — Barbearia do João"
               maxLength={200}
               required
@@ -128,6 +143,7 @@ export function FormularioVendaManual() {
             <Input
               id={`${idBase}-cliente`}
               name="clienteNome"
+              defaultValue={lead?.empresa}
               placeholder="opcional"
               maxLength={120}
               className="h-11"

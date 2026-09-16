@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { Building2, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Filtros } from "@/components/leads/filtros";
+import { lerEtapa } from "@/lib/leads/etapas";
 import {
   BarraCampanha,
   SelecaoProvider,
@@ -66,6 +67,7 @@ export default async function PaginaEmpresas({
           : undefined,
     fonte:
       primeiro(sp.fonte) === "osm" ? "osm" : primeiro(sp.fonte) === "receita" ? "receita" : undefined,
+    etapa: lerEtapa(primeiro(sp.etapa)),
     busca: primeiro(sp.q),
   };
 

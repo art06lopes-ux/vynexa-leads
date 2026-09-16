@@ -84,7 +84,7 @@ export default async function PaginaEmpresas({
         <CabecalhoPagina
           olho="Carteira"
           titulo="Empresas"
-          descricao="Tudo o que veio do OpenStreetMap, sem duplicatas. Os filtros vão para a URL — o CSV sai com exatamente o que estiver na tela."
+          descricao="Tudo o que veio do OpenStreetMap e da Receita Federal, sem duplicatas. Os filtros vão para a URL — o CSV sai com exatamente o que estiver na tela."
         />
 
         <Card>

@@ -374,7 +374,7 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
               </div>
               <p className="text-xs text-muted-foreground">
                 {alvo === 0
-                  ? "Tudo o que o OpenStreetMap tem mapeado na região, sem corte."
+                  ? "Tudo o que existe na região, sem corte — mapa e, no Brasil, cadastro da Receita."
                   : "Teto por busca; abre o raio se vier pouco."}
               </p>
             </div>

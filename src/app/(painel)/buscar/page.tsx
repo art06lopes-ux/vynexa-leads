@@ -41,7 +41,9 @@ export default async function PaginaBusca() {
             </li>
             <li>
               Empresas já encontradas em buscas anteriores não entram de novo: o dedup é pelo
-              identificador do OpenStreetMap.
+              identificador do OpenStreetMap ou pelo CNPJ. No Brasil, a Receita Federal
+              completa telefone e e-mail de quem o mapa só localizou e acrescenta quem ele não
+              conhece — cada contato mostra de onde veio.
             </li>
             <li>
               Se a região tiver menos empresas mapeadas do que você pediu, vem o que existe. Nada é

@@ -21,7 +21,7 @@ export type EstagioBusca = "pendente" | "em_andamento" | "concluida";
  */
 const ESTAGIOS: Array<{ chave: EstagioBusca; rotulo: string; detalhe: string }> = [
   { chave: "pendente", rotulo: "Na fila", detalhe: "Aguardando o worker, que roda a cada 5 minutos." },
-  { chave: "em_andamento", rotulo: "Rastreando", detalhe: "Consultando o OpenStreetMap na região." },
+  { chave: "em_andamento", rotulo: "Rastreando", detalhe: "Consultando o mapa e, no Brasil, a base da Receita." },
   { chave: "concluida", rotulo: "Concluída", detalhe: "Empresas salvas na carteira, sem duplicatas." },
 ];
 

@@ -50,6 +50,13 @@ export const CNAES_POR_SEGMENTO: Record<string, readonly string[]> = {
   padaria_doceria: ["4721102", "4721104", "4723700", "1113502"],
   saude_complementar: ["8640202", "8711501", "8712300", "8690901", "8690903", "8690904", "8690999"],
   consultoria: ["7020400"],
+  // Sem 7319002 ("promoção de vendas"): são 415 mil, quase todos MEI de
+  // promotor de loja — não é agência.
+  marketing: ["7311400", "7319003", "7319004", "7319099"],
+  // Instalador solar se registra como instalação elétrica (4321500) ou
+  // geração (3511501). O 4321500 também está em "construção": a mesma
+  // empresa pode aparecer nas duas caçadas, e a carteira não duplica.
+  energia_solar: ["3511501", "3511500", "4321500"],
   plumbing: ["4322301", "4322302"],
   // A Receita não tem "telhadista": cobertura entra em acabamento e
   // impermeabilização. É o mais próximo sem arrastar construtora inteira.

@@ -356,6 +356,25 @@ export const SEGMENTOS: readonly Segmento[] = [
     filtros: [{ tags: [{ chave: "office", valor: "consulting" }] }],
   },
   {
+    slug: "marketing",
+    rotulo: "Agências de marketing e publicidade",
+    rotuloEn: "Marketing & advertising agencies",
+    filtros: [
+      { tags: [{ chave: "office", valor: "advertising_agency" }] },
+      { tags: [{ chave: "office", valor: "marketing" }] },
+    ],
+  },
+  {
+    slug: "energia_solar",
+    rotulo: "Energia solar",
+    rotuloEn: "Solar energy installers",
+    filtros: [
+      { tags: [{ chave: "shop", valor: "energy" }] },
+      { tags: [{ chave: "office", valor: "energy_supplier" }] },
+      { tags: [{ chave: "craft", valor: "electrician" }] },
+    ],
+  },
+  {
     slug: "plumbing",
     rotulo: "Encanadores e hidráulica",
     rotuloEn: "Plumbing",

@@ -165,17 +165,42 @@ export function BotaoNotificacoes() {
     );
   }
 
+  async function testar() {
+    setOcupado(true);
+    try {
+      const r = await fetch("/api/push/teste", { method: "POST" });
+      const d = (await r.json()) as { enviados?: number; removidos?: number; erro?: string };
+      if (!r.ok) {
+        toast.error(d.erro ?? "Falha ao enviar o teste.");
+        return;
+      }
+      if ((d.enviados ?? 0) === 0) {
+        toast.error("Nenhum aparelho recebeu. Ative as notificações primeiro.");
+        return;
+      }
+      toast.success(`Teste enviado para ${d.enviados} aparelho(s). Olhe a tela de bloqueio.`);
+    } finally {
+      setOcupado(false);
+    }
+  }
+
   if (estado === "ativo") {
     return (
-      <Button
-        onClick={desativar}
-        disabled={ocupado}
-        variant="secondary"
-        className="h-11 cursor-pointer gap-2"
-      >
-        <BellRing className="size-4 text-emerald-300" aria-hidden="true" />
-        Ativas neste aparelho · desativar
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          onClick={desativar}
+          disabled={ocupado}
+          variant="secondary"
+          className="h-11 cursor-pointer gap-2"
+        >
+          <BellRing className="size-4 text-emerald-300" aria-hidden="true" />
+          Ativas neste aparelho · desativar
+        </Button>
+        <Button onClick={testar} disabled={ocupado} variant="outline" className="h-11 cursor-pointer gap-2">
+          <Bell className="size-4" aria-hidden="true" />
+          Enviar notificação de teste
+        </Button>
+      </div>
     );
   }
 

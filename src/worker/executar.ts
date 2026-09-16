@@ -17,11 +17,19 @@ import { processarEnriquecimento, type PayloadEnriquecer } from "@/worker/handle
 /**
  * Orçamento de tempo.
  *
- * O cron é de 5 minutos; parar em 4 evita que duas execuções se
- * sobreponham. A sobreposição não corromperia nada — o lease e o UNIQUE
- * em `osm_id` protegem —, mas gastaria minutos de Actions à toa.
+ * Dois modos. Sem `WORKER_DURACAO_MIN`, o de sempre: acorda, drena a fila
+ * por até 4 minutos e morre — serve para rodar na mão. Com a variável, o
+ * modo de plantão do GitHub Actions: fica de pé o tempo pedido, olha a
+ * fila a cada 20 segundos e, ao fim, avisa o fluxo para se relançar.
+ *
+ * O plantão existe porque o cron de 5 minutos do GitHub não é honrado:
+ * em repositório público ele virou "a cada 4 ou 5 horas", e uma caçada
+ * ficava a tarde inteira "na fila". Com o plantão, o job roda em menos
+ * de meio minuto depois de entrar.
  */
-const ORCAMENTO_MS = 4 * 60 * 1000;
+const PLANTAO_MIN = Number(process.env.WORKER_DURACAO_MIN) || 0;
+const ORCAMENTO_MS = (PLANTAO_MIN > 0 ? PLANTAO_MIN : 4) * 60 * 1000;
+const PAUSA_FILA_VAZIA_MS = 20_000;
 
 /** Quanto tempo um job fica reservado antes de outra execução poder retomá-lo. */
 const LEASE_MINUTOS = 10;
@@ -63,7 +71,11 @@ async function main() {
 
   while (Date.now() - inicio < ORCAMENTO_MS) {
     const job = await reservarProximo(banco);
-    if (job === null) break;
+    if (job === null) {
+      if (PLANTAO_MIN === 0) break;
+      await new Promise((r) => setTimeout(r, PAUSA_FILA_VAZIA_MS));
+      continue;
+    }
 
     console.log(`[${job.tipo}] ${job.id} — tentativa ${job.tentativas}`);
 
@@ -115,6 +127,12 @@ async function main() {
       ? "Nada na fila."
       : `${processados} job(s) processado(s) em ${Math.round((Date.now() - inicio) / 1000)}s.`,
   );
+
+  // Plantão acabou por tempo: pede ao fluxo que dispare o próximo.
+  if (PLANTAO_MIN > 0 && process.env.GITHUB_OUTPUT) {
+    const { appendFile } = await import("node:fs/promises");
+    await appendFile(process.env.GITHUB_OUTPUT, "continuar=true\n");
+  }
 }
 
 /**

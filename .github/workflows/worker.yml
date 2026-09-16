@@ -2,30 +2,38 @@ name: worker
 
 # O trabalho pesado não cabe numa função serverless da Vercel: o plano
 # Hobby corta em 10 segundos e uma busca na Overpass leva de 5 a 60.
-# Aqui o worker tem minutos à vontade.
+#
+# Modelo de plantão: cada execução fica de pé por 5 h 40 olhando a fila a
+# cada 20 segundos e, ao terminar, dispara a próxima. O cron de 5 minutos
+# continua só como reserva — o GitHub não o honra em repositório público
+# (virou "a cada 4 ou 5 horas" na prática), mas se a corrente quebrar ele
+# a recomeça. Minutos são ilimitados em repositório público.
 on:
   schedule:
-    # A cada 5 minutos. O agendamento do GitHub é best effort e atrasa em
-    # horário de pico, então na prática é "no mínimo a cada 5 minutos".
     - cron: "*/5 * * * *"
-  # Permite rodar na mão pelo site do GitHub, sem esperar o cron.
   workflow_dispatch:
+    inputs:
+      motivo:
+        description: "Só informativo (ex.: relançamento automático)."
+        required: false
+        default: ""
 
-# Impede duas execuções ao mesmo tempo. A sobreposição não corromperia
-# dados — o lease dos jobs e o UNIQUE em osm_id protegem —, mas gastaria
-# minutos de Actions à toa.
+# Uma execução por vez. O plantão anterior termina ANTES de disparar o
+# seguinte, e um cron que chegue no meio fica esperando (e é substituído
+# pelo próximo pendente) — nunca dois plantões juntos.
 concurrency:
   group: worker
   cancel-in-progress: false
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
   processar:
     runs-on: ubuntu-latest
-    # Rede fora do ar ou Overpass travada não podem prender um runner.
-    timeout-minutes: 8
+    # 6 h é o máximo de um job; o plantão para aos 5 h 40 por conta própria.
+    timeout-minutes: 358
 
     steps:
       - uses: actions/checkout@v4
@@ -37,8 +45,10 @@ jobs:
 
       - run: npm ci
 
-      - run: npm run worker
+      - id: plantao
+        run: npm run worker
         env:
+          WORKER_DURACAO_MIN: "340"
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
           OSM_CONTATO: ${{ secrets.OSM_CONTATO }}
@@ -46,3 +56,11 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           SEGREDO_SESSAO: ${{ secrets.SEGREDO_SESSAO }}
+
+      # Relança sempre — também quando o plantão morreu com erro, senão a
+      # corrente quebra numa queda de rede e só o cron (horas depois) a
+      # retoma.
+      - if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run worker.yml --ref main -f motivo="relançamento automático"

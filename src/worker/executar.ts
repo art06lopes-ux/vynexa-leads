@@ -70,19 +70,23 @@ async function main() {
   let processados = 0;
 
   while (Date.now() - inicio < ORCAMENTO_MS) {
-    const job = await reservarProximo(banco);
-    if (job === null) {
-      if (PLANTAO_MIN === 0) break;
-      await new Promise((r) => setTimeout(r, PAUSA_FILA_VAZIA_MS));
-      // No plantão a recuperação de lease precisa ser contínua: um push
-      // derruba o plantão anterior no meio de um job, e o job só volta à
-      // fila quando alguém olha o lease vencido — este alguém é o
-      // plantão novo, que pode ficar horas de pé.
+    // No plantão a recuperação de lease precisa ser contínua e a cada
+    // volta: um push derruba o plantão anterior no meio de um job, e
+    // esse job só volta à fila quando alguém olha o lease vencido. Olhar
+    // só com a fila vazia não bastou — a análise de IA se reenfileira
+    // sem parar e a fila nunca esvazia.
+    if (PLANTAO_MIN > 0) {
       await banco.execute({
         sql: `UPDATE jobs SET status = 'pendente', atualizado_em = ?
               WHERE status = 'em_andamento' AND (lease_ate IS NULL OR lease_ate < ?)`,
         args: [agora(), agora()],
       });
+    }
+
+    const job = await reservarProximo(banco);
+    if (job === null) {
+      if (PLANTAO_MIN === 0) break;
+      await new Promise((r) => setTimeout(r, PAUSA_FILA_VAZIA_MS));
       continue;
     }
 
@@ -160,11 +164,16 @@ async function reservarProximo(banco: ReturnType<typeof getBanco>): Promise<Job 
   for (let tentativa = 0; tentativa < 5; tentativa += 1) {
     // `disponivel_em` implementa a espera entre tentativas: um job que
     // acabou de falhar fica invisível para esta consulta até o prazo.
+    // Caçada antes de tudo: é o que o operador está olhando na tela. A
+    // análise de IA se reenfileira o tempo todo e, em ordem de chegada,
+    // deixaria uma caçada nova esperando atrás de vinte análises.
     const { rows } = await banco.execute({
       sql: `SELECT id, tipo, payload, status, tentativas, lease_ate, erro, criado_em, atualizado_em
             FROM jobs
             WHERE status = 'pendente' AND (disponivel_em IS NULL OR disponivel_em <= ?)
-            ORDER BY criado_em LIMIT 1`,
+            ORDER BY CASE tipo WHEN 'busca' THEN 0 WHEN 'envio_email' THEN 1 WHEN 'gerar_emails' THEN 2 ELSE 3 END,
+                     criado_em
+            LIMIT 1`,
       args: [agora()],
     });
 

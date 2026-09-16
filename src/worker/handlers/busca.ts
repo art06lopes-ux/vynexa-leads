@@ -146,7 +146,10 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
     null,
   );
 
-  if (novos.length > 0 || receita.novas > 0) await pedirEnriquecimento(banco);
+  if (novos.length > 0 || receita.novas > 0) {
+    await pedirEnriquecimento(banco);
+    await pedirAnalise(banco);
+  }
 
   // O que o OSM trouxe é gravado agora; a parte da Receita é somada por
   // fatia, então os contadores são incrementos e não valores absolutos.
@@ -206,7 +209,10 @@ async function continuarReceita(
     payload.receitaCursor ?? null,
   );
 
-  if (receita.novas > 0) await pedirEnriquecimento(banco);
+  if (receita.novas > 0) {
+    await pedirEnriquecimento(banco);
+    await pedirAnalise(banco);
+  }
 
   await banco.execute({
     sql: `UPDATE buscas
@@ -248,6 +254,23 @@ async function concluir(banco: Client, buscaId: string): Promise<void> {
   await banco.execute({
     sql: `UPDATE buscas SET status = 'concluida', concluido_em = ? WHERE id = ?`,
     args: [agora(), buscaId],
+  });
+}
+
+/**
+ * Análise de IA sem clique: toda caçada que trouxe empresa nova já entra
+ * na fila do Gemini. A mensagem de abordagem é o que o operador quer ver
+ * na linha — esperar que ele descubra o botão "Analisar" era um passo a
+ * mais para nada. Um job só; ele se reenfileira enquanto houver empresa.
+ */
+async function pedirAnalise(banco: Client): Promise<void> {
+  const { rows } = await banco.execute(
+    `SELECT 1 FROM jobs WHERE tipo = 'analise_ia' AND status IN ('pendente','em_andamento') LIMIT 1`,
+  );
+  if (rows.length > 0) return;
+  await banco.execute({
+    sql: `INSERT INTO jobs (id, tipo, payload, status) VALUES (?, 'analise_ia', ?, 'pendente')`,
+    args: [novoId(), JSON.stringify({ limite: 20 })],
   });
 }
 

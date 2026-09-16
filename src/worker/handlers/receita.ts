@@ -6,7 +6,7 @@ import { normalizarLocalidade } from "@/lib/geo/localidade";
 import { classificarStatusSite } from "@/lib/leads/classificacao";
 import { ehCelularBrasil } from "@/lib/leads/whatsapp";
 import { cnaesDoSegmento } from "@/lib/receita/cnaes";
-import { caixaMista, chaveDeMunicipio, chaveDeNome } from "@/lib/receita/texto";
+import { caixaMista, chaveDeMunicipio, chaveDeNome, limparRazaoSocial } from "@/lib/receita/texto";
 import type { Segmento } from "@/lib/osm/segmentos";
 
 /**
@@ -244,7 +244,9 @@ async function inserir(banco: Client, busca: Busca, segmento: Segmento, novos: E
         novoId(),
         busca.id,
         e.cnpj,
-        caixaMista(e.nome),
+        // A base guarda o nome como veio; a limpeza do prefixo de CNPJ é
+        // feita aqui, na leitura, para não reescrever milhões de linhas.
+        caixaMista(limparRazaoSocial(e.nome)),
         e.uf,
         busca.cidade ?? normalizarLocalidade(e.municipio),
         montarEndereco(e),

@@ -32,11 +32,16 @@ export function chaveDeMunicipio(nome: string): string {
 
 /**
  * Razão social de MEI vem como "NOME DA PESSOA 12345678901" — o CPF
- * colado no fim. Sai o número; o nome fica, porque é o que a Receita
- * registra como a empresa.
+ * colado no fim — ou, nos cadastros mais novos, como "52.747.027 NOME DA
+ * PESSOA", com o CNPJ básico na frente. Saem os números; o nome fica,
+ * porque é o que a Receita registra como a empresa.
  */
 export function limparRazaoSocial(razao: string): string {
-  return razao.replace(/\s+\d{11}\s*$/, "").replace(/\s+/g, " ").trim();
+  return razao
+    .replace(/^\d{2}\.\d{3}\.\d{3}\s+/, "")
+    .replace(/\s+\d{11}\s*$/, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /** Primeira letra maiúscula em cada palavra, conectores minúsculos. */

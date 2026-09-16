@@ -8,7 +8,7 @@ import { LinkContato } from "@/components/leads/link-contato";
 import { CaixaSelecao } from "@/components/leads/selecao-campanha";
 import { SeletorEtapa } from "@/components/leads/seletor-etapa";
 import { linkInstagram } from "@/lib/leads/redes";
-import { formatarTelefone, montarLinkWhatsApp } from "@/lib/leads/whatsapp";
+import { ehCelularBrasil, formatarTelefone, montarLinkWhatsApp } from "@/lib/leads/whatsapp";
 import { rotuloDoSegmento } from "@/lib/osm/segmentos";
 
 function local(e: EmpresaListada): string {
@@ -21,6 +21,16 @@ const ORIGEM: Record<string, string> = {
   site: "site da empresa",
   manual: "preenchido à mão",
 };
+
+/** "fixo" ao lado do número: no Brasil, fixo não tem WhatsApp — o link abre, mas não conversa. */
+function Fixo({ e }: { e: EmpresaListada }) {
+  if (e.pais !== "BR" || !e.telefone || ehCelularBrasil(e.telefone)) return null;
+  return (
+    <span title="Telefone fixo: não abre WhatsApp. Use e-mail ou ligue." className="rounded-sm bg-amber-400/10 px-1 py-px text-[0.6rem] uppercase tracking-wider text-amber-300/90">
+      fixo
+    </span>
+  );
+}
 
 /** "Receita Federal" ao lado do contato: quem lê sabe de onde o dado veio. */
 function Origem({ valor }: { valor: string | null }) {
@@ -127,6 +137,7 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
                         <span className="num inline-flex items-center gap-1.5">
                           <Phone className="size-3.5 text-muted-foreground" aria-hidden="true" />
                           {telefone}
+                          <Fixo e={e} />
                           <Origem valor={e.telefone_origem} />
                         </span>
                       ) : (
@@ -254,6 +265,7 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
                   <span className="num inline-flex items-center gap-1.5">
                     <Phone className="size-3.5 text-muted-foreground" aria-hidden="true" />
                     {telefone}
+                    <Fixo e={e} />
                     <Origem valor={e.telefone_origem} />
                   </span>
                 ) : (

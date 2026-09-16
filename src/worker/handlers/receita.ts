@@ -152,6 +152,19 @@ export async function complementarComReceita(
   const atualizacoes: Array<{ sql: string; args: (string | null)[] }> = [];
   const novos: Estabelecimento[] = [];
 
+  // Com teto, os melhores primeiro: celular (abre WhatsApp) e e-mail
+  // valem mais que fixo ou nada, e empresa recente mais que antiga. A
+  // base vem em ordem de CNPJ, que é ordem de idade — sem isto, "200 no
+  // Brasil" trazia as 200 empresas mais velhas do país, quase todas com
+  // telefone fixo dos anos 90.
+  if (Number.isFinite(limite) && limite < candidatos.length) {
+    const nota = (e: Estabelecimento) =>
+      (melhorTelefone(e) && ehCelularBrasil(melhorTelefone(e)) ? 4 : melhorTelefone(e) ? 1 : 0) +
+      (e.email ? 2 : 0) +
+      (e.inicio_atividade && e.inicio_atividade >= "2015" ? 1 : 0);
+    candidatos.sort((a, b) => nota(b) - nota(a));
+  }
+
   for (const e of candidatos) {
     const chave = `${chaveDeNome(e.nome)}|${e.uf}|${e.municipio}`;
     const existente = chave.startsWith("|") ? undefined : porChave.get(chave);

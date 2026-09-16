@@ -28,9 +28,12 @@ const ESTAGIOS: Array<{ chave: EstagioBusca; rotulo: string; detalhe: string }> 
 export function ProgressoBusca({
   estagio,
   local,
+  aviso,
 }: {
   estagio: EstagioBusca;
   local: string | null;
+  /** Motivo de uma nova tentativa em curso (Overpass ocupada etc.). */
+  aviso?: string | null;
 }) {
   const indiceAtual = ESTAGIOS.findIndex((e) => e.chave === estagio);
 
@@ -78,6 +81,9 @@ export function ProgressoBusca({
         <p className="truncate font-medium">
           {local ?? "Localizando a região…"}
         </p>
+        {aviso && estagio !== "concluida" && (
+          <p className="mt-1 text-xs text-amber-300/90">{aviso}</p>
+        )}
 
         <ol className="mt-3 flex flex-col gap-2">
           {ESTAGIOS.map((e, i) => {

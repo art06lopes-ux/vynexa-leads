@@ -105,12 +105,16 @@ async function main() {
       });
 
       // A busca também precisa sair de 'em_andamento', senão a tela fica
-      // girando para sempre esperando um job que já desistiu.
-      if (desiste && job.tipo === "busca") {
+      // girando para sempre esperando um job que já desistiu. E enquanto
+      // ainda vai tentar, a tela mostra o motivo e a hora — "rastreando"
+      // por vinte minutos sem explicação parece travado.
+      if (job.tipo === "busca") {
         const { buscaId } = JSON.parse(job.payload) as PayloadBusca;
         await banco.execute({
-          sql: `UPDATE buscas SET status = 'erro', erro = ? WHERE id = ?`,
-          args: [mensagem, buscaId],
+          sql: desiste
+            ? `UPDATE buscas SET status = 'erro', erro = ? WHERE id = ?`
+            : `UPDATE buscas SET erro = ? WHERE id = ?`,
+          args: [desiste ? mensagem : `${mensagem} Nova tentativa em ~${espera} min (tentativa ${job.tentativas} de ${MAX_TENTATIVAS}).`, buscaId],
         });
       }
 

@@ -434,6 +434,7 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
               <ProgressoBusca
                 estagio={progresso.status === "concluida" ? "concluida" : progresso.status}
                 local={progresso.rotulo}
+                aviso={progresso.erro}
               />
 
               {progresso.status === "concluida" && (

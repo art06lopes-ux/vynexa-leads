@@ -53,7 +53,7 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
   if (!busca) throw new Error(`Busca ${payload.buscaId} não existe.`);
 
   await banco.execute({
-    sql: `UPDATE buscas SET status = 'em_andamento' WHERE id = ?`,
+    sql: `UPDATE buscas SET status = 'em_andamento', erro = NULL WHERE id = ?`,
     args: [busca.id],
   });
 

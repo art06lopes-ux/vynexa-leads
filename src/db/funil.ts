@@ -14,6 +14,7 @@ export type CartaoFunil = {
   pais: string;
   telefone: string | null;
   email: string | null;
+  instagram: string | null;
   mensagem_gerada: string | null;
   score_oportunidade: number | null;
   status: StatusLead;
@@ -41,7 +42,7 @@ export async function listarFunil(limitePorEtapa = 60): Promise<Record<StatusLea
   for (const etapa of ETAPAS) {
     const { rows } = await banco.execute({
       sql: `SELECT l.id AS lead_id, e.id AS empresa_id, e.nome, e.categoria, e.cidade, e.estado, e.pais,
-                   e.telefone, e.email, l.mensagem_gerada, l.score_oportunidade, l.status, l.status_em, l.observacao,
+                   e.telefone, e.email, e.instagram, l.mensagem_gerada, l.score_oportunidade, l.status, l.status_em, l.observacao,
                    COALESCE((SELECT SUM(v.valor_centavos) FROM vendas v WHERE v.lead_id = l.id AND v.status = 'pago'), 0) AS vendido_centavos
             FROM leads l JOIN empresas e ON e.id = l.empresa_id
             WHERE l.status = ?

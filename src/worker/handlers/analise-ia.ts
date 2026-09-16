@@ -35,9 +35,12 @@ export async function processarAnaliseIA(banco: Client, payload: PayloadAnalise)
       : // `LEFT JOIN … IS NULL`: só quem ainda não tem análise. Sem isso,
         // cada execução reanalisaria as mesmas empresas e queimaria a cota
         // do free tier sem produzir nada novo.
+        // `analisado_em IS NULL` e não `l.id IS NULL`: abrir o WhatsApp de
+        // uma empresa cria o lead (etapa "contatado") antes da análise, e
+        // essa empresa ficava para sempre sem mensagem.
         `SELECT e.* FROM empresas e
          LEFT JOIN leads l ON l.empresa_id = e.id
-         WHERE l.id IS NULL
+         WHERE l.analisado_em IS NULL
          ORDER BY e.criado_em DESC
          LIMIT ?`,
     args: [limite],
@@ -96,8 +99,20 @@ export async function processarAnaliseIA(banco: Client, payload: PayloadAnalise)
       }
 
       // Falha de uma empresa só não derruba o lote. Registrar e seguir é
-      // melhor do que perder as dezenove que teriam dado certo.
-      falhas.push(`${empresa.nome}: ${erro instanceof Error ? erro.message : String(erro)}`);
+      // melhor do que perder as dezenove que teriam dado certo. E fica
+      // registrada NA empresa (lead sem score, com o motivo): sem isso a
+      // mesma empresa voltava a cada rodada e travava a fila.
+      const motivo = erro instanceof Error ? erro.message : String(erro);
+      falhas.push(`${empresa.nome}: ${motivo}`);
+      await banco.execute({
+        sql: `INSERT INTO leads (id, empresa_id, motivo_problema, analisado_em)
+              VALUES (?, ?, ?, ?)
+              ON CONFLICT(empresa_id) DO UPDATE SET
+                motivo_problema = excluded.motivo_problema,
+                analisado_em = excluded.analisado_em,
+                atualizado_em = excluded.analisado_em`,
+        args: [novoId(), empresa.id, `A análise falhou: ${motivo.slice(0, 200)}`, agora()],
+      });
     }
   }
 
@@ -120,7 +135,7 @@ export async function contarPendentes(banco: Client): Promise<number> {
   const { rows } = await banco.execute(
     `SELECT COUNT(*) AS n FROM empresas e
      LEFT JOIN leads l ON l.empresa_id = e.id
-     WHERE l.id IS NULL`,
+     WHERE l.analisado_em IS NULL`,
   );
   return Number(rows[0]?.n ?? 0);
 }

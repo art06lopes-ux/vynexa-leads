@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AtSign, BadgeCheck, MessageCircle, Sparkles } from "lucide-react";
+import { AtSign, BadgeCheck, Camera, MessageCircle, Sparkles } from "lucide-react";
 
 import { ObservacaoLead } from "@/app/(painel)/funil/observacao";
 import { BadgeScore } from "@/components/leads/acao-lead";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { funilPorSegmento, listarFunil, resumoFunil, type CartaoFunil } from "@/db/funil";
 import type { StatusLead } from "@/db/tipos";
 import { CLASSE_ETAPA, ETAPAS, ROTULO_ETAPA, haQuantoTempo } from "@/lib/leads/etapas";
+import { linkInstagram } from "@/lib/leads/redes";
 import { montarLinkWhatsApp } from "@/lib/leads/whatsapp";
 import { rotuloDoSegmento } from "@/lib/osm/segmentos";
 import { formatarDinheiro } from "@/lib/pagamento/dinheiro";
@@ -187,6 +188,18 @@ function Cartao({ c }: { c: CartaoFunil }) {
             <AtSign className="size-4" aria-hidden="true" />
             <span className="sr-only">E-mail de {c.nome}</span>
           </LinkContato>
+        )}
+        {linkInstagram(c.instagram) && (
+          <a
+            href={linkInstagram(c.instagram)!}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Instagram"
+            className="inline-flex size-9 items-center justify-center rounded-md text-pink-300 hover:bg-pink-400/10"
+          >
+            <Camera className="size-4" aria-hidden="true" />
+            <span className="sr-only">Instagram de {c.nome}</span>
+          </a>
         )}
         {c.mensagem_gerada && (
           <span title="Mensagem da IA pronta" className="inline-flex size-9 items-center justify-center text-muted-foreground">

@@ -50,7 +50,7 @@ export async function processarEnriquecimento(banco: Client, payload: PayloadEnr
   const { rows } = await banco.execute({
     sql: `SELECT id, website FROM empresas
           WHERE website IS NOT NULL AND website <> ''
-            AND (email IS NULL OR email = '')
+            AND (email IS NULL OR email = '' OR instagram IS NULL)
             AND site_verificado_em IS NULL
             AND status_site = 'tem_site'
           ORDER BY criado_em DESC LIMIT ?`,
@@ -66,19 +66,21 @@ export async function processarEnriquecimento(banco: Client, payload: PayloadEnr
     const site = String(r.website);
     visitados += 1;
 
-    const email = await procurarEmail(site).catch(() => null);
+    const achado = await procurarNoSite(site).catch(() => ({ email: null, instagram: null, facebook: null }));
 
     await banco.execute({
       sql: `UPDATE empresas
-            SET email = COALESCE(?, email),
-                email_origem = CASE WHEN ? IS NOT NULL THEN 'site' ELSE email_origem END,
+            SET email = COALESCE(email, ?),
+                email_origem = CASE WHEN email IS NULL AND ? IS NOT NULL THEN 'site' ELSE email_origem END,
+                instagram = COALESCE(instagram, ?),
+                facebook = COALESCE(facebook, ?),
                 site_verificado_em = ?,
                 atualizado_em = ?
             WHERE id = ?`,
-      args: [email, email, agora(), agora(), id],
+      args: [achado.email, achado.email, achado.instagram, achado.facebook, agora(), agora(), id],
     });
 
-    if (email) achados += 1;
+    if (achado.email) achados += 1;
   }
 
   // Segunda passada: empresas da Receita cujo e-mail está num domínio
@@ -88,7 +90,7 @@ export async function processarEnriquecimento(banco: Client, payload: PayloadEnr
 
   const { rows: restantes } = await banco.execute(
     `SELECT COUNT(*) AS n FROM empresas
-     WHERE website IS NOT NULL AND website <> '' AND (email IS NULL OR email = '')
+     WHERE website IS NOT NULL AND website <> '' AND (email IS NULL OR email = '' OR instagram IS NULL)
        AND site_verificado_em IS NULL AND status_site = 'tem_site'`,
   );
   const faltam = Number(restantes[0]?.n ?? 0);
@@ -262,27 +264,53 @@ function extrairEmails(html: string, dominio: string | null): string[] {
   });
 }
 
-async function procurarEmail(site: string): Promise<string | null> {
+type AchadoNoSite = { email: string | null; instagram: string | null; facebook: string | null };
+
+/**
+ * Perfis de rede social linkados no site da própria empresa.
+ *
+ * É a única forma permitida de chegar ao Instagram: o link que a
+ * empresa colocou na sua página. A ferramenta não visita o Instagram
+ * nem o Facebook — só guarda o endereço do perfil.
+ */
+function extrairRedes(html: string): { instagram: string | null; facebook: string | null } {
+  const insta = html.match(/https?:\/\/(?:www\.)?instagram\.com\/([A-Za-z0-9_.]{2,30})\/?["'?#\s<]/i);
+  const face = html.match(/https?:\/\/(?:www\.|m\.)?facebook\.com\/([A-Za-z0-9_.\-]{3,60})\/?["'?#\s<]/i);
+  const IGNORAR_INSTA = new Set(["p", "explore", "accounts", "reel", "reels", "stories", "share", "developer"]);
+  const IGNORAR_FACE = new Set(["sharer", "share", "sharer.php", "dialog", "plugins", "login", "tr", "policies", "help"]);
+  const i = insta?.[1] && !IGNORAR_INSTA.has(insta[1].toLowerCase()) ? `https://instagram.com/${insta[1]}` : null;
+  const f = face?.[1] && !IGNORAR_FACE.has(face[1].toLowerCase()) ? `https://facebook.com/${face[1]}` : null;
+  return { instagram: i, facebook: f };
+}
+
+async function procurarNoSite(site: string): Promise<AchadoNoSite> {
+  const nada: AchadoNoSite = { email: null, instagram: null, facebook: null };
   const base = normalizarUrl(site);
-  if (!base) return null;
-  if (!(await robotsPermite(base))) return null;
+  if (!base) return nada;
+  if (!(await robotsPermite(base))) return nada;
 
   const dominio = extrairDominio(site);
   const home = await baixar(base);
-  if (!home) return null;
+  if (!home) return nada;
 
+  const redes = extrairRedes(home);
   const naHome = extrairEmails(home, dominio);
-  if (naHome.length > 0) return naHome[0]!;
+  if (naHome.length > 0) return { email: naHome[0]!, ...redes };
 
   // Uma página de contato, se a home linkar para ela. Só uma.
   const link = home.match(/href=["']([^"']*(contato|contact|fale-conosco|kontakt|contacto)[^"']*)["']/i)?.[1];
-  if (!link) return null;
+  if (!link) return { email: null, ...redes };
 
   try {
     const contato = await baixar(new URL(link, base));
-    if (!contato) return null;
-    return extrairEmails(contato, dominio)[0] ?? null;
+    if (!contato) return { email: null, ...redes };
+    const redesContato = extrairRedes(contato);
+    return {
+      email: extrairEmails(contato, dominio)[0] ?? null,
+      instagram: redes.instagram ?? redesContato.instagram,
+      facebook: redes.facebook ?? redesContato.facebook,
+    };
   } catch {
-    return null;
+    return { email: null, ...redes };
   }
 }

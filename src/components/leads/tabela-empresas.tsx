@@ -1,4 +1,4 @@
-import { AtSign, ExternalLink, Landmark, MapPin, MessageCircle, Phone, PhoneOff } from "lucide-react";
+import { AtSign, Camera, ExternalLink, Landmark, MapPin, MessageCircle, Phone, PhoneOff } from "lucide-react";
 
 import { AcaoLead, BadgeScore } from "@/components/leads/acao-lead";
 import { BadgeStatusSite } from "@/components/leads/badge-status-site";
@@ -7,6 +7,7 @@ import { nomeDoPais } from "@/lib/geo/paises";
 import { LinkContato } from "@/components/leads/link-contato";
 import { CaixaSelecao } from "@/components/leads/selecao-campanha";
 import { SeletorEtapa } from "@/components/leads/seletor-etapa";
+import { linkInstagram } from "@/lib/leads/redes";
 import { formatarTelefone, montarLinkWhatsApp } from "@/lib/leads/whatsapp";
 import { rotuloDoSegmento } from "@/lib/osm/segmentos";
 
@@ -185,6 +186,19 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
 
                       <AcaoLead empresa={e} />
 
+                      {linkInstagram(e.instagram) && (
+                        <a
+                          href={linkInstagram(e.instagram)!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={`Instagram · ${e.instagram}`}
+                          className="flex size-11 cursor-pointer items-center justify-center rounded-md text-pink-300 transition-colors duration-200 hover:bg-pink-400/10"
+                        >
+                          <Camera className="size-4" aria-hidden="true" />
+                          <span className="sr-only">Instagram de {e.nome}</span>
+                        </a>
+                      )}
+
                       {e.website && (
                         <a
                           href={e.website}
@@ -276,6 +290,18 @@ export function TabelaEmpresas({ empresas }: { empresas: EmpresaListada[] }) {
                   </span>
                 )}
                 <AcaoLead empresa={e} />
+
+                {linkInstagram(e.instagram) && (
+                  <a
+                    href={linkInstagram(e.instagram)!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-11 cursor-pointer items-center gap-1.5 rounded-md px-2 text-xs text-pink-300"
+                  >
+                    <Camera className="size-3.5" aria-hidden="true" />
+                    Instagram
+                  </a>
+                )}
 
                 {e.website && (
                   <a

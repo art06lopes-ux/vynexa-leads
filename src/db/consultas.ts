@@ -314,7 +314,7 @@ export async function contarSemAnalise(): Promise<number> {
   const { rows } = await getBanco().execute(
     `SELECT COUNT(*) AS n FROM empresas e
      LEFT JOIN leads l ON l.empresa_id = e.id
-     WHERE l.id IS NULL`,
+     WHERE l.analisado_em IS NULL`,
   );
   return Number(rows[0]?.n ?? 0);
 }

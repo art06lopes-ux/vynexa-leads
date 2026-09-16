@@ -27,6 +27,10 @@ on:
         description: "Pasta da Receita (ex.: 2026-09). Vazio usa a mais recente."
         required: false
         default: ""
+      rodada:
+        description: "Contador interno das continuações. Deixe 1."
+        required: false
+        default: "1"
 
 concurrency:
   group: receita
@@ -34,6 +38,8 @@ concurrency:
 
 permissions:
   contents: read
+  # Para a rodada disparar a seguinte quando o tempo acaba antes da base.
+  actions: write
 
 jobs:
   importar:
@@ -50,9 +56,25 @@ jobs:
 
       - run: npm ci
 
-      - run: npm run receita
+      - id: importar
+        run: npm run receita
         env:
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
           RECEITA_UFS: ${{ inputs.ufs }}
           RECEITA_REFERENCIA: ${{ inputs.referencia }}
+
+      # O Turso gratuito grava ~15 mil linhas por minuto; a base inteira
+      # não cabe numa rodada. Quando o importador parou por tempo, dispara
+      # a próxima com a mesma referência. Teto de 8 rodadas: se não fechou
+      # em 8, algo está errado e é melhor parar do que rodar para sempre.
+      - if: steps.importar.outputs.continuar == 'true' && (inputs.rodada || '1') < 8
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          proxima=$(( ${{ inputs.rodada || '1' }} + 1 ))
+          gh workflow run receita.yml --ref main \
+            -f ufs="${{ inputs.ufs }}" \
+            -f referencia="${{ steps.importar.outputs.referencia }}" \
+            -f rodada="$proxima"
+          echo "Rodada $proxima disparada."

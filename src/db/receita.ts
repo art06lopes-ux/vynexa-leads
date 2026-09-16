@@ -7,7 +7,7 @@ export type ImportacaoReceita = {
   referencia: string;
   uf: string;
   linhas: number;
-  status: "em_andamento" | "concluida" | "erro";
+  status: "em_andamento" | "parcial" | "concluida" | "erro";
   erro: string | null;
   iniciado_em: string;
   concluido_em: string | null;

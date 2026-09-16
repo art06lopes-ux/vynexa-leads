@@ -124,6 +124,13 @@ const TODAS_UFS = [
  */
 const LOTE = 1_000;
 const EM_VOO = 4;
+
+/**
+ * Orçamento de tempo da rodada. O Actions corta em 180 min; parar antes,
+ * de forma limpa, é o que permite marcar "parcial" e disparar a próxima
+ * rodada em vez de morrer no meio de um lote.
+ */
+const ORCAMENTO_MS = (Number(process.env.RECEITA_ORCAMENTO_MIN) || 160) * 60_000;
 const REGEX_EMAIL = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
 
 type Linha = {
@@ -149,6 +156,7 @@ type Linha = {
 };
 
 async function main() {
+  const inicioRodada = Date.now();
   const banco = getBanco();
   const pasta = process.env.RECEITA_PASTA_LOCAL?.trim() || join(tmpdir(), "vynexa-receita");
   const usarLocal = Boolean(process.env.RECEITA_PASTA_LOCAL?.trim());
@@ -256,8 +264,10 @@ async function main() {
       ufs.map((u) => [u, { novas: 0, alteradas: 0, iguais: 0 }]),
     );
     let semNome = 0;
+    let interrompida = false;
 
     for (const nome of ARQUIVOS_ESTAB) {
+      if (interrompida) break;
       const caminho = await obterArquivo(pasta, pastaRemota, nome, usarLocal);
       if (!caminho) continue;
       const inicio = Date.now();
@@ -266,6 +276,10 @@ async function main() {
       let gravadas = 0;
 
       for await (const linha of linhasDoZip(caminho)) {
+        if (Date.now() - inicioRodada > ORCAMENTO_MS) {
+          interrompida = true;
+          break;
+        }
         const campos = separar(linha);
         if (campos.length !== 30 || campos[C.situacao] !== SITUACAO_ATIVA) continue;
         if (!CNAES.has(campos[C.cnae]!) || !quer.has(campos[C.uf]!)) continue;
@@ -306,10 +320,30 @@ async function main() {
       if (lote.length > 0) emVoo.push(gravarLote(banco, lote, referencia));
       await Promise.all(emVoo);
 
-      console.log(`  ${nome}: ${gravadas.toLocaleString("pt-BR")} gravadas (${Math.round((Date.now() - inicio) / 1000)}s)`);
-      if (!usarLocal) await rm(caminho, { force: true });
+      console.log(
+        `  ${nome}: ${gravadas.toLocaleString("pt-BR")} gravadas (${Math.round((Date.now() - inicio) / 1000)}s)${interrompida ? " — orçamento de tempo esgotado" : ""}`,
+      );
+      if (!usarLocal && !interrompida) await rm(caminho, { force: true });
     }
     if (semNome > 0) console.log(`${semNome.toLocaleString("pt-BR")} sem nome em nenhuma das fontes, descartadas.`);
+
+    if (interrompida) {
+      // Rodada parcial: o que entrou fica (tem hash); a próxima rodada
+      // pula tudo isso em segundos e continua de onde parou. Quem saiu da
+      // base só é apagado numa rodada completa — aqui o mapa ainda tem
+      // gente que simplesmente não foi lida.
+      for (const uf of ufs) {
+        const c = contagem.get(uf)!;
+        await banco.execute({
+          sql: `UPDATE receita_importacoes SET status = 'parcial', linhas = ?, concluido_em = ? WHERE id = ?`,
+          args: [c.novas + c.alteradas + c.iguais, agora(), importacoes.get(uf)!],
+        });
+      }
+      const total = [...contagem.values()].reduce((s, c) => s + c.novas + c.alteradas, 0);
+      console.log(`Rodada parcial: ${total.toLocaleString("pt-BR")} gravadas. Continua na próxima rodada.`);
+      await sinalizarContinuacao(referencia);
+      return;
+    }
 
     // ---- Quem saiu -------------------------------------------------------
     // O que ficou no mapa não apareceu nesta referência: baixou, mudou
@@ -363,6 +397,18 @@ async function main() {
     }
     throw erro;
   }
+}
+
+/**
+ * Avisa o fluxo do Actions que falta rodada. O passo seguinte do
+ * workflow lê `continuar` e dispara o mesmo fluxo de novo, com a mesma
+ * referência — para a continuação não misturar meses.
+ */
+async function sinalizarContinuacao(referencia: string): Promise<void> {
+  const saida = process.env.GITHUB_OUTPUT;
+  if (!saida) return;
+  const { appendFile } = await import("node:fs/promises");
+  await appendFile(saida, `continuar=true\nreferencia=${referencia}\n`);
 }
 
 /** Lista vazia em Ajustes significa o Brasil inteiro. */

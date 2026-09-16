@@ -8,6 +8,7 @@ const ACTIONS = "https://github.com/art06lopes-ux/vynexa-leads/actions/workflows
 
 const STATUS = {
   em_andamento: { rotulo: "importando", classe: "text-amber-300" },
+  parcial: { rotulo: "parcial — continua na próxima rodada", classe: "text-amber-300" },
   concluida: { rotulo: "concluída", classe: "text-emerald-300" },
   erro: { rotulo: "falhou", classe: "text-destructive" },
 } as const;
@@ -96,7 +97,7 @@ export function CardReceita({ resumo, ufs }: { resumo: ResumoReceita; ufs: strin
                   <span className="num w-20 text-muted-foreground">{i.referencia}</span>
                   <span className="font-medium">{i.uf}</span>
                   <span className={st.classe}>{st.rotulo}</span>
-                  {i.status === "concluida" && (
+                  {(i.status === "concluida" || i.status === "parcial") && (
                     <span className="num text-muted-foreground">
                       {i.linhas.toLocaleString("pt-BR")} linhas
                     </span>

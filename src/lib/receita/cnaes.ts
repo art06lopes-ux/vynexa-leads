@@ -39,11 +39,56 @@ export const CNAES_POR_SEGMENTO: Record<string, readonly string[]> = {
   floricultura: ["4789002"],
   informatica_celular: ["4751201", "4752100", "9511800", "9512600"],
   fotografia_eventos: ["7420001", "7420004", "5620102", "8230001"],
+  escolas: ["8511200", "8512100", "8513900", "8520100", "8599601"],
+  seguranca: ["8011101", "8020000", "8020001", "8020002"],
+  seguros_viagens: ["6622300", "7911200", "7912100"],
+  assistencia_tecnica: ["9521500", "9529102", "9529101", "9529199"],
+  materiais_construcao: ["4744099", "4741500", "4743100", "4744002", "4744005", "4744001"],
+  marcenaria_serralheria: ["3101200", "2542000"],
+  grafica: ["1813001", "1811301", "1812100"],
+  lojas_especializadas: ["4763601", "4763602", "4763603", "4756300", "4761001", "4761003", "4753900", "4783101", "4783102", "4772500"],
+  padaria_doceria: ["4721102", "4721104", "4723700", "1113502"],
+  saude_complementar: ["8640202", "8711501", "8712300", "8690901", "8690903", "8690904", "8690999"],
+  consultoria: ["7020400"],
   plumbing: ["4322301", "4322302"],
   // A Receita não tem "telhadista": cobertura entra em acabamento e
   // impermeabilização. É o mais próximo sem arrastar construtora inteira.
   roofing: ["4330401", "4330499", "4399103"],
 };
+
+/**
+ * Segmentos cujos CNAEs só entram na base a partir de uma referência.
+ *
+ * O plano gratuito do Turso permite 10 milhões de linhas escritas por
+ * mês, e a primeira carga de setembro de 2026 já consome quase tudo.
+ * Estes segmentos existem desde já para o OpenStreetMap (que não escreve
+ * nada em massa) e passam a vir da Receita na importação de outubro —
+ * quando a cota renova e só o que mudou é reescrito.
+ */
+export const CNAES_A_PARTIR_DE: Record<string, string> = {
+  escolas: "2026-10",
+  seguranca: "2026-10",
+  seguros_viagens: "2026-10",
+  assistencia_tecnica: "2026-10",
+  materiais_construcao: "2026-10",
+  marcenaria_serralheria: "2026-10",
+  grafica: "2026-10",
+  lojas_especializadas: "2026-10",
+  padaria_doceria: "2026-10",
+  saude_complementar: "2026-10",
+  consultoria: "2026-10",
+};
+
+/** CNAEs que a importação de uma referência (AAAA-MM) deve gravar. */
+export function cnaesParaImportar(referencia: string): Set<string> {
+  const conjunto = new Set<string>();
+  for (const [slug, codigos] of Object.entries(CNAES_POR_SEGMENTO)) {
+    const desde = CNAES_A_PARTIR_DE[slug];
+    if (desde && referencia < desde) continue;
+    for (const c of codigos) conjunto.add(c);
+  }
+  return conjunto;
+}
 
 /** Lista de CNAEs de um segmento; vazia para segmentos avulsos do OSM. */
 export function cnaesDoSegmento(slug: string): readonly string[] {

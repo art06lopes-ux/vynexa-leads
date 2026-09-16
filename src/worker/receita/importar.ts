@@ -35,7 +35,7 @@ import { createInterface } from "node:readline";
 import type { Client } from "@libsql/client";
 
 import { agora, getBanco, novoId } from "@/db/cliente";
-import { CNAES_POR_SEGMENTO } from "@/lib/receita/cnaes";
+import { cnaesParaImportar } from "@/lib/receita/cnaes";
 import { chaveDeMunicipio, limparRazaoSocial } from "@/lib/receita/texto";
 
 type Origem = {
@@ -107,7 +107,7 @@ const SITUACAO_ATIVA = "02";
  * inteiro caber no plano gratuito do Turso: dos ~22 milhões de
  * estabelecimentos ativos, os segmentos mapeados são uma fração.
  */
-const CNAES = new Set(Object.values(CNAES_POR_SEGMENTO).flat());
+let CNAES = new Set<string>();
 
 const TODAS_UFS = [
   "AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE",
@@ -165,7 +165,8 @@ async function main() {
   const ufs = await resolverUfs(banco);
 
   const { referencia, pastas: pastasRemotas, origem } = await escolherPasta(process.env.RECEITA_REFERENCIA?.trim() || null);
-  console.log(`Referência ${referencia} · origem: ${origem} · estados: ${ufs.join(", ")}`);
+  CNAES = cnaesParaImportar(referencia);
+  console.log(`Referência ${referencia} · origem: ${origem} · estados: ${ufs.join(", ")} · ${CNAES.size} CNAEs`);
   const pastaRemota = pastasRemotas;
 
   // Registrado já no início: se a rodada morrer no meio, Ajustes ainda

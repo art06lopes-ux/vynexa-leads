@@ -99,7 +99,8 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
     const { elementos } = await buscarEstabelecimentos(
       [segmento],
       bbox,
-      todas ? TETO_ABSOLUTO : Math.max(alvo * 4, 200),
+      // Pede bem mais que o alvo: parte vai cair no dedup.
+      todas ? TETO_ABSOLUTO : Math.max(alvo * 6, 300),
     );
 
     const ganho = elementos.length - melhor.length;
@@ -122,12 +123,18 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
     if (km > 0 && ganho < GANHO_MINIMO) break;
   }
 
-  const recorte = todas ? melhor : melhor.slice(0, alvo);
+  // O teto vale para empresas NOVAS. Repetir "Portugal, 100" depois de
+  // "Portugal, 50" traz 100 que ainda não estavam na carteira — e não as
+  // mesmas 50 mais 50, como acontecia quando o corte vinha antes do
+  // dedup. As já conhecidas não contam nem como "encontradas": o
+  // operador quer saber o que ganhou, não o que a Overpass repetiu.
   const conhecidos = await osmIdsConhecidos(
     banco,
-    recorte.map((e) => e.osmId),
+    melhor.map((e) => e.osmId),
   );
-  const novos = recorte.filter((e) => !conhecidos.has(e.osmId));
+  const ineditas = melhor.filter((e) => !conhecidos.has(e.osmId));
+  const novos = todas ? ineditas : ineditas.slice(0, alvo);
+  const recorte = novos;
 
   if (novos.length > 0) {
     await inserirEmpresas(banco, busca, novos);

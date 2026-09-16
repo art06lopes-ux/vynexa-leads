@@ -69,10 +69,12 @@ jobs:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           SEGREDO_SESSAO: ${{ secrets.SEGREDO_SESSAO }}
 
-      # Relança sempre — também quando o plantão morreu com erro, senão a
+      # Relança quando o plantão terminou ou morreu com erro — senão a
       # corrente quebra numa queda de rede e só o cron (horas depois) a
-      # retoma.
-      - if: always()
+      # retoma. NÃO quando foi cancelado: cancelado significa que um
+      # plantão mais novo já tomou o lugar, e relançar daqui derrubaria
+      # justamente ele.
+      - if: ${{ !cancelled() }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run worker.yml --ref main -f motivo="relançamento automático"

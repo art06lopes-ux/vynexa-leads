@@ -35,8 +35,12 @@ export type EnvioListado = {
  * passou pela análise) ganha um lead vazio: a geração do e-mail funciona
  * sem o diagnóstico, só fica menos específica.
  *
- * Tudo numa transação: campanha sem envios, ou envios sem campanha,
- * seria lixo no banco.
+ * Tudo num `batch` atômico: campanha sem envios, ou envios sem campanha,
+ * seria lixo no banco. E num batch, não numa transação interativa: cada
+ * `execute` dentro da transação é uma ida ao Turso (~0,8 s da Vercel),
+ * e com três por lead a criação de uma campanha de 20 empresas passava
+ * dos 10 segundos que a Vercel permite — a tela ficava "carregando" e a
+ * campanha não nascia. O batch é uma ida só.
  */
 export async function criarCampanha(entrada: {
   nome: string;
@@ -57,47 +61,45 @@ export async function criarCampanha(entrada: {
   const comEmail = rows.filter((r) => r.email && String(r.email).trim() !== "");
   const id = novoId();
 
-  const tx = await banco.transaction("write");
-  try {
-    await tx.execute({
+  const statements: Array<{ sql: string; args: (string | number | null)[] }> = [
+    {
       sql: `INSERT INTO campanhas (id, nome, descricao, status, total_leads) VALUES (?, ?, ?, 'rascunho', ?)`,
       args: [id, entrada.nome, entrada.descricao ?? null, comEmail.length],
-    });
+    },
+  ];
 
-    for (const r of comEmail) {
-      let leadId = r.lead_id ? String(r.lead_id) : null;
+  for (const r of comEmail) {
+    let leadId = r.lead_id ? String(r.lead_id) : null;
 
-      if (!leadId) {
-        leadId = novoId();
-        await tx.execute({
-          sql: `INSERT INTO leads (id, empresa_id) VALUES (?, ?)`,
-          args: [leadId, String(r.empresa_id)],
-        });
-      }
+    if (!leadId) {
+      leadId = novoId();
+      statements.push({
+        sql: `INSERT INTO leads (id, empresa_id) VALUES (?, ?)`,
+        args: [leadId, String(r.empresa_id)],
+      });
+    }
 
-      await tx.execute({
+    statements.push(
+      {
         sql: `INSERT INTO campanha_leads (campanha_id, lead_id) VALUES (?, ?)`,
         args: [id, leadId],
-      });
-      await tx.execute({
+      },
+      {
         sql: `INSERT INTO envios (id, campanha_id, lead_id, canal, status) VALUES (?, ?, ?, 'email', 'pendente')`,
         args: [novoId(), id, leadId],
-      });
-    }
-
-    // O primeiro job: gerar os e-mails. O resto encadeia sozinho.
-    if (comEmail.length > 0) {
-      await tx.execute({
-        sql: `INSERT INTO jobs (id, tipo, payload, status) VALUES (?, 'gerar_emails', ?, 'pendente')`,
-        args: [novoId(), JSON.stringify({ campanhaId: id })],
-      });
-    }
-
-    await tx.commit();
-  } catch (erro) {
-    await tx.rollback();
-    throw erro;
+      },
+    );
   }
+
+  // O primeiro job: gerar os e-mails. O resto encadeia sozinho.
+  if (comEmail.length > 0) {
+    statements.push({
+      sql: `INSERT INTO jobs (id, tipo, payload, status) VALUES (?, 'gerar_emails', ?, 'pendente')`,
+      args: [novoId(), JSON.stringify({ campanhaId: id })],
+    });
+  }
+
+  await banco.batch(statements, "write");
 
   return { id, incluidas: comEmail.length, semEmail: rows.length - comEmail.length };
 }

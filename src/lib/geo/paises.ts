@@ -14,14 +14,14 @@ export type Pais = {
   /** ISO 3166-1 alpha-2, maiúsculo. */
   codigo: string;
   nome: string;
-  idioma: "pt-BR" | "en" | "es" | "fr" | "de";
+  idioma: "pt-BR" | "pt-PT" | "en" | "es" | "fr" | "de";
   /** Código de discagem internacional, sem o "+". */
   ddi: string;
 };
 
 export const PAISES: readonly Pais[] = [
   { codigo: "BR", nome: "Brasil", idioma: "pt-BR", ddi: "55" },
-  { codigo: "PT", nome: "Portugal", idioma: "pt-BR", ddi: "351" },
+  { codigo: "PT", nome: "Portugal", idioma: "pt-PT", ddi: "351" },
 
   { codigo: "US", nome: "Estados Unidos", idioma: "en", ddi: "1" },
   { codigo: "CA", nome: "Canadá", idioma: "en", ddi: "1" },

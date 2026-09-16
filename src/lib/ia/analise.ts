@@ -42,6 +42,7 @@ export const ESQUEMA_ANALISE: EsquemaResposta = {
 
 const IDIOMAS: Record<string, string> = {
   "pt-BR": "português do Brasil",
+  "pt-PT": "português de Portugal — grafia e vocabulário europeus (equipa, telemóvel, website), tratamento formal",
   en: "inglês",
   es: "espanhol",
   fr: "francês",

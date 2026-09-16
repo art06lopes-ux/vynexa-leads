@@ -17,6 +17,7 @@ export const ESQUEMA_EMAIL: EsquemaResposta = {
 
 const IDIOMAS: Record<string, string> = {
   "pt-BR": "português do Brasil",
+  "pt-PT": "português de Portugal — grafia e vocabulário europeus (equipa, telemóvel, website), tratamento formal",
   en: "inglês",
   es: "espanhol",
   fr: "francês",
@@ -37,7 +38,7 @@ export function montarInstrucaoEmail(
   motivo: string | null,
 ): string {
   const idioma = IDIOMAS[empresa.idioma_abordagem] ?? "inglês";
-  const segmento = rotuloDoSegmento(empresa.categoria, empresa.idioma_abordagem !== "pt-BR");
+  const segmento = rotuloDoSegmento(empresa.categoria, !empresa.idioma_abordagem.startsWith("pt"));
 
   const dados = [
     `Nome da empresa: ${empresa.nome}`,

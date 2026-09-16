@@ -28,12 +28,14 @@ on:
         required: false
         default: ""
 
-# Uma execução por vez. O plantão anterior termina ANTES de disparar o
-# seguinte, e um cron que chegue no meio fica esperando (e é substituído
-# pelo próximo pendente) — nunca dois plantões juntos.
+# Uma execução por vez, e a mais nova ganha: um push com código novo
+# derruba o plantão que está rodando e começa outro na hora — é o que
+# faz uma correção valer em um minuto em vez de em duas horas. Cortar um
+# plantão no meio não perde nada: o job em andamento volta à fila quando
+# o lease vence (10 min) e as gravações são idempotentes.
 concurrency:
   group: worker
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   contents: read

@@ -45,3 +45,7 @@ next-env.d.ts
 
 local.db
 local.db-*
+
+# rascunhos de verificacao do assistente
+.tmp-*.ts
+.cookie-tmp.ts

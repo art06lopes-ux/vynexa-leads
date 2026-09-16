@@ -438,7 +438,18 @@ async function escolherPasta(
 
   for (const origem of [OFICIAL, ESPELHO]) {
     try {
-      for (const [ref, url] of await origem.listar()) disponiveis.push({ ref, url, origem: origem.nome });
+      // Três tentativas: a listagem já falhou por "Headers Timeout" uma vez
+      // e derrubou a corrente inteira por um soluço de rede.
+      let listagem: Array<[string, string]> | null = null;
+      for (let tentativa = 1; tentativa <= 3 && listagem === null; tentativa += 1) {
+        try {
+          listagem = await origem.listar();
+        } catch (erro) {
+          if (tentativa === 3) throw erro;
+          await new Promise((r) => setTimeout(r, 15_000));
+        }
+      }
+      for (const [ref, url] of listagem!) disponiveis.push({ ref, url, origem: origem.nome });
     } catch (erro) {
       const causa = erro instanceof Error && erro.cause instanceof Error ? ` (${erro.cause.message})` : "";
       falhas.push(`${origem.nome}: ${erro instanceof Error ? erro.message : String(erro)}${causa}`);

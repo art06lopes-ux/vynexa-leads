@@ -65,16 +65,17 @@ jobs:
           RECEITA_REFERENCIA: ${{ inputs.referencia }}
 
       # O Turso gratuito grava ~15 mil linhas por minuto; a base inteira
-      # não cabe numa rodada. Quando o importador parou por tempo, dispara
-      # a próxima com a mesma referência. Teto de 8 rodadas: se não fechou
-      # em 8, algo está errado e é melhor parar do que rodar para sempre.
-      - if: steps.importar.outputs.continuar == 'true' && (inputs.rodada || '1') < 8
+      # não cabe numa rodada. Quando o importador parou por tempo — ou
+      # caiu por um soluço de rede — dispara a próxima com a mesma
+      # referência. Teto de 8 rodadas: se não fechou em 8, algo está
+      # errado e é melhor parar do que rodar para sempre.
+      - if: always() && (steps.importar.outputs.continuar == 'true' || steps.importar.outcome == 'failure') && (inputs.rodada || '1') < 8
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           proxima=$(( ${{ inputs.rodada || '1' }} + 1 ))
           gh workflow run receita.yml --ref main \
             -f ufs="${{ inputs.ufs }}" \
-            -f referencia="${{ steps.importar.outputs.referencia }}" \
+            -f referencia="${{ steps.importar.outputs.referencia || inputs.referencia }}" \
             -f rodada="$proxima"
           echo "Rodada $proxima disparada."

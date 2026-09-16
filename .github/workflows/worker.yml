@@ -3,14 +3,24 @@ name: worker
 # O trabalho pesado não cabe numa função serverless da Vercel: o plano
 # Hobby corta em 10 segundos e uma busca na Overpass leva de 5 a 60.
 #
-# Modelo de plantão: cada execução fica de pé por 5 h 40 olhando a fila a
-# cada 20 segundos e, ao terminar, dispara a próxima. O cron de 5 minutos
+# Modelo de plantão: cada execução fica de pé por ~2 h olhando a fila a
+# cada 20 segundos e, ao terminar, dispara a próxima. Duas horas e não
+# seis para uma mudança no código do worker entrar em no máximo 2 h. O cron de 5 minutos
 # continua só como reserva — o GitHub não o honra em repositório público
 # (virou "a cada 4 ou 5 horas" na prática), mas se a corrente quebrar ele
 # a recomeça. Minutos são ilimitados em repositório público.
 on:
   schedule:
     - cron: "*/5 * * * *"
+  # Mudou o worker: começa um plantão novo (o atual termina e não relança
+  # por cima — a concorrência abaixo garante um de cada vez).
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/worker.yml"
+      - "src/worker/**"
+      - "src/lib/**"
+      - "src/db/**"
   workflow_dispatch:
     inputs:
       motivo:
@@ -32,8 +42,8 @@ permissions:
 jobs:
   processar:
     runs-on: ubuntu-latest
-    # 6 h é o máximo de um job; o plantão para aos 5 h 40 por conta própria.
-    timeout-minutes: 358
+    # O plantão para aos 110 min por conta própria; o teto é folga.
+    timeout-minutes: 125
 
     steps:
       - uses: actions/checkout@v4
@@ -48,7 +58,7 @@ jobs:
       - id: plantao
         run: npm run worker
         env:
-          WORKER_DURACAO_MIN: "340"
+          WORKER_DURACAO_MIN: "110"
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
           OSM_CONTATO: ${{ secrets.OSM_CONTATO }}

@@ -74,6 +74,15 @@ async function main() {
     if (job === null) {
       if (PLANTAO_MIN === 0) break;
       await new Promise((r) => setTimeout(r, PAUSA_FILA_VAZIA_MS));
+      // No plantão a recuperação de lease precisa ser contínua: um push
+      // derruba o plantão anterior no meio de um job, e o job só volta à
+      // fila quando alguém olha o lease vencido — este alguém é o
+      // plantão novo, que pode ficar horas de pé.
+      await banco.execute({
+        sql: `UPDATE jobs SET status = 'pendente', atualizado_em = ?
+              WHERE status = 'em_andamento' AND (lease_ate IS NULL OR lease_ate < ?)`,
+        args: [agora(), agora()],
+      });
       continue;
     }
 

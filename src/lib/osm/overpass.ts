@@ -97,7 +97,10 @@ function classificarSegmento(
   return null;
 }
 
-function primeiraTag(tags: Record<string, string>, chaves: string[]): string | null {
+function primeiraTag(
+  tags: Record<string, string>,
+  chaves: string[],
+): string | null {
   for (const chave of chaves) {
     const valor = tags[chave]?.trim();
     if (valor) return valor;
@@ -113,8 +116,12 @@ function primeiraTag(tags: Record<string, string>, chaves: string[]): string | n
  * endereço" a mostrar uma vírgula solta.
  */
 function montarEndereco(tags: Record<string, string>): string | null {
-  const rua = [tags["addr:street"], tags["addr:housenumber"]].filter(Boolean).join(", ");
-  const partes = [rua, tags["addr:suburb"]].filter((p): p is string => Boolean(p && p.trim()));
+  const rua = [tags["addr:street"], tags["addr:housenumber"]]
+    .filter(Boolean)
+    .join(", ");
+  const partes = [rua, tags["addr:suburb"]].filter((p): p is string =>
+    Boolean(p && p.trim()),
+  );
   return partes.length > 0 ? partes.join(" - ") : null;
 }
 
@@ -128,7 +135,10 @@ function montarEndereco(tags: Record<string, string>): string | null {
  * Isto lê uma tag pública do OSM — não visita nem raspa a rede social,
  * o que violaria os termos de uso dela.
  */
-function normalizarRedeSocial(bruto: string | null, dominio: string): string | null {
+function normalizarRedeSocial(
+  bruto: string | null,
+  dominio: string,
+): string | null {
   if (!bruto) return null;
   const texto = bruto.trim();
   if (texto === "") return null;
@@ -173,7 +183,12 @@ export async function buscarEstabelecimentos(
     elementos.push({
       osmId,
       nome,
-      telefone: primeiraTag(tags, ["contact:phone", "phone", "contact:mobile", "mobile"]),
+      telefone: primeiraTag(tags, [
+        "contact:phone",
+        "phone",
+        "contact:mobile",
+        "mobile",
+      ]),
       email: primeiraTag(tags, ["contact:email", "email"]),
       endereco: montarEndereco(tags),
       cidade: primeiraTag(tags, ["addr:city", "addr:town"]),
@@ -199,41 +214,51 @@ export async function buscarEstabelecimentos(
 async function executar(consulta: string): Promise<RespostaOverpass> {
   let ultimoErro: unknown = null;
 
-  for (const espelho of ESPELHOS) {
-    try {
-      const resposta = await agendar(() =>
-        fetch(espelho, {
-          method: "POST",
-          headers: {
-            "User-Agent": getOsmUserAgent(),
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: new URLSearchParams({ data: consulta }),
-          // A Overpass entra em fila quando carregada; os 90s do
-          // `timeout:` da consulta pedem margem maior aqui.
-          signal: AbortSignal.timeout(120_000),
-        }),
-      );
-
-      if (resposta.status === 429 || resposta.status === 504) {
-        ultimoErro = new ErroOverpass(
-          "A Overpass está sobrecarregada no momento. O job será tentado de novo.",
+  // Duas voltas pelos espelhos, com pausa entre elas: "ocupada" na
+  // Overpass costuma durar segundos, não minutos, e devolver o job para
+  // a fila custava de 5 a 15 minutos de espera por um soluço.
+  for (let volta = 0; volta < 2; volta += 1) {
+    if (volta > 0) await new Promise((r) => setTimeout(r, 30_000));
+    for (const espelho of ESPELHOS) {
+      try {
+        const resposta = await agendar(() =>
+          fetch(espelho, {
+            method: "POST",
+            headers: {
+              "User-Agent": getOsmUserAgent(),
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({ data: consulta }),
+            // A Overpass entra em fila quando carregada; os 90s do
+            // `timeout:` da consulta pedem margem maior aqui.
+            signal: AbortSignal.timeout(120_000),
+          }),
         );
-        continue;
-      }
 
-      if (!resposta.ok) {
-        ultimoErro = new ErroOverpass(`A Overpass respondeu ${resposta.status}.`);
-        continue;
-      }
+        if (resposta.status === 429 || resposta.status === 504) {
+          ultimoErro = new ErroOverpass(
+            "A Overpass está sobrecarregada no momento. O job será tentado de novo.",
+          );
+          continue;
+        }
 
-      return (await resposta.json()) as RespostaOverpass;
-    } catch (erro) {
-      ultimoErro = erro;
+        if (!resposta.ok) {
+          ultimoErro = new ErroOverpass(
+            `A Overpass respondeu ${resposta.status}.`,
+          );
+          continue;
+        }
+
+        return (await resposta.json()) as RespostaOverpass;
+      } catch (erro) {
+        ultimoErro = erro;
+      }
     }
   }
 
   throw ultimoErro instanceof ErroOverpass
     ? ultimoErro
-    : new ErroOverpass("Não consegui falar com a Overpass API. O job será tentado de novo.");
+    : new ErroOverpass(
+        "Não consegui falar com a Overpass API. O job será tentado de novo.",
+      );
 }

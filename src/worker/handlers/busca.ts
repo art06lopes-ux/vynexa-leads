@@ -8,6 +8,7 @@ import { idiomaDoPais } from "@/lib/geo/paises";
 import { acharSegmento, type Segmento } from "@/lib/osm/segmentos";
 import { expandirBbox, raioAproximadoKm, resolverLugar, type Bbox } from "@/lib/osm/nominatim";
 import { buscarEstabelecimentos, type ElementoOsm } from "@/lib/osm/overpass";
+import { abreWhatsapp } from "@/lib/leads/whatsapp";
 import { complementarComReceita } from "@/worker/handlers/receita";
 
 /**
@@ -331,8 +332,8 @@ async function inserirEmpresas(banco: Client, busca: Busca, novos: ElementoOsm[]
     sql: `INSERT OR IGNORE INTO empresas (
             id, busca_id, fonte, osm_id, nome, pais, estado, cidade, endereco,
             latitude, longitude, telefone, telefone_origem, email, email_origem, website,
-            instagram, facebook, categoria, idioma_abordagem, status_site
-          ) VALUES (?,?,'osm',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            instagram, facebook, categoria, idioma_abordagem, status_site, whatsapp
+          ) VALUES (?,?,'osm',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     args: [
       novoId(),
       busca.id,
@@ -360,6 +361,7 @@ async function inserirEmpresas(banco: Client, busca: Busca, novos: ElementoOsm[]
       e.categoria,
       idioma,
       classificarStatusSite(e),
+      abreWhatsapp(e.telefone, busca.pais),
     ] as const,
   }));
 

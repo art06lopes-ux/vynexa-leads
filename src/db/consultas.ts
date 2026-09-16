@@ -4,7 +4,6 @@ import type { InValue } from "@libsql/client";
 
 import { agora, getBanco, novoId, plano, planos } from "@/db/cliente";
 import type { Busca, Contadores, Empresa, PayloadBusca, StatusLead } from "@/db/tipos";
-import { normalizarTelefone } from "@/lib/leads/whatsapp";
 
 /**
  * Consultas do app.
@@ -143,10 +142,11 @@ function montarWhere(f: Filtros): { clausula: string; args: InValue[] } {
     partes.push("l.score_oportunidade >= ?");
     args.push(f.scoreMin);
   }
-  if (f.canal) {
-    partes.push("l.canal_recomendado = ?");
-    args.push(f.canal);
-  }
+  // Canal pelos fatos, não pela IA: "WhatsApp" é celular discável,
+  // "E-mail" é ter e-mail. Antes vinha de `canal_recomendado`, que só
+  // existe depois da análise — empresa recém-caçada nunca aparecia.
+  if (f.canal === "whatsapp") partes.push("e.whatsapp = 1");
+  if (f.canal === "email") partes.push("e.email IS NOT NULL AND e.email <> ''");
   if (f.fonte) {
     partes.push("e.fonte = ?");
     args.push(f.fonte);
@@ -235,39 +235,26 @@ export async function listarEmpresasParaExportar(filtros: Filtros): Promise<Empr
  * Contadores do painel, em uma consulta só.
  *
  * Cinco `COUNT(*)` separados seriam cinco viagens ao Turso; agregações
- * condicionais resolvem numa varredura. `comWhatsapp` é aproximado no
- * SQL (tem telefone) e refinado em memória, porque a regra real de
- * número discável está em `normalizarTelefone` e não cabe em SQL.
+ * condicionais resolvem numa varredura. `comWhatsapp` lê a coluna
+ * `whatsapp`, calculada na gravação pela regra de `abreWhatsapp`.
  */
 export async function obterContadores(): Promise<Contadores> {
   const banco = getBanco();
 
-  const [{ rows }, { rows: telefones }] = await Promise.all([
+  const [{ rows }, { rows: altas }] = await Promise.all([
     banco.execute(`
       SELECT
         COUNT(*)                                                          AS total,
         SUM(CASE WHEN status_site IN ('sem_site','rede_social') THEN 1 ELSE 0 END) AS sem_site,
-        SUM(CASE WHEN email IS NOT NULL AND email <> ''         THEN 1 ELSE 0 END) AS com_email
+        SUM(CASE WHEN email IS NOT NULL AND email <> ''         THEN 1 ELSE 0 END) AS com_email,
+        SUM(CASE WHEN whatsapp = 1 THEN 1 ELSE 0 END)                      AS com_whatsapp
       FROM empresas
     `),
-    // `pais` junto: a validação de telefone depende dele. Sem o país, um
-    // número americano seria contado como WhatsApp brasileiro.
-    banco.execute(
-      `SELECT telefone, pais FROM empresas WHERE telefone IS NOT NULL AND telefone <> ''`,
-    ),
+    banco.execute(`SELECT COUNT(*) AS n FROM leads WHERE score_oportunidade >= 70`),
   ]);
 
-  const { rows: altas } = await banco.execute(
-    `SELECT COUNT(*) AS n FROM leads WHERE score_oportunidade >= 70`,
-  );
-
-  const comWhatsapp = telefones.reduce(
-    (soma, r) =>
-      soma + (normalizarTelefone(String(r.telefone), String(r.pais)) !== null ? 1 : 0),
-    0,
-  );
-
   const linha = rows[0];
+  const comWhatsapp = Number(linha?.com_whatsapp ?? 0);
   return {
     total: Number(linha?.total ?? 0),
     semSite: Number(linha?.sem_site ?? 0),

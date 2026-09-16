@@ -64,6 +64,17 @@ export function normalizarTelefone(
 }
 
 /**
+ * Abre WhatsApp? Número discável e, no Brasil, celular. É o que alimenta
+ * a coluna `empresas.whatsapp`, o filtro "Canal" e o contador do painel.
+ */
+export function abreWhatsapp(telefone: string | null | undefined, pais: string): 0 | 1 {
+  const n = normalizarTelefone(telefone, pais);
+  if (n === null) return 0;
+  if (pais.toUpperCase() === "BR" && !ehCelularBrasil(telefone)) return 0;
+  return 1;
+}
+
+/**
  * Celular brasileiro: depois do DDD, nove dígitos começando em 9 — ou
  * oito começando em 6 a 9 (número anterior ao nono dígito). Fixo começa
  * em 2 a 5. É o que decide se o número abre WhatsApp ou só chamada.

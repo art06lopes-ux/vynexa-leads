@@ -4,7 +4,7 @@ import { agora, novoId } from "@/db/cliente";
 import type { Busca } from "@/db/tipos";
 import { normalizarLocalidade } from "@/lib/geo/localidade";
 import { classificarStatusSite } from "@/lib/leads/classificacao";
-import { ehCelularBrasil } from "@/lib/leads/whatsapp";
+import { abreWhatsapp, ehCelularBrasil } from "@/lib/leads/whatsapp";
 import { cnaesDoSegmento } from "@/lib/receita/cnaes";
 import { caixaMista, chaveDeMunicipio, chaveDeNome, limparRazaoSocial } from "@/lib/receita/texto";
 import type { Segmento } from "@/lib/osm/segmentos";
@@ -149,7 +149,7 @@ export async function complementarComReceita(
     }
   }
 
-  const atualizacoes: Array<{ sql: string; args: (string | null)[] }> = [];
+  const atualizacoes: Array<{ sql: string; args: (string | number | null)[] }> = [];
   const novos: Estabelecimento[] = [];
 
   // Com teto, os melhores primeiro: celular (abre WhatsApp) e e-mail
@@ -180,12 +180,13 @@ export async function complementarComReceita(
                   fundada_em = COALESCE(fundada_em, ?),
                   telefone = COALESCE(telefone, ?),
                   telefone_origem = CASE WHEN telefone IS NULL AND ? IS NOT NULL THEN 'receita' ELSE telefone_origem END,
+                  whatsapp = CASE WHEN telefone IS NULL AND ? IS NOT NULL THEN ? ELSE whatsapp END,
                   email = COALESCE(email, ?),
                   email_origem = CASE WHEN email IS NULL AND ? IS NOT NULL THEN 'receita' ELSE email_origem END,
                   status_site = CASE WHEN status_site = 'sem_dado' AND (? IS NOT NULL OR ? IS NOT NULL) THEN 'sem_site' ELSE status_site END,
                   atualizado_em = ?
               WHERE id = ? AND cnpj IS NULL`,
-        args: [e.cnpj, e.cnae, e.inicio_atividade, telefone, telefone, email, email, telefone, email, agora(), existente.id],
+        args: [e.cnpj, e.cnae, e.inicio_atividade, telefone, telefone, telefone, abreWhatsapp(telefone, "BR"), email, email, telefone, email, agora(), existente.id],
       });
       continue;
     }
@@ -251,8 +252,8 @@ async function inserir(banco: Client, busca: Busca, segmento: Segmento, novos: E
       sql: `INSERT OR IGNORE INTO empresas (
               id, busca_id, fonte, osm_id, cnpj, nome, pais, estado, cidade, endereco,
               telefone, telefone_origem, email, email_origem,
-              categoria, cnae, fundada_em, idioma_abordagem, status_site
-            ) VALUES (?,?,'receita',NULL,?,?,'BR',?,?,?,?,?,?,?,?,?,?,'pt-BR',?)`,
+              categoria, cnae, fundada_em, idioma_abordagem, status_site, whatsapp
+            ) VALUES (?,?,'receita',NULL,?,?,'BR',?,?,?,?,?,?,?,?,?,?,'pt-BR',?,?)`,
       args: [
         novoId(),
         busca.id,
@@ -271,6 +272,7 @@ async function inserir(banco: Client, busca: Busca, segmento: Segmento, novos: E
         e.cnae,
         e.inicio_atividade,
         classificarStatusSite({ website: null, telefone, email: e.email }),
+        abreWhatsapp(telefone, "BR"),
       ],
     };
   });

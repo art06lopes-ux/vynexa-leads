@@ -9,6 +9,7 @@
  */
 import { agora, getBanco } from "@/db/cliente";
 import type { Job, PayloadBusca } from "@/db/tipos";
+import { ErroGemini } from "@/lib/ia/gemini";
 import { processarAnaliseIA, type PayloadAnalise } from "@/worker/handlers/analise-ia";
 import { processarBusca } from "@/worker/handlers/busca";
 import { processarEnvio, processarGeracao, type PayloadCampanha } from "@/worker/handlers/campanha";
@@ -101,18 +102,26 @@ async function main() {
       console.log(`  ok — ${resumo}`);
     } catch (erro) {
       const mensagem = erro instanceof Error ? erro.message : String(erro);
-      const desiste = job.tentativas >= MAX_TENTATIVAS;
 
-      const espera = ESPERA_MINUTOS[Math.min(job.tentativas - 1, ESPERA_MINUTOS.length - 1)] ?? 5;
+      // Cota do Gemini não é falha do job: é o dia acabando. Contar como
+      // tentativa faria a análise desistir de vez depois de seis esperas
+      // e a fila morreria até alguém caçar de novo. Espera meia hora e
+      // devolve a tentativa.
+      const cota = erro instanceof ErroGemini && erro.temporario;
+      const desiste = !cota && job.tentativas >= MAX_TENTATIVAS;
+
+      const espera = cota ? 30 : (ESPERA_MINUTOS[Math.min(job.tentativas - 1, ESPERA_MINUTOS.length - 1)] ?? 5);
 
       await banco.execute({
-        sql: `UPDATE jobs SET status = ?, erro = ?, lease_ate = NULL, disponivel_em = ?, atualizado_em = ?
+        sql: `UPDATE jobs SET status = ?, erro = ?, lease_ate = NULL, disponivel_em = ?, atualizado_em = ?,
+                              tentativas = tentativas - ?
               WHERE id = ?`,
         args: [
           desiste ? "erro" : "pendente",
           mensagem,
           desiste ? null : emMinutos(espera),
           agora(),
+          cota ? 1 : 0,
           job.id,
         ],
       });

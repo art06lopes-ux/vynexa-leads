@@ -25,10 +25,18 @@ export type ResumoReceita = {
 
 export async function resumoReceita(): Promise<ResumoReceita> {
   const banco = getBanco();
+  // `porUf` vem do registro da importação, nunca de COUNT(*) na tabela
+  // grande: contar 3,4 milhões de linhas a cada visita em Ajustes custava
+  // 3,4 milhões de "linhas lidas" da cota do Turso — por visita.
   const [{ rows: ref }, { rows: origem }, { rows: porUf }, { rows: ultimas }] = await Promise.all([
     banco.execute(`SELECT valor FROM configuracoes WHERE chave = 'receita_referencia'`),
     banco.execute(`SELECT valor FROM configuracoes WHERE chave = 'receita_origem_arquivos'`),
-    banco.execute(`SELECT uf, COUNT(*) AS total FROM receita_estabelecimentos GROUP BY uf ORDER BY uf`),
+    banco.execute(
+      `SELECT uf, linhas AS total FROM receita_importacoes i
+       WHERE status IN ('concluida','parcial') AND linhas > 0
+         AND iniciado_em = (SELECT MAX(iniciado_em) FROM receita_importacoes j WHERE j.uf = i.uf AND j.status IN ('concluida','parcial') AND j.linhas > 0)
+       ORDER BY uf`,
+    ),
     banco.execute(`SELECT * FROM receita_importacoes ORDER BY iniciado_em DESC LIMIT 6`),
   ]);
 

@@ -360,12 +360,10 @@ async function main() {
     if (sairam.length > 0) console.log(`${sairam.length.toLocaleString("pt-BR")} saíram da base.`);
 
     for (const uf of ufs) {
-      const { rows } = await banco.execute({
-        sql: `SELECT COUNT(*) AS n FROM receita_estabelecimentos WHERE uf = ?`,
-        args: [uf],
-      });
-      const n = Number(rows[0]?.n ?? 0);
+      // Sem COUNT(*): o que está na base é o que esta rodada viu (novas +
+      // alteradas + iguais) — e contar 3,4 milhões de linhas custa cota.
       const c = contagem.get(uf)!;
+      const n = c.novas + c.alteradas + c.iguais;
       await banco.execute({
         sql: `UPDATE receita_importacoes SET status = 'concluida', linhas = ?, concluido_em = ? WHERE id = ?`,
         args: [n, agora(), importacoes.get(uf)!],

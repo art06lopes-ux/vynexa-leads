@@ -7,7 +7,7 @@
  *
  *   npm run worker
  */
-import { agora, getBanco } from "@/db/cliente";
+import { agora, ehLimiteDiarioD1, getBanco } from "@/db/cliente";
 import type { Job, PayloadBusca } from "@/db/tipos";
 import { ErroGemini } from "@/lib/ia/gemini";
 import { processarAnaliseIA, type PayloadAnalise } from "@/worker/handlers/analise-ia";
@@ -52,20 +52,6 @@ const MAX_TENTATIVAS = 6;
  * que isso é arredondada para cima na prática.
  */
 const ESPERA_MINUTOS = [5, 5, 15, 30, 60, 120];
-
-/**
- * A cota diária do D1 (leitura ou escrita) acabou.
- *
- * Sem isto, a primeira escrita da execução (recuperar lease, linha
- * abaixo) lançava sem ser pega em lugar nenhum, `main()` morria com
- * `process.exit(1)`, e o `worker.yml` relançava na hora — um plantão
- * inteiro (110 min) virava uma corrida de novas tentativas a cada ~30 s
- * até a meia-noite UTC, sem nunca progredir.
- */
-function ehLimiteDiarioD1(erro: unknown): boolean {
-  const mensagem = erro instanceof Error ? erro.message : String(erro);
-  return /D1:.*daily row (read|write) limit/i.test(mensagem);
-}
 
 async function main() {
   const banco = getBanco();

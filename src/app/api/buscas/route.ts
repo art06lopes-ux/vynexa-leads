@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { ehLimiteDiarioD1 } from "@/db/cliente";
 import { criarBuscaComJob } from "@/db/consultas";
 import { acharPais } from "@/lib/geo/paises";
 import { acharSegmento } from "@/lib/osm/segmentos";
@@ -53,13 +54,31 @@ export async function POST(request: Request) {
     return Response.json({ erro: `País não atendido: ${pais}` }, { status: 400 });
   }
 
-  const buscaId = await criarBuscaComJob({
-    segmento,
-    pais: pais.toUpperCase(),
-    estado: estado?.trim() || null,
-    cidade: cidade?.trim() || null,
-    alvo,
-  });
+  try {
+    const buscaId = await criarBuscaComJob({
+      segmento,
+      pais: pais.toUpperCase(),
+      estado: estado?.trim() || null,
+      cidade: cidade?.trim() || null,
+      alvo,
+    });
 
-  return Response.json({ buscaId }, { status: 202 });
+    return Response.json({ buscaId }, { status: 202 });
+  } catch (erro) {
+    // Sem isto, o erro virava uma página de erro do Next em vez de JSON,
+    // e o formulário mostrava "Falha de rede" — verdade, mas escondia o
+    // motivo real (a cota diária do D1, que reseta sozinha à meia-noite
+    // UTC) atrás de uma mensagem que parece um problema de conexão.
+    if (ehLimiteDiarioD1(erro)) {
+      return Response.json(
+        {
+          erro:
+            "O banco atingiu a cota diária de escrita (plano gratuito do Cloudflare D1). " +
+            "Ela reseta à meia-noite UTC — tente de novo depois disso.",
+        },
+        { status: 503 },
+      );
+    }
+    throw erro;
+  }
 }

@@ -30,6 +30,20 @@ import { createClient, type Client, type InStatement, type ResultSet, type Row }
 let cache: Client | null = null;
 
 /**
+ * A cota diária do D1 (leitura ou escrita) acabou.
+ *
+ * Usado tanto pelo worker (para não morrer e ser relançado sem parar —
+ * ver `src/worker/executar.ts`) quanto pelas rotas de API que escrevem
+ * direto numa requisição do operador (ex.: criar uma busca), para
+ * devolver um erro claro em vez de deixar a exceção virar uma página de
+ * erro genérica que o cliente não consegue interpretar como JSON.
+ */
+export function ehLimiteDiarioD1(erro: unknown): boolean {
+  const mensagem = erro instanceof Error ? erro.message : String(erro);
+  return /D1:.*daily row (read|write) limit/i.test(mensagem);
+}
+
+/**
  * Copia uma linha do libSQL para um objeto simples.
  *
  * As linhas que o cliente devolve carregam índice numérico e `length`

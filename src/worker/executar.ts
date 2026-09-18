@@ -53,6 +53,20 @@ const MAX_TENTATIVAS = 6;
  */
 const ESPERA_MINUTOS = [5, 5, 15, 30, 60, 120];
 
+/**
+ * A cota diária do D1 (leitura ou escrita) acabou.
+ *
+ * Sem isto, a primeira escrita da execução (recuperar lease, linha
+ * abaixo) lançava sem ser pega em lugar nenhum, `main()` morria com
+ * `process.exit(1)`, e o `worker.yml` relançava na hora — um plantão
+ * inteiro (110 min) virava uma corrida de novas tentativas a cada ~30 s
+ * até a meia-noite UTC, sem nunca progredir.
+ */
+function ehLimiteDiarioD1(erro: unknown): boolean {
+  const mensagem = erro instanceof Error ? erro.message : String(erro);
+  return /D1:.*daily row (read|write) limit/i.test(mensagem);
+}
+
 async function main() {
   const banco = getBanco();
   const inicio = Date.now();
@@ -60,11 +74,25 @@ async function main() {
   // Recupera o que ficou preso: um worker morto no meio (o Actions pode
   // ser cancelado a qualquer momento) deixaria o job em 'em_andamento'
   // para sempre sem esta linha.
-  const { rowsAffected: recuperados } = await banco.execute({
-    sql: `UPDATE jobs SET status = 'pendente', atualizado_em = ?
-          WHERE status = 'em_andamento' AND (lease_ate IS NULL OR lease_ate < ?)`,
-    args: [agora(), agora()],
-  });
+  let recuperados = 0;
+  try {
+    ({ rowsAffected: recuperados } = await banco.execute({
+      sql: `UPDATE jobs SET status = 'pendente', atualizado_em = ?
+            WHERE status = 'em_andamento' AND (lease_ate IS NULL OR lease_ate < ?)`,
+      args: [agora(), agora()],
+    }));
+  } catch (erro) {
+    if (!ehLimiteDiarioD1(erro)) throw erro;
+    // Nada a fazer hoje: dorme o resto do plantão (ou sai, fora dele) em
+    // vez de morrer e fazer o `worker.yml` relançar a cada 30 segundos.
+    console.error("Cota diária do D1 esgotada. Esperando a próxima janela.");
+    if (PLANTAO_MIN > 0) await new Promise((r) => setTimeout(r, ORCAMENTO_MS - (Date.now() - inicio)));
+    if (PLANTAO_MIN > 0 && process.env.GITHUB_OUTPUT) {
+      const { appendFile } = await import("node:fs/promises");
+      await appendFile(process.env.GITHUB_OUTPUT, "continuar=true\n");
+    }
+    return;
+  }
 
   if (recuperados > 0) console.log(`${recuperados} job(s) com lease vencido devolvidos à fila.`);
 
@@ -77,11 +105,18 @@ async function main() {
     // só com a fila vazia não bastou — a análise de IA se reenfileira
     // sem parar e a fila nunca esvazia.
     if (PLANTAO_MIN > 0) {
-      await banco.execute({
-        sql: `UPDATE jobs SET status = 'pendente', atualizado_em = ?
-              WHERE status = 'em_andamento' AND (lease_ate IS NULL OR lease_ate < ?)`,
-        args: [agora(), agora()],
-      });
+      try {
+        await banco.execute({
+          sql: `UPDATE jobs SET status = 'pendente', atualizado_em = ?
+                WHERE status = 'em_andamento' AND (lease_ate IS NULL OR lease_ate < ?)`,
+          args: [agora(), agora()],
+        });
+      } catch (erro) {
+        if (!ehLimiteDiarioD1(erro)) throw erro;
+        console.error("Cota diária do D1 esgotada. Esperando o resto do plantão.");
+        await new Promise((r) => setTimeout(r, Math.max(0, ORCAMENTO_MS - (Date.now() - inicio))));
+        break;
+      }
     }
 
     const job = await reservarProximo(banco);
@@ -111,6 +146,16 @@ async function main() {
       const desiste = !cota && job.tentativas >= MAX_TENTATIVAS;
 
       const espera = cota ? 30 : (ESPERA_MINUTOS[Math.min(job.tentativas - 1, ESPERA_MINUTOS.length - 1)] ?? 5);
+
+      // Se o próprio erro FOI a cota diária do D1, gravar a tentativa
+      // também é uma escrita que vai falhar — registrar só no log e
+      // esperar o resto do plantão em vez de insistir e derrubar o
+      // processo (o que faria o `worker.yml` relançar sem parar).
+      if (ehLimiteDiarioD1(erro)) {
+        console.error("  cota diária do D1 esgotada — esperando o resto do plantão sem gravar a tentativa.");
+        await new Promise((r) => setTimeout(r, Math.max(0, ORCAMENTO_MS - (Date.now() - inicio))));
+        break;
+      }
 
       await banco.execute({
         sql: `UPDATE jobs SET status = ?, erro = ?, lease_ate = NULL, disponivel_em = ?, atualizado_em = ?,

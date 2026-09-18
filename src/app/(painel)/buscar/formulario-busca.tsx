@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ProgressoBusca } from "@/components/leads/progresso-busca";
 import type { UF } from "@/lib/geo/ibge";
 import { PAISES } from "@/lib/geo/paises";
+import { DISTRITOS_PT } from "@/lib/geo/portugal";
 import { SEGMENTOS } from "@/lib/osm/segmentos";
 import { cn } from "@/lib/utils";
 
@@ -335,7 +336,13 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="flex flex-col gap-2">
                 <Label htmlFor={idPais}>País</Label>
-                <Select value={pais} onValueChange={(v) => setPais(v ?? pais)}>
+                <Select
+                  value={pais}
+                  onValueChange={(v) => {
+                    setPais(v ?? pais);
+                    setRegiaoIntl("");
+                  }}
+                >
                   <SelectTrigger id={idPais} className="h-11 w-full">
                     <SelectValue />
                   </SelectTrigger>
@@ -350,15 +357,31 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label htmlFor={`${idPais}-regiao`}>Estado / região</Label>
-                <Input
-                  id={`${idPais}-regiao`}
-                  value={regiaoIntl}
-                  onChange={(e) => setRegiaoIntl(e.target.value)}
-                  placeholder="Florida"
-                  className="h-11"
-                  autoComplete="off"
-                />
+                <Label htmlFor={`${idPais}-regiao`}>{pais === "PT" ? "Distrito" : "Estado / região"}</Label>
+                {pais === "PT" ? (
+                  <Select value={regiaoIntl} onValueChange={(v) => setRegiaoIntl(v ?? "")}>
+                    <SelectTrigger id={`${idPais}-regiao`} className="h-11 w-full">
+                      <SelectValue placeholder="Todo o país" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todo o país</SelectItem>
+                      {DISTRITOS_PT.map((d) => (
+                        <SelectItem key={d.nome} value={d.nome}>
+                          {d.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id={`${idPais}-regiao`}
+                    value={regiaoIntl}
+                    onChange={(e) => setRegiaoIntl(e.target.value)}
+                    placeholder="Florida"
+                    className="h-11"
+                    autoComplete="off"
+                  />
+                )}
               </div>
 
               <div className="flex flex-col gap-2">
@@ -374,8 +397,9 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
               </div>
 
               <p className="text-xs text-muted-foreground sm:col-span-3">
-                Fora do Brasil não existe fonte gratuita e universal de subdivisões, então estes
-                dois campos são texto livre, resolvidos pelo Nominatim. Escreva no idioma local.
+                {pais === "PT"
+                  ? "Distrito de uma lista fechada, para o Nominatim acertar a área; cidade continua texto livre."
+                  : "Fora do Brasil e de Portugal não existe fonte gratuita e universal de subdivisões, então estes dois campos são texto livre, resolvidos pelo Nominatim. Escreva no idioma local."}
               </p>
             </div>
           )}

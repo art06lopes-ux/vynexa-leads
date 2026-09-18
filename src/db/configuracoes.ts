@@ -84,8 +84,8 @@ export async function diagnosticarIntegracoes(): Promise<EstadoIntegracao[]> {
 
   return [
     {
-      nome: "Banco (Turso)",
-      ligada: tem("TURSO_DATABASE_URL"),
+      nome: "Banco (Cloudflare D1)",
+      ligada: tem("CLOUDFLARE_ACCOUNT_ID") && tem("CLOUDFLARE_D1_DATABASE_ID") && tem("CLOUDFLARE_API_TOKEN"),
       detalhe: "Conectado — esta página não carregaria sem isso.",
     },
     {

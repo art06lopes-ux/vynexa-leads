@@ -3,8 +3,9 @@
  *
  * Roda os arquivos de `db/migracoes/` em ordem de nome e registra os já
  * aplicados, para ser seguro executar quantas vezes quiser. O mesmo
- * comando serve para o banco local (`file:./local.db`) e para o Turso —
- * é o `TURSO_DATABASE_URL` que decide qual.
+ * comando serve para o banco local (`file:./local.db`) e para o
+ * Cloudflare D1 — é a presença de `CLOUDFLARE_ACCOUNT_ID` (e companhia)
+ * que decide qual, em `src/db/cliente.ts`.
  *
  *   npm run db:aplicar
  */

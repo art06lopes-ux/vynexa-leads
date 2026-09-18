@@ -18,7 +18,7 @@ duas metades:
   navegador
      │  POST /api/buscas
      ▼
-  Next.js na Vercel ──────► Turso  ◄────── GitHub Actions (cron 5 min)
+  Next.js na Vercel ──────►  D1   ◄────── GitHub Actions (cron 5 min)
      │  cria o job              ▲              │  pega o job pendente
      │  e responde na hora      │              │  consulta Nominatim + Overpass
      ▼                          └──────────────┘  grava as empresas
@@ -48,7 +48,7 @@ no GitHub Actions faz a consulta com o tempo que precisar.
 | IA | Gemini `gemini-3.5-flash-lite`, free tier |
 | Aplicação | Next.js 16 (App Router) + TypeScript |
 | Interface | Tailwind CSS v4 + shadcn/ui |
-| Banco | Turso (libSQL) — em desenvolvimento, um arquivo SQLite local |
+| Banco | Cloudflare D1 (SQLite) — em desenvolvimento, um arquivo SQLite local |
 | Worker | GitHub Actions, cron de 5 minutos |
 | Empresas | OpenStreetMap — Overpass API + Nominatim |
 | Contato (Brasil) | Dados abertos do CNPJ — Receita Federal, importados por mês |
@@ -76,7 +76,7 @@ npm run worker               # processa a fila, noutro terminal
 | Etapa | Situação |
 | --- | --- |
 | **1 — Núcleo de busca e visualização** | **pronta** |
-| Schema do Turso e migrações | pronto |
+| Schema do D1 e migrações | pronto |
 | Login por senha | pronto |
 | Busca Brasil (IBGE) e internacional | pronto |
 | Worker com fila, lease, backoff e expansão de raio | pronto |

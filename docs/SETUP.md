@@ -11,7 +11,7 @@ no fim deste arquivo.
 ## 1. Rodar local, sem conta em serviço nenhum
 
 O `libsql` é o mesmo motor do SQLite. Apontando a URL para um arquivo,
-tudo funciona offline — o que roda no arquivo roda no Turso sem alterar
+tudo funciona offline — o que roda no arquivo roda no Cloudflare D1 sem alterar
 uma linha.
 
 ```bash
@@ -51,18 +51,26 @@ npm run worker
 
 ---
 
-## 2. Turso (banco de produção)
+## 2. Cloudflare D1 (banco de produção)
 
-1. <https://turso.tech> → crie a conta com o GitHub. **Não pede cartão.**
-2. Crie um banco. Região: escolha a mais próxima de você.
-3. Copie a URL (`libsql://<banco>-<org>.turso.io`) e gere um token.
-4. Preencha `TURSO_DATABASE_URL` e `TURSO_AUTH_TOKEN` no `.env.local`.
-5. `npm run db:aplicar` — agora as migrações vão para o Turso.
+1. <https://dash.cloudflare.com> → crie a conta. **Não pede cartão.**
+2. **Workers & Pages → D1 SQL Database → Create** (ou pela CLI:
+   `npx wrangler d1 create vynexa-leads`). Guarde o **Database ID** que
+   aparece.
+3. Pegue o **Account ID** na barra lateral do dashboard (aparece em
+   qualquer página do domínio, canto inferior direito).
+4. **My Profile → API Tokens → Create Token → Edit Cloudflare Workers**
+   (ou um token customizado com permissão **D1: Edit**). Copie o token —
+   só é mostrado uma vez.
+5. Preencha `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_D1_DATABASE_ID` e
+   `CLOUDFLARE_API_TOKEN` no `.env.local`.
+6. `npm run db:aplicar` — agora as migrações vão para o D1.
 
-O free inclui 5 GB, 500 milhões de linhas lidas e 10 milhões escritas por
-mês. Uma carteira de dezenas de milhares de empresas não chega perto
-disso. Cartão só é pedido se você quiser habilitar cobrança por excedente,
-e isso é opcional.
+O free inclui 5 GB de armazenamento e 25 bilhões de linhas lidas por mês
+(5 milhões por dia). Uma carteira de dezenas de milhares de empresas não
+chega perto disso — nem a caçada "Brasil inteiro" contra a Receita, que
+foi o que estourava a cota do Turso. Cartão nunca é pedido no plano
+gratuito do D1.
 
 ---
 
@@ -202,7 +210,7 @@ OAuth de um projeto no Google Cloud não pede cartão.
 - O Gmail pessoal corta em **500 destinatários por dia**. A ferramenta
   usa **100**, com 20 segundos entre cada envio — deliberadamente: conta
   nova disparando 500 e-mails frios acorda com tudo caindo em spam.
-- O refresh token é guardado **cifrado** (AES-GCM) no Turso. Trocar
+- O refresh token é guardado **cifrado** (AES-GCM) no banco. Trocar
   `SEGREDO_SESSAO` invalida a conexão; reconecte depois.
 - A permissão pedida é **só enviar**. A ferramenta não lê a caixa de
   entrada. Você pode revogar a qualquer momento em
@@ -223,7 +231,7 @@ custo: <https://arquivos.receitafederal.gov.br> (pasta
 Não precisa de credencial nova. O que precisa:
 
 1. Em **Ajustes → Base de CNPJs**, salve os estados a importar (ex.:
-   `AM`). Cada estado ocupa de 50 a 800 MB no Turso; o plano gratuito
+   `AM`). Cada estado ocupa de 50 a 800 MB no D1; o plano gratuito
    tem 5 GB e SP sozinho fica perto de 2 GB.
 2. No GitHub, abra **Actions → receita → Run workflow**. Leva de 20 a
    60 minutos: baixa ~6 GB de zip, lê ~17 GB de CSV em fluxo e grava só
@@ -231,7 +239,7 @@ Não precisa de credencial nova. O que precisa:
 3. Depois disso o fluxo repete sozinho todo dia 15, com a pasta mais
    nova. Cada linha tem um hash: só o que abriu, fechou ou mudou de
    contato é reescrito — é o que faz a atualização mensal caber na cota
-   de escrita do plano gratuito do Turso (10 milhões de linhas/mês).
+   de leitura mensal do plano gratuito do D1.
 
 Com a base no lugar, toda caçada no Brasil ganha uma segunda etapa:
 para cada estabelecimento da Receita no município e nos CNAEs do
@@ -291,7 +299,7 @@ expulsar alguém que tenha ficado com o cookie.
 
 | Serviço | Cartão? | Limite relevante |
 | --- | --- | --- |
-| Turso | Não | 5 GB · 500M linhas lidas/mês · 10M escritas/mês |
+| Cloudflare D1 | Não | 5 GB · 25 bilhões de linhas lidas/mês |
 | Vercel Hobby | Não | 100 GB de banda/mês · função cortada em 10s |
 | GitHub Actions | Não | **público: ilimitado** · privado: 2.000 min/mês |
 | Overpass API | Não | sem cota fixa; entra em fila quando carregada |
@@ -305,7 +313,7 @@ inclusos em repositório privado. Nem um cron de 10 minutos caberia
 (4.320). Em repositório público os runners padrão são gratuitos e
 ilimitados, e é isso que faz os 5 minutos serem viáveis a custo zero.
 
-Nada sensível fica no repositório: os leads estão no Turso, e as
+Nada sensível fica no repositório: os leads estão no D1, e as
 credenciais em GitHub Secrets e nas variáveis da Vercel.
 
 **O agendamento é best effort.** O GitHub não garante pontualidade e

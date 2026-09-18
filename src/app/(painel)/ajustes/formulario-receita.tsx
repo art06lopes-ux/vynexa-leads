@@ -33,7 +33,7 @@ export function FormularioReceita({ ufs }: { ufs: string }) {
         <p className="text-xs text-muted-foreground">
           Siglas separadas por vírgula, ou vazio para o país inteiro. Só entram os CNAEs dos
           segmentos que a ferramenta prospecta — é o que faz o Brasil inteiro caber no plano
-          gratuito do Turso.
+          gratuito do D1.
         </p>
       </div>
       <Button type="submit" disabled={pendente} className="h-11 cursor-pointer gap-2">

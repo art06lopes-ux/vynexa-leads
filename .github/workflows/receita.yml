@@ -1,6 +1,6 @@
 name: receita
 
-# Importa a base de CNPJs da Receita Federal para o Turso.
+# Importa a base de CNPJs da Receita Federal para o Cloudflare D1.
 #
 # É um job longo (20 a 60 minutos): baixa ~6 GB de zip, lê ~17 GB de CSV
 # em fluxo e grava só o recorte dos estados escolhidos em Ajustes. Não
@@ -59,12 +59,13 @@ jobs:
       - id: importar
         run: npm run receita
         env:
-          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           RECEITA_UFS: ${{ inputs.ufs }}
           RECEITA_REFERENCIA: ${{ inputs.referencia }}
 
-      # O Turso gratuito grava ~15 mil linhas por minuto; a base inteira
+      # O D1 gratuito grava ~15 mil linhas por minuto; a base inteira
       # não cabe numa rodada. Quando o importador parou por tempo — ou
       # caiu por um soluço de rede — dispara a próxima com a mesma
       # referência. Teto de 8 rodadas: se não fechou em 8, algo está

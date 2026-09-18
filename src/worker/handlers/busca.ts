@@ -302,12 +302,13 @@ async function pedirEnriquecimento(banco: Client): Promise<void> {
 /**
  * Consulta em lotes.
  *
- * O libSQL monta o `IN (?, ?, …)` com um parâmetro por item, e há um
- * teto de variáveis por statement no SQLite. 200 por vez fica bem abaixo.
+ * O `IN (?, ?, …)` monta um parâmetro por item, e o D1 tem um teto de
+ * 100 parâmetros por statement — bem mais apertado que o SQLite puro
+ * (999) para o qual isto foi escrito originalmente. 100 é o máximo.
  */
 async function osmIdsConhecidos(banco: Client, ids: string[]): Promise<Set<string>> {
   const conhecidos = new Set<string>();
-  const LOTE = 200;
+  const LOTE = 100;
 
   for (let i = 0; i < ids.length; i += LOTE) {
     const lote = ids.slice(i, i + LOTE);

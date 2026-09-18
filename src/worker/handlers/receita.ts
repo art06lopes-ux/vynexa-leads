@@ -230,8 +230,10 @@ function montarEndereco(e: Estabelecimento): string | null {
 
 async function cnpjsConhecidos(banco: Client, cnpjs: string[]): Promise<Set<string>> {
   const conhecidos = new Set<string>();
-  for (let i = 0; i < cnpjs.length; i += 200) {
-    const lote = cnpjs.slice(i, i + 200);
+  // 100 é o teto de parâmetros por statement no D1 — bem mais apertado
+  // que o SQLite puro (999) para o qual isto foi escrito originalmente.
+  for (let i = 0; i < cnpjs.length; i += 100) {
+    const lote = cnpjs.slice(i, i + 100);
     const { rows } = await banco.execute({
       sql: `SELECT cnpj FROM empresas WHERE cnpj IN (${lote.map(() => "?").join(",")})`,
       args: lote,

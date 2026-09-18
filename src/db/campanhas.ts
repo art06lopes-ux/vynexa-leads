@@ -49,14 +49,21 @@ export async function criarCampanha(entrada: {
 }): Promise<{ id: string; incluidas: number; semEmail: number }> {
   const banco = getBanco();
 
-  const marcadores = entrada.empresaIds.map(() => "?").join(",");
-  const { rows } = await banco.execute({
-    sql: `SELECT e.id AS empresa_id, e.email, l.id AS lead_id
-          FROM empresas e
-          LEFT JOIN leads l ON l.empresa_id = e.id
-          WHERE e.id IN (${marcadores})`,
-    args: entrada.empresaIds,
-  });
+  // 100 é o teto de parâmetros por statement no D1 — uma campanha de mais
+  // de 100 empresas precisa de mais de uma consulta.
+  const rows: Array<Record<string, unknown>> = [];
+  for (let i = 0; i < entrada.empresaIds.length; i += 100) {
+    const lote = entrada.empresaIds.slice(i, i + 100);
+    const marcadores = lote.map(() => "?").join(",");
+    const { rows: parte } = await banco.execute({
+      sql: `SELECT e.id AS empresa_id, e.email, l.id AS lead_id
+            FROM empresas e
+            LEFT JOIN leads l ON l.empresa_id = e.id
+            WHERE e.id IN (${marcadores})`,
+      args: lote,
+    });
+    rows.push(...parte);
+  }
 
   const comEmail = rows.filter((r) => r.email && String(r.email).trim() !== "");
   const id = novoId();

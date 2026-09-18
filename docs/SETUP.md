@@ -66,11 +66,15 @@ npm run worker
    `CLOUDFLARE_API_TOKEN` no `.env.local`.
 6. `npm run db:aplicar` — agora as migrações vão para o D1.
 
-O free inclui 5 GB de armazenamento e 25 bilhões de linhas lidas por mês
-(5 milhões por dia). Uma carteira de dezenas de milhares de empresas não
-chega perto disso — nem a caçada "Brasil inteiro" contra a Receita, que
-foi o que estourava a cota do Turso. Cartão nunca é pedido no plano
-gratuito do D1.
+O free inclui 5 GB de armazenamento, 5 milhões de linhas lidas por dia e
+100 mil linhas escritas por dia — reseta à meia-noite UTC, então uma
+batida ruim não compromete o mês inteiro como acontecia no Turso (500
+milhões de linhas lidas por **mês**, sem reset diário). A leitura do dia
+a dia (painel, caçadas, funil) fica bem abaixo disso. A escrita é o lado
+apertado: a importação inicial da Receita, de milhões de linhas, precisa
+de vários dias rodando aos 100 mil/dia — é lenta, mas cabe, e a
+atualização mensal (só o que mudou) é bem menor que isso. Cartão nunca é
+pedido no plano gratuito do D1.
 
 ---
 
@@ -299,7 +303,7 @@ expulsar alguém que tenha ficado com o cookie.
 
 | Serviço | Cartão? | Limite relevante |
 | --- | --- | --- |
-| Cloudflare D1 | Não | 5 GB · 25 bilhões de linhas lidas/mês |
+| Cloudflare D1 | Não | 5 GB · 5M linhas lidas/dia · 100 mil escritas/dia |
 | Vercel Hobby | Não | 100 GB de banda/mês · função cortada em 10s |
 | GitHub Actions | Não | **público: ilimitado** · privado: 2.000 min/mês |
 | Overpass API | Não | sem cota fixa; entra em fila quando carregada |

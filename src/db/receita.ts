@@ -74,16 +74,23 @@ export type NichoRegiao = {
  */
 export async function nichosPorRegiao(uf: string, cidade: string | null): Promise<NichoRegiao[]> {
   const municipio = cidade ? chaveDeMunicipio(cidade) : null;
-  const todosCnaes = Object.values(CNAES_POR_SEGMENTO).flat();
+  const todosCnaes = [...new Set(Object.values(CNAES_POR_SEGMENTO).flat())];
+  const banco = getBanco();
 
-  const { rows } = await getBanco().execute({
-    sql: `SELECT cnae, COUNT(*) AS total FROM receita_estabelecimentos
-          WHERE uf = ? ${municipio ? "AND municipio = ?" : ""} AND cnae IN (${todosCnaes.map(() => "?").join(",")})
-          GROUP BY cnae`,
-    args: [uf.toUpperCase(), ...(municipio ? [municipio] : []), ...todosCnaes],
-  });
-
-  const totalPorCnae = new Map(rows.map((r) => [String(r.cnae), Number(r.total)]));
+  // 100 é o teto de parâmetros por statement no D1, e a lista de CNAEs
+  // de todos os segmentos passa disso — daí o lote, com espaço reservado
+  // para `uf` e `municipio` no mesmo statement.
+  const totalPorCnae = new Map<string, number>();
+  for (let i = 0; i < todosCnaes.length; i += 90) {
+    const lote = todosCnaes.slice(i, i + 90);
+    const { rows } = await banco.execute({
+      sql: `SELECT cnae, COUNT(*) AS total FROM receita_estabelecimentos
+            WHERE uf = ? ${municipio ? "AND municipio = ?" : ""} AND cnae IN (${lote.map(() => "?").join(",")})
+            GROUP BY cnae`,
+      args: [uf.toUpperCase(), ...(municipio ? [municipio] : []), ...lote],
+    });
+    for (const r of rows) totalPorCnae.set(String(r.cnae), Number(r.total));
+  }
   // Denominador da participação: soma de todos os CNAEs mapeados na
   // região. Alguns poucos CNAEs pertencem a dois segmentos (ex.: 4321500
   // está em "construção" e "energia solar" — a mesma empresa pode

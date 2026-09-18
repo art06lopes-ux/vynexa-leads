@@ -119,11 +119,15 @@ const TODAS_UFS = [
  * O gargalo da importação não é ler o CSV, é a ida ao Turso: do runner
  * do GitHub cada requisição leva ~100 ms de rede, e 900 mil linhas em
  * lotes de 400, um de cada vez, foram 1h30 só de espera. Lotes de 1000
- * (19 mil variáveis, abaixo do teto de 32 mil do SQLite) e quatro em
- * voo dividem isso por dez.
+ * linhas — gravadas em `batch`es de 100 statements dentro de
+ * `gravarLote`, por causa do teto de parâmetros do D1 — e quatro em voo
+ * dividem isso por dez.
  */
 const LOTE = 1_000;
 const EM_VOO = 4;
+
+/** Teto de parâmetros por statement no D1. Ver `gravarLote` e o `IN` de baixo. */
+const MAX_PARAMETROS_D1 = 100;
 
 /**
  * Orçamento de tempo da rodada. O Actions corta em 180 min; parar antes,
@@ -350,8 +354,8 @@ async function main() {
     // O que ficou no mapa não apareceu nesta referência: baixou, mudou
     // de estado ou de CNAE. Sai daqui também.
     const sairam = [...existentes.keys()];
-    for (let i = 0; i < sairam.length; i += LOTE) {
-      const fatia = sairam.slice(i, i + LOTE);
+    for (let i = 0; i < sairam.length; i += MAX_PARAMETROS_D1) {
+      const fatia = sairam.slice(i, i + MAX_PARAMETROS_D1);
       await banco.execute({
         sql: `DELETE FROM receita_estabelecimentos WHERE cnpj IN (${fatia.map(() => "?").join(",")})`,
         args: fatia,
@@ -647,19 +651,29 @@ async function hashesExistentes(banco: Client, ufs: string[]): Promise<Map<strin
   return mapa;
 }
 
+const SQL_GRAVAR_LINHA = `INSERT OR REPLACE INTO receita_estabelecimentos (
+  cnpj, nome, razao_social, cnae, cnaes_secundarios, uf, municipio_codigo, municipio,
+  logradouro, numero, complemento, bairro, cep, telefone_1, telefone_2, email, inicio_atividade, referencia, hash
+) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+
+/**
+ * Um `INSERT` multi-linha (19 colunas × N linhas num statement só) estourava
+ * o teto de 100 parâmetros do D1 muito antes do lote inteiro (1000 linhas,
+ * quase 19 mil parâmetros). Um statement por linha, todos no mesmo `batch`
+ * — atômico e uma ida só — evita o teto porque cada statement tem só 19.
+ */
 async function gravarLote(banco: Client, lote: Linha[], referencia: string): Promise<void> {
-  const marcadores = lote.map(() => "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").join(",");
-  const args = lote.flatMap((l) => [
-    l.cnpj, l.nome, l.razaoSocial, l.cnae, l.cnaesSec, l.uf, l.municipioCodigo, l.municipio,
-    l.logradouro, l.numero, l.complemento, l.bairro, l.cep, l.tel1, l.tel2, l.email, l.inicio, referencia, l.hash,
-  ]);
-  await banco.execute({
-    sql: `INSERT OR REPLACE INTO receita_estabelecimentos (
-            cnpj, nome, razao_social, cnae, cnaes_secundarios, uf, municipio_codigo, municipio,
-            logradouro, numero, complemento, bairro, cep, telefone_1, telefone_2, email, inicio_atividade, referencia, hash
-          ) VALUES ${marcadores}`,
-    args,
-  });
+  const statements = lote.map((l) => ({
+    sql: SQL_GRAVAR_LINHA,
+    args: [
+      l.cnpj, l.nome, l.razaoSocial, l.cnae, l.cnaesSec, l.uf, l.municipioCodigo, l.municipio,
+      l.logradouro, l.numero, l.complemento, l.bairro, l.cep, l.tel1, l.tel2, l.email, l.inicio, referencia, l.hash,
+    ],
+  }));
+
+  for (let i = 0; i < statements.length; i += 100) {
+    await banco.batch(statements.slice(i, i + 100), "write");
+  }
 }
 
 main().catch((erro) => {

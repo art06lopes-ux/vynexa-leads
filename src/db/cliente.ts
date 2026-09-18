@@ -13,9 +13,18 @@ import { createClient, type Client, type InStatement, type ResultSet, type Row }
  * `executeMultiple`, `transaction`) por cima dessa API.
  *
  * A troca veio do Turso: o plano gratuito bloqueia a conta inteira ao
- * bater a cota mensal de linhas lidas, e a caçada "Brasil inteiro" passa
- * disso fácil. O D1 gratuito tem uma cota bem maior (25 bilhões de
- * linhas lidas/mês) e não pede cartão.
+ * bater a cota MENSAL de linhas lidas (500 milhões), sem reset até o
+ * próximo ciclo — e a caçada "Brasil inteiro" passa disso fácil. O D1
+ * gratuito tem cota DIÁRIA (5 milhões de linhas lidas, 100 mil escritas,
+ * resetando à meia-noite UTC) e não pede cartão: uma batida ruim custa
+ * um dia bloqueado, não o mês inteiro.
+ *
+ * O teto de 100 parâmetros por statement do D1 (bem menor que os 999 do
+ * SQLite puro) é outra diferença real, não só de cota — todo `IN (...)`
+ * ou `INSERT` com lista de tamanho variável neste projeto precisa
+ * respeitar isso. Ver `MAX_PARAMETROS_D1` em `src/worker/receita/importar.ts`
+ * e os lotes de 100 em `cnpjsConhecidos`, `osmIdsConhecidos` e
+ * `nichosPorRegiao`.
  */
 
 let cache: Client | null = null;

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ProgressoBusca } from "@/components/leads/progresso-busca";
 import type { UF } from "@/lib/geo/ibge";
 import { PAISES } from "@/lib/geo/paises";
@@ -234,9 +235,6 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
     }
   }
 
-  const classeCampo =
-    "h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm transition-colors duration-200 focus-visible:border-ring";
-
   return (
     <Card className="vidro">
       <CardContent className="pt-6">
@@ -271,19 +269,19 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
                 <Label htmlFor={idUf}>Estado</Label>
-                <select
-                  id={idUf}
-                  value={uf}
-                  onChange={(e) => void trocarUf(e.target.value)}
-                  className={classeCampo}
-                >
-                  <option value="">Todo o Brasil</option>
-                  {estados.map((e) => (
-                    <option key={e.sigla} value={e.sigla}>
-                      {e.nome}
-                    </option>
-                  ))}
-                </select>
+                <Select value={uf} onValueChange={(v) => void trocarUf(v ?? "")}>
+                  <SelectTrigger id={idUf} className="h-11 w-full">
+                    <SelectValue placeholder="Todo o Brasil" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Todo o Brasil</SelectItem>
+                    {estados.map((e) => (
+                      <SelectItem key={e.sigla} value={e.sigla}>
+                        {e.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 {erroIbge && (
                   <p className="text-xs text-destructive">
                     Lista do IBGE indisponível: {erroIbge}
@@ -293,29 +291,40 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
 
               <div className="flex flex-col gap-2">
                 <Label htmlFor={idCidade}>Cidade</Label>
-                <select
-                  id={idCidade}
+                <Select
                   value={cidade}
-                  onChange={(e) => {
-                    setCidade(e.target.value);
-                    void buscarNichos(uf, e.target.value);
+                  onValueChange={(v) => {
+                    setCidade(v ?? "");
+                    void buscarNichos(uf, v ?? "");
                   }}
-                  className={classeCampo}
                   disabled={uf === "" || carregandoMunicipios}
                 >
-                  <option value="">
-                    {uf === ""
-                      ? "Todos os municípios"
-                      : carregandoMunicipios
-                        ? "Carregando…"
-                        : "Estado inteiro"}
-                  </option>
-                  {municipios.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id={idCidade} className="h-11 w-full">
+                    <SelectValue
+                      placeholder={
+                        uf === ""
+                          ? "Todos os municípios"
+                          : carregandoMunicipios
+                            ? "Carregando…"
+                            : "Estado inteiro"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">
+                      {uf === ""
+                        ? "Todos os municípios"
+                        : carregandoMunicipios
+                          ? "Carregando…"
+                          : "Estado inteiro"}
+                    </SelectItem>
+                    {municipios.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {m}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <p className="text-xs text-muted-foreground">
                   Sem cidade, cobre o estado inteiro; sem estado, o Brasil inteiro pela base da
                   Receita Federal (interior incluído).
@@ -326,18 +335,18 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="flex flex-col gap-2">
                 <Label htmlFor={idPais}>País</Label>
-                <select
-                  id={idPais}
-                  value={pais}
-                  onChange={(e) => setPais(e.target.value)}
-                  className={classeCampo}
-                >
-                  {PAISES_INTERNACIONAIS.map((p) => (
-                    <option key={p.codigo} value={p.codigo}>
-                      {p.nome}
-                    </option>
-                  ))}
-                </select>
+                <Select value={pais} onValueChange={(v) => setPais(v ?? pais)}>
+                  <SelectTrigger id={idPais} className="h-11 w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAISES_INTERNACIONAIS.map((p) => (
+                      <SelectItem key={p.codigo} value={p.codigo}>
+                        {p.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex flex-col gap-2">
@@ -412,19 +421,19 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
               <Label htmlFor={idSegmento}>Segmento</Label>
-              <select
-                id={idSegmento}
-                value={segmento}
-                onChange={(e) => setSegmento(e.target.value)}
-                className={classeCampo}
-              >
-                {SEGMENTOS.map((s) => (
-                  <option key={s.slug} value={s.slug}>
-                    {s.rotulo}
-                  </option>
-                ))}
-                <option value="__outro__">Outro — tag do OpenStreetMap</option>
-              </select>
+              <Select value={segmento} onValueChange={(v) => setSegmento(v ?? segmento)}>
+                <SelectTrigger id={idSegmento} className="h-11 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SEGMENTOS.map((s) => (
+                    <SelectItem key={s.slug} value={s.slug}>
+                      {s.rotulo}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__outro__">Outro — tag do OpenStreetMap</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex flex-col gap-2">

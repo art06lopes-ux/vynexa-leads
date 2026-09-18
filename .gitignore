@@ -49,3 +49,6 @@ local.db-*
 # rascunhos de verificacao do assistente
 .tmp-*.ts
 .cookie-tmp.ts
+
+.vercel
+.env*

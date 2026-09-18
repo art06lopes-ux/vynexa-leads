@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 const QUANTIDADES = [0, 50, 100, 200] as const;
 const PAISES_INTERNACIONAIS = PAISES.filter((p) => p.codigo !== "BR");
 
-type Nicho = { slug: string; rotulo: string; total: number };
+type Nicho = { slug: string; rotulo: string; total: number; participacao: number };
 
 type Progresso = {
   status: "pendente" | "em_andamento" | "concluida" | "erro";
@@ -394,14 +394,17 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
                       )}
                     >
                       {n.rotulo}
-                      <span className="opacity-70">{n.total}</span>
+                      <span className="opacity-70">
+                        {n.total} · {n.participacao}%
+                      </span>
                     </button>
                   ))}
                 </div>
               )}
               <p className="text-xs text-muted-foreground">
-                Estabelecimentos ativos da Receita na região, por nicho. Mais estabelecimentos é
-                mais chance de achar quem não tem site — não é garantia de venda.
+                Quantidade de estabelecimentos ativos da Receita na região e a participação do
+                nicho no total mapeado ali. É volume real, não é chance de venda — a ferramenta
+                não tem dado de conversão por nicho para calcular isso.
               </p>
             </div>
           )}

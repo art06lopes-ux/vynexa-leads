@@ -56,6 +56,11 @@ export type NichoRegiao = {
   rotulo: string;
   /** Estabelecimentos ativos da Receita nessa região, nos CNAEs do segmento. */
   total: number;
+  /**
+   * Participação do segmento no total de estabelecimentos mapeados na
+   * região, arredondada — não é chance de venda, é proporção real.
+   */
+  participacao: number;
 };
 
 /**
@@ -79,13 +84,23 @@ export async function nichosPorRegiao(uf: string, cidade: string | null): Promis
   });
 
   const totalPorCnae = new Map(rows.map((r) => [String(r.cnae), Number(r.total)]));
+  // Denominador da participação: soma de todos os CNAEs mapeados na
+  // região. Alguns poucos CNAEs pertencem a dois segmentos (ex.: 4321500
+  // está em "construção" e "energia solar" — a mesma empresa pode
+  // aparecer nas duas caçadas, como já documentado ali), então a soma das
+  // participações pode passar de 100%. É esperado, não é erro.
+  const totalGeral = Array.from(totalPorCnae.values()).reduce((a, b) => a + b, 0);
 
   const porSegmento = Object.entries(CNAES_POR_SEGMENTO)
-    .map(([slug, cnaes]) => ({
-      slug,
-      rotulo: rotuloDoSegmento(slug),
-      total: cnaes.reduce((soma, c) => soma + (totalPorCnae.get(c) ?? 0), 0),
-    }))
+    .map(([slug, cnaes]) => {
+      const total = cnaes.reduce((soma, c) => soma + (totalPorCnae.get(c) ?? 0), 0);
+      return {
+        slug,
+        rotulo: rotuloDoSegmento(slug),
+        total,
+        participacao: totalGeral > 0 ? Math.round((total / totalGeral) * 100) : 0,
+      };
+    })
     .filter((n) => n.total > 0)
     .sort((a, b) => b.total - a.total);
 

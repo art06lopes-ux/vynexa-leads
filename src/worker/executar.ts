@@ -53,6 +53,18 @@ const MAX_TENTATIVAS = 6;
  */
 const ESPERA_MINUTOS = [5, 5, 15, 30, 60, 120];
 
+/**
+ * Milissegundos até a próxima meia-noite UTC (mais 30 s de folga), que é
+ * quando a cota diária do D1 reseta. Dormir o plantão inteiro (até 110
+ * min) em vez disto fazia o worker continuar dormindo bem depois de a
+ * cota já ter voltado, se o erro batesse no início do turno.
+ */
+function msAteResetD1(): number {
+  const agora = new Date();
+  const proximaMeiaNoite = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate() + 1));
+  return proximaMeiaNoite.getTime() - agora.getTime() + 30_000;
+}
+
 async function main() {
   const banco = getBanco();
   const inicio = Date.now();
@@ -69,10 +81,13 @@ async function main() {
     }));
   } catch (erro) {
     if (!ehLimiteDiarioD1(erro)) throw erro;
-    // Nada a fazer hoje: dorme o resto do plantão (ou sai, fora dele) em
-    // vez de morrer e fazer o `worker.yml` relançar a cada 30 segundos.
+    // Nada a fazer hoje: dorme até a cota resetar (ou sai, fora do
+    // plantão) em vez de morrer e fazer o `worker.yml` relançar a cada
+    // 30 segundos. Não é o resto do plantão inteiro — se a cota bateu no
+    // começo do turno, esperar as até 110 min do plantão deixaria o
+    // worker dormindo bem depois de a cota já ter voltado.
     console.error("Cota diária do D1 esgotada. Esperando a próxima janela.");
-    if (PLANTAO_MIN > 0) await new Promise((r) => setTimeout(r, ORCAMENTO_MS - (Date.now() - inicio)));
+    if (PLANTAO_MIN > 0) await new Promise((r) => setTimeout(r, Math.min(msAteResetD1(), ORCAMENTO_MS - (Date.now() - inicio))));
     if (PLANTAO_MIN > 0 && process.env.GITHUB_OUTPUT) {
       const { appendFile } = await import("node:fs/promises");
       await appendFile(process.env.GITHUB_OUTPUT, "continuar=true\n");
@@ -99,8 +114,8 @@ async function main() {
         });
       } catch (erro) {
         if (!ehLimiteDiarioD1(erro)) throw erro;
-        console.error("Cota diária do D1 esgotada. Esperando o resto do plantão.");
-        await new Promise((r) => setTimeout(r, Math.max(0, ORCAMENTO_MS - (Date.now() - inicio))));
+        console.error("Cota diária do D1 esgotada. Esperando a próxima janela.");
+        await new Promise((r) => setTimeout(r, Math.max(0, Math.min(msAteResetD1(), ORCAMENTO_MS - (Date.now() - inicio)))));
         break;
       }
     }
@@ -138,8 +153,8 @@ async function main() {
       // esperar o resto do plantão em vez de insistir e derrubar o
       // processo (o que faria o `worker.yml` relançar sem parar).
       if (ehLimiteDiarioD1(erro)) {
-        console.error("  cota diária do D1 esgotada — esperando o resto do plantão sem gravar a tentativa.");
-        await new Promise((r) => setTimeout(r, Math.max(0, ORCAMENTO_MS - (Date.now() - inicio))));
+        console.error("  cota diária do D1 esgotada — esperando a próxima janela sem gravar a tentativa.");
+        await new Promise((r) => setTimeout(r, Math.max(0, Math.min(msAteResetD1(), ORCAMENTO_MS - (Date.now() - inicio)))));
         break;
       }
 

@@ -30,6 +30,11 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#0f0f10",
+  // O CSS `color-scheme: dark` (globals.css) não é suficiente sozinho:
+  // no Chrome/Windows, o menu nativo de um `<select>` ainda abre com
+  // fundo branco sem esta meta tag — é ela, não o CSS, que o navegador
+  // consulta para pintar o próprio menu.
+  colorScheme: "dark",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -75,6 +75,19 @@ export const SEGMENTOS: readonly Segmento[] = [
     ],
   },
   {
+    slug: "hamburgueria",
+    rotulo: "Hamburgueria",
+    rotuloEn: "Burger joints",
+    // O OSM não tem tag própria para hamburgueria: é `amenity` de comida
+    // rápida ou restaurante com `cuisine=burger` (multivalorado, por
+    // isso o `regex`). Sem esta separação, hamburgueria some dentro do
+    // segmento genérico "Restaurantes e cafés".
+    filtros: [
+      { tags: [{ chave: "amenity", valor: "fast_food" }, { chave: "cuisine", valor: "burger", regex: true }] },
+      { tags: [{ chave: "amenity", valor: "restaurant" }, { chave: "cuisine", valor: "burger", regex: true }] },
+    ],
+  },
+  {
     slug: "academia",
     rotulo: "Academias",
     rotuloEn: "Gyms & fitness",
@@ -221,14 +234,19 @@ export const SEGMENTOS: readonly Segmento[] = [
     filtros: [{ tags: [{ chave: "shop", valor: "florist" }] }],
   },
   {
-    slug: "informatica_celular",
-    rotulo: "Informática e celulares",
-    rotuloEn: "Computer & phone shops",
+    slug: "informatica",
+    rotulo: "Informática e eletrônicos",
+    rotuloEn: "Computer & electronics shops",
     filtros: [
       { tags: [{ chave: "shop", valor: "computer" }] },
-      { tags: [{ chave: "shop", valor: "mobile_phone" }] },
       { tags: [{ chave: "shop", valor: "electronics" }] },
     ],
+  },
+  {
+    slug: "loja_celular",
+    rotulo: "Loja de celular e iPhone",
+    rotuloEn: "Mobile phone shops",
+    filtros: [{ tags: [{ chave: "shop", valor: "mobile_phone" }] }],
   },
   {
     slug: "fotografia_eventos",

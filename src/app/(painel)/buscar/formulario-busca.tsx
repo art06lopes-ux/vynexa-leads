@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, LoaderCircle, Radar } from "lucide-react";
+import { AlertCircle, Flame, LoaderCircle, Radar } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,8 @@ import { cn } from "@/lib/utils";
 /** 0 = todas as mapeadas na região. É o padrão: teto é exceção, não regra. */
 const QUANTIDADES = [0, 50, 100, 200] as const;
 const PAISES_INTERNACIONAIS = PAISES.filter((p) => p.codigo !== "BR");
+
+type Nicho = { slug: string; rotulo: string; total: number };
 
 type Progresso = {
   status: "pendente" | "em_andamento" | "concluida" | "erro";
@@ -41,6 +43,10 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
   const [pais, setPais] = useState("US");
   const [regiaoIntl, setRegiaoIntl] = useState("");
   const [cidadeIntl, setCidadeIntl] = useState("");
+
+  const [nichos, setNichos] = useState<Nicho[] | null>(null);
+  const [carregandoNichos, setCarregandoNichos] = useState(false);
+  const tokenNichos = useRef(0);
 
   const [segmento, setSegmento] = useState(SEGMENTOS[0]!.slug);
   const [tagChave, setTagChave] = useState("");
@@ -80,7 +86,10 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
     setCidade("");
     setMunicipios([]);
 
-    if (novaUf === "") return;
+    if (novaUf === "") {
+      setNichos(null);
+      return;
+    }
 
     const token = ++tokenMunicipios.current;
     setCarregandoMunicipios(true);
@@ -96,6 +105,37 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
       }
     } finally {
       if (token === tokenMunicipios.current) setCarregandoMunicipios(false);
+    }
+
+    void buscarNichos(novaUf, "");
+  }
+
+  /**
+   * Ranking de nichos por quantidade de estabelecimentos da Receita na
+   * região — para o operador ver qual segmento tem mais chance de dar
+   * empresa antes de escolher e caçar. Só existe para o Brasil, porque só
+   * o Brasil tem a base da Receita.
+   */
+  async function buscarNichos(ufAtual: string, cidadeAtual: string) {
+    if (ufAtual === "") {
+      setNichos(null);
+      return;
+    }
+
+    const token = ++tokenNichos.current;
+    setCarregandoNichos(true);
+
+    try {
+      const params = new URLSearchParams({ uf: ufAtual });
+      if (cidadeAtual) params.set("cidade", cidadeAtual);
+      const resposta = await fetch(`/api/receita/nichos?${params}`);
+      if (!resposta.ok) throw new Error("falha");
+      const dados = (await resposta.json()) as { nichos: Nicho[] };
+      if (token === tokenNichos.current) setNichos(dados.nichos);
+    } catch {
+      if (token === tokenNichos.current) setNichos(null);
+    } finally {
+      if (token === tokenNichos.current) setCarregandoNichos(false);
     }
   }
 
@@ -256,7 +296,10 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
                 <select
                   id={idCidade}
                   value={cidade}
-                  onChange={(e) => setCidade(e.target.value)}
+                  onChange={(e) => {
+                    setCidade(e.target.value);
+                    void buscarNichos(uf, e.target.value);
+                  }}
                   className={classeCampo}
                   disabled={uf === "" || carregandoMunicipios}
                 >
@@ -324,6 +367,41 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
               <p className="text-xs text-muted-foreground sm:col-span-3">
                 Fora do Brasil não existe fonte gratuita e universal de subdivisões, então estes
                 dois campos são texto livre, resolvidos pelo Nominatim. Escreva no idioma local.
+              </p>
+            </div>
+          )}
+
+          {escopo === "br" && uf !== "" && (carregandoNichos || (nichos && nichos.length > 0)) && (
+            <div className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 p-4">
+              <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <Flame className="size-3.5 text-acento" aria-hidden="true" />
+                Nichos com mais chance {cidade ? `em ${cidade}` : `em ${uf}`}
+              </p>
+              {carregandoNichos ? (
+                <p className="text-xs text-muted-foreground">Consultando a base da Receita…</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {nichos!.slice(0, 6).map((n) => (
+                    <button
+                      key={n.slug}
+                      type="button"
+                      onClick={() => setSegmento(n.slug)}
+                      className={cn(
+                        "num flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-200",
+                        segmento === n.slug
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-input bg-transparent text-muted-foreground hover:border-acento/40 hover:text-foreground",
+                      )}
+                    >
+                      {n.rotulo}
+                      <span className="opacity-70">{n.total}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Estabelecimentos ativos da Receita na região, por nicho. Mais estabelecimentos é
+                mais chance de achar quem não tem site — não é garantia de venda.
               </p>
             </div>
           )}

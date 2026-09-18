@@ -20,6 +20,9 @@ export const CNAES_POR_SEGMENTO: Record<string, readonly string[]> = {
     "8650001", "8650002", "8650003", "8650004", "8650005", "8650006", "8650099",
   ],
   restaurante: ["5611201", "5611203", "5611204", "5611205", "5620104", "1091102"],
+  // Mesmos CNAEs do restaurante: a Receita não distingue hamburgueria de
+  // lanchonete/restaurante — quem separa é a tag `cuisine` do OSM.
+  hamburgueria: ["5611201", "5611203"],
   academia: ["9313100"],
   petshop: ["4789004", "7500100", "9609208", "9609203"],
   oficina: ["4520001", "4520002", "4520003", "4520004", "4520006", "4520008", "4543900"],
@@ -37,7 +40,8 @@ export const CNAES_POR_SEGMENTO: Record<string, readonly string[]> = {
   construcao: ["4120400", "4321500", "4330402", "4330404"],
   moveis_decoracao: ["4754701", "4759801", "4755503"],
   floricultura: ["4789002"],
-  informatica_celular: ["4751201", "4752100", "9511800", "9512600"],
+  informatica: ["4751201", "9511800"],
+  loja_celular: ["4752100", "9512600"],
   fotografia_eventos: ["7420001", "7420004", "5620102", "8230001"],
   escolas: ["8511200", "8512100", "8513900", "8520100", "8599601"],
   seguranca: ["8011101", "8020000", "8020001", "8020002"],

@@ -1,6 +1,9 @@
 import "server-only";
 
 import { getBanco, planos } from "@/db/cliente";
+import { CNAES_POR_SEGMENTO } from "@/lib/receita/cnaes";
+import { chaveDeMunicipio } from "@/lib/receita/texto";
+import { rotuloDoSegmento } from "@/lib/osm/segmentos";
 
 export type ImportacaoReceita = {
   id: string;
@@ -46,4 +49,45 @@ export async function resumoReceita(): Promise<ResumoReceita> {
     porUf: porUf.map((r) => ({ uf: String(r.uf), total: Number(r.total) })),
     ultimas: planos<ImportacaoReceita>(ultimas),
   };
+}
+
+export type NichoRegiao = {
+  slug: string;
+  rotulo: string;
+  /** Estabelecimentos ativos da Receita nessa região, nos CNAEs do segmento. */
+  total: number;
+};
+
+/**
+ * Ranking de segmentos por quantidade de estabelecimentos da Receita na
+ * região — sem cidade, o estado inteiro.
+ *
+ * É uma aproximação, não uma previsão de venda: mais estabelecimentos
+ * ativos é mais chance de achar quem não tem site, que é a maioria (a
+ * ferramenta inteira parte disso). Não depende de IA nem de histórico
+ * de caçadas — só contagem, então funciona até numa região nunca buscada.
+ */
+export async function nichosPorRegiao(uf: string, cidade: string | null): Promise<NichoRegiao[]> {
+  const municipio = cidade ? chaveDeMunicipio(cidade) : null;
+  const todosCnaes = Object.values(CNAES_POR_SEGMENTO).flat();
+
+  const { rows } = await getBanco().execute({
+    sql: `SELECT cnae, COUNT(*) AS total FROM receita_estabelecimentos
+          WHERE uf = ? ${municipio ? "AND municipio = ?" : ""} AND cnae IN (${todosCnaes.map(() => "?").join(",")})
+          GROUP BY cnae`,
+    args: [uf.toUpperCase(), ...(municipio ? [municipio] : []), ...todosCnaes],
+  });
+
+  const totalPorCnae = new Map(rows.map((r) => [String(r.cnae), Number(r.total)]));
+
+  const porSegmento = Object.entries(CNAES_POR_SEGMENTO)
+    .map(([slug, cnaes]) => ({
+      slug,
+      rotulo: rotuloDoSegmento(slug),
+      total: cnaes.reduce((soma, c) => soma + (totalPorCnae.get(c) ?? 0), 0),
+    }))
+    .filter((n) => n.total > 0)
+    .sort((a, b) => b.total - a.total);
+
+  return porSegmento;
 }

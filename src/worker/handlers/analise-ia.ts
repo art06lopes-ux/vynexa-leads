@@ -15,12 +15,15 @@ export type PayloadAnalise = {
 /**
  * Teto por job.
  *
- * Cada chamada ao Gemini leva 2 segundos de espaçamento mais a latência,
- * e o worker tem 4 minutos de orçamento no total. Vinte cabe com folga e
- * ainda deixa tempo para outros jobs na fila. O que sobrar vira um job
- * novo no fim — a fila drena sozinha, a cada 5 minutos.
+ * Alto de propósito: quem protege contra estourar o worker é o
+ * `ORCAMENTO_MS` abaixo (para de pedir mais análise 3 minutos depois de
+ * começar), não este número. Um teto baixo (era 20) só atrasava: com a
+ * espera de 2 s entre chamadas ao Gemini, o orçamento já permite ~90
+ * por rodada — punha o job para se reenfileirar sem necessidade antes
+ * de aproveitar o tempo que tinha. O que sobrar do orçamento ainda vira
+ * um job novo no fim, e a fila drena sozinha dentro do mesmo plantão.
  */
-const TETO_POR_JOB = 20;
+export const TETO_POR_JOB = 100_000;
 
 /** Para antes de estourar o orçamento do worker e ser morto no meio. */
 const ORCAMENTO_MS = 3 * 60 * 1000;

@@ -9,6 +9,7 @@ import { acharSegmento, type Segmento } from "@/lib/osm/segmentos";
 import { expandirBbox, raioAproximadoKm, resolverLugar, type Bbox } from "@/lib/osm/nominatim";
 import { buscarEstabelecimentos, type ElementoOsm } from "@/lib/osm/overpass";
 import { abreWhatsapp } from "@/lib/leads/whatsapp";
+import { TETO_POR_JOB } from "@/worker/handlers/analise-ia";
 import { complementarComReceita } from "@/worker/handlers/receita";
 
 /**
@@ -278,7 +279,7 @@ async function pedirAnalise(banco: Client): Promise<void> {
   if (rows.length > 0) return;
   await banco.execute({
     sql: `INSERT INTO jobs (id, tipo, payload, status) VALUES (?, 'analise_ia', ?, 'pendente')`,
-    args: [novoId(), JSON.stringify({ limite: 20 })],
+    args: [novoId(), JSON.stringify({ limite: TETO_POR_JOB })],
   });
 }
 

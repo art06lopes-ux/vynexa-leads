@@ -1,5 +1,6 @@
 import { ehLimiteDiarioD1, getBanco, MENSAGEM_COTA_D1, novoId } from "@/db/cliente";
 import { exigirSessaoNaApi } from "@/server/sessao";
+import { TETO_POR_JOB } from "@/worker/handlers/analise-ia";
 
 /**
  * Enfileira a análise de IA das empresas ainda sem lead.
@@ -48,7 +49,7 @@ async function enfileirar(banco: ReturnType<typeof getBanco>): Promise<Response>
 
   await banco.execute({
     sql: `INSERT INTO jobs (id, tipo, payload, status) VALUES (?, 'analise_ia', ?, 'pendente')`,
-    args: [novoId(), JSON.stringify({ limite: 20 })],
+    args: [novoId(), JSON.stringify({ limite: TETO_POR_JOB })],
   });
 
   return Response.json({ enfileirado: true, pendentes: total }, { status: 202 });

@@ -118,8 +118,8 @@ export function montarInstrucao(empresa: Empresa, canal: Canal | null): string {
 
   const formato =
     canal === "whatsapp"
-      ? "Mensagem de WhatsApp: no máximo 4 linhas curtas, tom direto e cordial, sem saudação formal de carta, sem assinatura, sem emojis."
-      : "Mensagem de e-mail: no máximo 6 linhas, corpo apenas, sem assunto e sem assinatura, tom profissional.";
+      ? "Mensagem de WhatsApp: no máximo 2 linhas curtas (por volta de 220 caracteres no total), tom direto e cordial, sem saudação formal de carta, sem assinatura, sem emojis. Curta o bastante para ler de relance na tela de bloqueio."
+      : "Mensagem de e-mail: no máximo 4 linhas, corpo apenas, sem assunto e sem assinatura, tom profissional e objetivo.";
 
   return `Você trabalha na Vynexa Dev, que cria sites para pequenos negócios. Analise o lead abaixo e escreva a primeira abordagem.
 

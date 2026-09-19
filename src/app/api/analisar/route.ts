@@ -1,4 +1,4 @@
-import { getBanco, novoId } from "@/db/cliente";
+import { ehLimiteDiarioD1, getBanco, MENSAGEM_COTA_D1, novoId } from "@/db/cliente";
 import { exigirSessaoNaApi } from "@/server/sessao";
 
 /**
@@ -14,6 +14,15 @@ export async function POST() {
 
   const banco = getBanco();
 
+  try {
+    return await enfileirar(banco);
+  } catch (erro) {
+    if (!ehLimiteDiarioD1(erro)) throw erro;
+    return Response.json({ erro: MENSAGEM_COTA_D1 }, { status: 503 });
+  }
+}
+
+async function enfileirar(banco: ReturnType<typeof getBanco>): Promise<Response> {
   const { rows: pendentes } = await banco.execute(
     `SELECT COUNT(*) AS n FROM empresas e
      LEFT JOIN leads l ON l.empresa_id = e.id

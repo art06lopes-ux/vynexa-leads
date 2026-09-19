@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { ehLimiteDiarioD1 } from "@/db/cliente";
+import { ehLimiteDiarioD1, MENSAGEM_COTA_D1 } from "@/db/cliente";
 import { criarBuscaComJob } from "@/db/consultas";
 import { acharPais } from "@/lib/geo/paises";
 import { acharSegmento } from "@/lib/osm/segmentos";
@@ -70,14 +70,7 @@ export async function POST(request: Request) {
     // motivo real (a cota diária do D1, que reseta sozinha à meia-noite
     // UTC) atrás de uma mensagem que parece um problema de conexão.
     if (ehLimiteDiarioD1(erro)) {
-      return Response.json(
-        {
-          erro:
-            "O banco atingiu a cota diária de escrita (plano gratuito do Cloudflare D1). " +
-            "Ela reseta à meia-noite UTC — tente de novo depois disso.",
-        },
-        { status: 503 },
-      );
+      return Response.json({ erro: MENSAGEM_COTA_D1 }, { status: 503 });
     }
     throw erro;
   }

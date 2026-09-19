@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { anexarSessaoStripe, criarVendaPendente } from "@/db/vendas";
+import { ehLimiteDiarioD1, MENSAGEM_COTA_D1 } from "@/db/cliente";
 import { criarSessaoCheckout, ErroStripe, paraCentavos } from "@/lib/pagamento/stripe";
 import { exigirSessaoNaApi } from "@/server/sessao";
 
@@ -50,14 +51,20 @@ export async function POST(request: Request) {
 
   const origem = new URL(request.url).origin;
 
-  const vendaId = await criarVendaPendente({
-    descricao,
-    valorCentavos: centavos,
-    moeda,
-    leadId: leadId || null,
-    clienteEmail: clienteEmail || null,
-    clienteNome: clienteNome || null,
-  });
+  let vendaId: string;
+  try {
+    vendaId = await criarVendaPendente({
+      descricao,
+      valorCentavos: centavos,
+      moeda,
+      leadId: leadId || null,
+      clienteEmail: clienteEmail || null,
+      clienteNome: clienteNome || null,
+    });
+  } catch (erro) {
+    if (!ehLimiteDiarioD1(erro)) throw erro;
+    return Response.json({ erro: MENSAGEM_COTA_D1 }, { status: 503 });
+  }
 
   try {
     const sessao = await criarSessaoCheckout({

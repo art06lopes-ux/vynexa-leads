@@ -43,6 +43,10 @@ export function ehLimiteDiarioD1(erro: unknown): boolean {
   return /D1:.*daily row (read|write) limit/i.test(mensagem);
 }
 
+/** Mensagem padrão para devolver ao operador quando `ehLimiteDiarioD1` for verdadeiro. */
+export const MENSAGEM_COTA_D1 =
+  "O banco atingiu a cota diária do plano gratuito do Cloudflare D1. Ela reseta à meia-noite UTC — tente de novo depois disso.";
+
 /**
  * Copia uma linha do libSQL para um objeto simples.
  *

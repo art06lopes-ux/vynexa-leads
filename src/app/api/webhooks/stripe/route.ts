@@ -1,4 +1,5 @@
 import { marcarComoPaga } from "@/db/vendas";
+import { ehLimiteDiarioD1 } from "@/db/cliente";
 import { formatarDinheiro } from "@/lib/pagamento/dinheiro";
 import { notificarTodos } from "@/lib/push/enviar";
 import { assinaturaValida } from "@/lib/pagamento/stripe";
@@ -70,22 +71,33 @@ export async function POST(request: Request) {
     | { email?: string; name?: string }
     | undefined;
 
-  const primeiraVez = await marcarComoPaga(vendaId, {
-    sessionId: typeof sessao.id === "string" ? sessao.id : "",
-    paymentIntent: typeof sessao.payment_intent === "string" ? sessao.payment_intent : null,
-    email: detalhes?.email ?? null,
-    nome: detalhes?.name ?? null,
-  });
-
-  // Só na primeira confirmação: a Stripe reenvia eventos, e cada reenvio
-  // não pode virar mais uma notificação no celular.
-  if (primeiraVez) {
-    const centavos = typeof sessao.amount_total === "number" ? sessao.amount_total : 0;
-    await notificarTodos({
-      titulo: "Venda realizada",
-      corpo: `Você recebeu: ${formatarDinheiro(centavos)}${detalhes?.name ? ` · ${detalhes.name}` : ""}`,
-      url: "/vendas",
+  // Sempre 200 daqui pra baixo, mesmo se o banco falhar: a Stripe reenvia
+  // um 5xx para sempre, e a cota diária do D1 (esgotada até a meia-noite
+  // UTC) não vai se resolver de reenvio em reenvio. Melhor logar e deixar
+  // a venda como pendente — o operador confere manualmente — do que virar
+  // um webhook que insiste a cada minuto indefinidamente.
+  let primeiraVez = false;
+  try {
+    primeiraVez = await marcarComoPaga(vendaId, {
+      sessionId: typeof sessao.id === "string" ? sessao.id : "",
+      paymentIntent: typeof sessao.payment_intent === "string" ? sessao.payment_intent : null,
+      email: detalhes?.email ?? null,
+      nome: detalhes?.name ?? null,
     });
+
+    // Só na primeira confirmação: a Stripe reenvia eventos, e cada reenvio
+    // não pode virar mais uma notificação no celular.
+    if (primeiraVez) {
+      const centavos = typeof sessao.amount_total === "number" ? sessao.amount_total : 0;
+      await notificarTodos({
+        titulo: "Venda realizada",
+        corpo: `Você recebeu: ${formatarDinheiro(centavos)}${detalhes?.name ? ` · ${detalhes.name}` : ""}`,
+        url: "/vendas",
+      });
+    }
+  } catch (erro) {
+    if (!ehLimiteDiarioD1(erro)) throw erro;
+    console.error("Webhook da Stripe: cota diária do D1 esgotada, venda não marcada como paga.", vendaId);
   }
 
   // 200 nos dois casos: reenvio de um evento já processado não é erro, e

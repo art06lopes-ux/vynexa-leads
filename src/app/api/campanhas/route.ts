@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { criarCampanha } from "@/db/campanhas";
+import { ehLimiteDiarioD1, MENSAGEM_COTA_D1 } from "@/db/cliente";
 import { contaConectada } from "@/lib/google/oauth";
 import { exigirSessaoNaApi } from "@/server/sessao";
 
@@ -32,7 +33,13 @@ export async function POST(request: Request) {
     return Response.json({ erro: analise.error.issues[0]?.message ?? "Dados inválidos." }, { status: 400 });
   }
 
-  const resultado = await criarCampanha(analise.data);
+  let resultado: Awaited<ReturnType<typeof criarCampanha>>;
+  try {
+    resultado = await criarCampanha(analise.data);
+  } catch (erro) {
+    if (!ehLimiteDiarioD1(erro)) throw erro;
+    return Response.json({ erro: MENSAGEM_COTA_D1 }, { status: 503 });
+  }
 
   if (resultado.incluidas === 0) {
     return Response.json(

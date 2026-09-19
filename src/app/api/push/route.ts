@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { agora, getBanco } from "@/db/cliente";
+import { agora, ehLimiteDiarioD1, getBanco, MENSAGEM_COTA_D1 } from "@/db/cliente";
 import { getChavePublicaVapid } from "@/lib/push/enviar";
 import { exigirSessaoNaApi } from "@/server/sessao";
 
@@ -37,18 +37,23 @@ export async function POST(request: Request) {
 
   const { endpoint, keys, agente } = analise.data;
 
-  await getBanco().execute({
-    // Reativar um aparelho que foi invalidado zera `invalidada_em`: o
-    // usuário reinstalou o app e a assinatura nova precisa valer.
-    sql: `INSERT INTO push_assinaturas (endpoint, p256dh, auth, agente, criado_em, invalidada_em)
-          VALUES (?, ?, ?, ?, ?, NULL)
-          ON CONFLICT(endpoint) DO UPDATE SET
-            p256dh = excluded.p256dh,
-            auth = excluded.auth,
-            agente = excluded.agente,
-            invalidada_em = NULL`,
-    args: [endpoint, keys.p256dh, keys.auth, agente ?? null, agora()],
-  });
+  try {
+    await getBanco().execute({
+      // Reativar um aparelho que foi invalidado zera `invalidada_em`: o
+      // usuário reinstalou o app e a assinatura nova precisa valer.
+      sql: `INSERT INTO push_assinaturas (endpoint, p256dh, auth, agente, criado_em, invalidada_em)
+            VALUES (?, ?, ?, ?, ?, NULL)
+            ON CONFLICT(endpoint) DO UPDATE SET
+              p256dh = excluded.p256dh,
+              auth = excluded.auth,
+              agente = excluded.agente,
+              invalidada_em = NULL`,
+      args: [endpoint, keys.p256dh, keys.auth, agente ?? null, agora()],
+    });
+  } catch (erro) {
+    if (!ehLimiteDiarioD1(erro)) throw erro;
+    return Response.json({ erro: MENSAGEM_COTA_D1 }, { status: 503 });
+  }
 
   return Response.json({ ok: true }, { status: 201 });
 }
@@ -61,10 +66,15 @@ export async function DELETE(request: Request) {
   const corpo = (await request.json().catch(() => null)) as { endpoint?: string } | null;
   if (!corpo?.endpoint) return Response.json({ erro: "Endpoint ausente." }, { status: 400 });
 
-  await getBanco().execute({
-    sql: `DELETE FROM push_assinaturas WHERE endpoint = ?`,
-    args: [corpo.endpoint],
-  });
+  try {
+    await getBanco().execute({
+      sql: `DELETE FROM push_assinaturas WHERE endpoint = ?`,
+      args: [corpo.endpoint],
+    });
+  } catch (erro) {
+    if (!ehLimiteDiarioD1(erro)) throw erro;
+    return Response.json({ erro: MENSAGEM_COTA_D1 }, { status: 503 });
+  }
 
   return Response.json({ ok: true });
 }

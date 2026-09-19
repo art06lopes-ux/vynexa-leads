@@ -68,130 +68,116 @@ function msAteResetD1(): number {
 async function main() {
   const banco = getBanco();
   const inicio = Date.now();
+  let processados = 0;
 
-  // Recupera o que ficou preso: um worker morto no meio (o Actions pode
-  // ser cancelado a qualquer momento) deixaria o job em 'em_andamento'
-  // para sempre sem esta linha.
-  let recuperados = 0;
+  // Tudo — recuperar lease, reservar job, despachar, gravar o resultado —
+  // é escrita no banco, e qualquer uma delas pode ser a que esbarra na
+  // cota diária do D1. Um try/catch por escrita já provou ser frágil: uma
+  // ficou de fora (a própria reserva do job, em `reservarProximo`) e o
+  // worker voltou a morrer e ser relançado sem parar. Um try/catch só,
+  // em volta do laço inteiro, cobre qualquer escrita futura também, sem
+  // precisar lembrar de proteger cada uma.
   try {
-    ({ rowsAffected: recuperados } = await banco.execute({
+    // Recupera o que ficou preso: um worker morto no meio (o Actions pode
+    // ser cancelado a qualquer momento) deixaria o job em 'em_andamento'
+    // para sempre sem esta linha.
+    const { rowsAffected: recuperados } = await banco.execute({
       sql: `UPDATE jobs SET status = 'pendente', atualizado_em = ?
             WHERE status = 'em_andamento' AND (lease_ate IS NULL OR lease_ate < ?)`,
       args: [agora(), agora()],
-    }));
-  } catch (erro) {
-    if (!ehLimiteDiarioD1(erro)) throw erro;
-    // Nada a fazer hoje: dorme até a cota resetar (ou sai, fora do
-    // plantão) em vez de morrer e fazer o `worker.yml` relançar a cada
-    // 30 segundos. Não é o resto do plantão inteiro — se a cota bateu no
-    // começo do turno, esperar as até 110 min do plantão deixaria o
-    // worker dormindo bem depois de a cota já ter voltado.
-    console.error("Cota diária do D1 esgotada. Esperando a próxima janela.");
-    if (PLANTAO_MIN > 0) await new Promise((r) => setTimeout(r, Math.min(msAteResetD1(), ORCAMENTO_MS - (Date.now() - inicio))));
-    if (PLANTAO_MIN > 0 && process.env.GITHUB_OUTPUT) {
-      const { appendFile } = await import("node:fs/promises");
-      await appendFile(process.env.GITHUB_OUTPUT, "continuar=true\n");
-    }
-    return;
-  }
+    });
+    if (recuperados > 0) console.log(`${recuperados} job(s) com lease vencido devolvidos à fila.`);
 
-  if (recuperados > 0) console.log(`${recuperados} job(s) com lease vencido devolvidos à fila.`);
-
-  let processados = 0;
-
-  while (Date.now() - inicio < ORCAMENTO_MS) {
-    // No plantão a recuperação de lease precisa ser contínua e a cada
-    // volta: um push derruba o plantão anterior no meio de um job, e
-    // esse job só volta à fila quando alguém olha o lease vencido. Olhar
-    // só com a fila vazia não bastou — a análise de IA se reenfileira
-    // sem parar e a fila nunca esvazia.
-    if (PLANTAO_MIN > 0) {
-      try {
+    while (Date.now() - inicio < ORCAMENTO_MS) {
+      // No plantão a recuperação de lease precisa ser contínua e a cada
+      // volta: um push derruba o plantão anterior no meio de um job, e
+      // esse job só volta à fila quando alguém olha o lease vencido. Olhar
+      // só com a fila vazia não bastou — a análise de IA se reenfileira
+      // sem parar e a fila nunca esvazia.
+      if (PLANTAO_MIN > 0) {
         await banco.execute({
           sql: `UPDATE jobs SET status = 'pendente', atualizado_em = ?
                 WHERE status = 'em_andamento' AND (lease_ate IS NULL OR lease_ate < ?)`,
           args: [agora(), agora()],
         });
-      } catch (erro) {
-        if (!ehLimiteDiarioD1(erro)) throw erro;
-        console.error("Cota diária do D1 esgotada. Esperando a próxima janela.");
-        await new Promise((r) => setTimeout(r, Math.max(0, Math.min(msAteResetD1(), ORCAMENTO_MS - (Date.now() - inicio)))));
-        break;
-      }
-    }
-
-    const job = await reservarProximo(banco);
-    if (job === null) {
-      if (PLANTAO_MIN === 0) break;
-      await new Promise((r) => setTimeout(r, PAUSA_FILA_VAZIA_MS));
-      continue;
-    }
-
-    console.log(`[${job.tipo}] ${job.id} — tentativa ${job.tentativas}`);
-
-    try {
-      const resumo = await despachar(banco, job);
-      await banco.execute({
-        sql: `UPDATE jobs SET status = 'concluido', erro = NULL, atualizado_em = ? WHERE id = ?`,
-        args: [agora(), job.id],
-      });
-      console.log(`  ok — ${resumo}`);
-    } catch (erro) {
-      const mensagem = erro instanceof Error ? erro.message : String(erro);
-
-      // Cota do Gemini não é falha do job: é o dia acabando. Contar como
-      // tentativa faria a análise desistir de vez depois de seis esperas
-      // e a fila morreria até alguém caçar de novo. Espera meia hora e
-      // devolve a tentativa.
-      const cota = erro instanceof ErroGemini && erro.temporario;
-      const desiste = !cota && job.tentativas >= MAX_TENTATIVAS;
-
-      const espera = cota ? 30 : (ESPERA_MINUTOS[Math.min(job.tentativas - 1, ESPERA_MINUTOS.length - 1)] ?? 5);
-
-      // Se o próprio erro FOI a cota diária do D1, gravar a tentativa
-      // também é uma escrita que vai falhar — registrar só no log e
-      // esperar o resto do plantão em vez de insistir e derrubar o
-      // processo (o que faria o `worker.yml` relançar sem parar).
-      if (ehLimiteDiarioD1(erro)) {
-        console.error("  cota diária do D1 esgotada — esperando a próxima janela sem gravar a tentativa.");
-        await new Promise((r) => setTimeout(r, Math.max(0, Math.min(msAteResetD1(), ORCAMENTO_MS - (Date.now() - inicio)))));
-        break;
       }
 
-      await banco.execute({
-        sql: `UPDATE jobs SET status = ?, erro = ?, lease_ate = NULL, disponivel_em = ?, atualizado_em = ?,
-                              tentativas = tentativas - ?
-              WHERE id = ?`,
-        args: [
-          desiste ? "erro" : "pendente",
-          mensagem,
-          desiste ? null : emMinutos(espera),
-          agora(),
-          cota ? 1 : 0,
-          job.id,
-        ],
-      });
+      const job = await reservarProximo(banco);
+      if (job === null) {
+        if (PLANTAO_MIN === 0) break;
+        await new Promise((r) => setTimeout(r, PAUSA_FILA_VAZIA_MS));
+        continue;
+      }
 
-      // A busca também precisa sair de 'em_andamento', senão a tela fica
-      // girando para sempre esperando um job que já desistiu. E enquanto
-      // ainda vai tentar, a tela mostra o motivo e a hora — "rastreando"
-      // por vinte minutos sem explicação parece travado.
-      if (job.tipo === "busca") {
-        const { buscaId } = JSON.parse(job.payload) as PayloadBusca;
+      console.log(`[${job.tipo}] ${job.id} — tentativa ${job.tentativas}`);
+
+      try {
+        const resumo = await despachar(banco, job);
         await banco.execute({
-          sql: desiste
-            ? `UPDATE buscas SET status = 'erro', erro = ? WHERE id = ?`
-            : `UPDATE buscas SET erro = ? WHERE id = ?`,
-          args: [desiste ? mensagem : `${mensagem} Nova tentativa em ~${espera} min (tentativa ${job.tentativas} de ${MAX_TENTATIVAS}).`, buscaId],
+          sql: `UPDATE jobs SET status = 'concluido', erro = NULL, atualizado_em = ? WHERE id = ?`,
+          args: [agora(), job.id],
         });
+        console.log(`  ok — ${resumo}`);
+      } catch (erro) {
+        // Erro de job (Overpass fora do ar, cota do Gemini…) é tratado
+        // aqui, com retentativa. Se a ESCRITA que registra isso também
+        // falhar pela cota do D1, o erro sobe sem ser pego de novo — cai
+        // no catch de fora, que já sabe lidar com isso.
+        const mensagem = erro instanceof Error ? erro.message : String(erro);
+
+        // Cota do Gemini não é falha do job: é o dia acabando. Contar
+        // como tentativa faria a análise desistir de vez depois de seis
+        // esperas e a fila morreria até alguém caçar de novo. Espera meia
+        // hora e devolve a tentativa.
+        const cota = erro instanceof ErroGemini && erro.temporario;
+        const desiste = !cota && job.tentativas >= MAX_TENTATIVAS;
+
+        const espera = cota ? 30 : (ESPERA_MINUTOS[Math.min(job.tentativas - 1, ESPERA_MINUTOS.length - 1)] ?? 5);
+
+        await banco.execute({
+          sql: `UPDATE jobs SET status = ?, erro = ?, lease_ate = NULL, disponivel_em = ?, atualizado_em = ?,
+                                tentativas = tentativas - ?
+                WHERE id = ?`,
+          args: [
+            desiste ? "erro" : "pendente",
+            mensagem,
+            desiste ? null : emMinutos(espera),
+            agora(),
+            cota ? 1 : 0,
+            job.id,
+          ],
+        });
+
+        // A busca também precisa sair de 'em_andamento', senão a tela
+        // fica girando para sempre esperando um job que já desistiu. E
+        // enquanto ainda vai tentar, a tela mostra o motivo e a hora —
+        // "rastreando" por vinte minutos sem explicação parece travado.
+        if (job.tipo === "busca") {
+          const { buscaId } = JSON.parse(job.payload) as PayloadBusca;
+          await banco.execute({
+            sql: desiste
+              ? `UPDATE buscas SET status = 'erro', erro = ? WHERE id = ?`
+              : `UPDATE buscas SET erro = ? WHERE id = ?`,
+            args: [desiste ? mensagem : `${mensagem} Nova tentativa em ~${espera} min (tentativa ${job.tentativas} de ${MAX_TENTATIVAS}).`, buscaId],
+          });
+        }
+
+        console.error(
+          `  ${desiste ? "desistiu" : `nova tentativa em ~${espera} min`} — ${mensagem}`,
+        );
       }
 
-      console.error(
-        `  ${desiste ? "desistiu" : `nova tentativa em ~${espera} min`} — ${mensagem}`,
-      );
+      processados += 1;
     }
-
-    processados += 1;
+  } catch (erro) {
+    if (!ehLimiteDiarioD1(erro)) throw erro;
+    // Nada a fazer hoje: dorme até a cota resetar (ou o plantão acabar,
+    // o que vier primeiro) em vez de morrer e fazer o `worker.yml`
+    // relançar a cada 30 segundos.
+    console.error("Cota diária do D1 esgotada. Esperando a próxima janela.");
+    if (PLANTAO_MIN > 0) {
+      await new Promise((r) => setTimeout(r, Math.max(0, Math.min(msAteResetD1(), ORCAMENTO_MS - (Date.now() - inicio)))));
+    }
   }
 
   console.log(
@@ -200,7 +186,8 @@ async function main() {
       : `${processados} job(s) processado(s) em ${Math.round((Date.now() - inicio) / 1000)}s.`,
   );
 
-  // Plantão acabou por tempo: pede ao fluxo que dispare o próximo.
+  // Plantão acabou (por tempo ou por cota esgotada): pede ao fluxo que
+  // dispare o próximo.
   if (PLANTAO_MIN > 0 && process.env.GITHUB_OUTPUT) {
     const { appendFile } = await import("node:fs/promises");
     await appendFile(process.env.GITHUB_OUTPUT, "continuar=true\n");

@@ -122,6 +122,8 @@ export function BotaoNotificacoes() {
       }
       setEstado("inativo");
       toast.success("Notificações desativadas neste aparelho.");
+    } catch (erro) {
+      toast.error(erro instanceof Error ? erro.message : "Falha ao desativar.");
     } finally {
       setOcupado(false);
     }
@@ -179,6 +181,8 @@ export function BotaoNotificacoes() {
         return;
       }
       toast.success(`Teste enviado para ${d.enviados} aparelho(s). Olhe a tela de bloqueio.`);
+    } catch {
+      toast.error("Falha de rede ao enviar o teste.");
     } finally {
       setOcupado(false);
     }

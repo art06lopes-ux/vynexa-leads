@@ -32,6 +32,8 @@ export function ConexaoGoogle({
       }
       toast.success("Gmail desconectado. Revogue também em myaccount.google.com/permissions.");
       router.refresh();
+    } catch {
+      toast.error("Falha de rede ao desconectar.");
     } finally {
       setOcupado(false);
     }

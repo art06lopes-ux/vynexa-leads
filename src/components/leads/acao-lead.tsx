@@ -54,7 +54,13 @@ export function AcaoLead({ empresa }: { empresa: EmpresaListada }) {
   const [copiado, setCopiado] = useState(false);
 
   const mensagem = empresa.mensagem_gerada;
-  if (!mensagem) return null;
+
+  // Estado explícito e não botão sumido — mesmo raciocínio do "sem
+  // telefone utilizável" mais abaixo: o operador precisa saber que falta
+  // a análise, não achar que a linha está quebrada.
+  if (!mensagem) {
+    return <span className="text-xs text-muted-foreground">Sem mensagem gerada</span>;
+  }
 
   const linkWhatsapp = montarLinkWhatsApp(empresa.telefone, mensagem, empresa.pais);
   const linkEmail = empresa.email

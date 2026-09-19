@@ -25,6 +25,8 @@ export function BotaoPausa({ id, status }: { id: string; status: StatusCampanha 
       }
       toast.success(pausada ? "Envio retomado." : "Envio pausado.");
       router.refresh();
+    } catch {
+      toast.error("Falha de rede ao alterar a campanha.");
     } finally {
       setOcupado(false);
     }

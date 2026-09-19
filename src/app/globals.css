@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Identidade Vynexa Dev: grafite com âmbar.
+ * Identidade Vynexa Dev: grafite com ciano.
  *
  * A ferramenta é escura por definição, não por preferência do sistema:
  * é um painel de trabalho usado por horas seguidas. Por isso `:root` já
@@ -17,10 +17,16 @@
  * e o ponto "ao vivo". Fora disso a página é grafite, texto e espaço.
  * Um acento usado em tudo deixa de destacar qualquer coisa.
  *
+ * Trocado de âmbar para ciano (pedido explícito: clima de painel de
+ * dados, tipo Linear/Vercel/Stripe) — os status semânticos (âmbar de
+ * aviso, verde de sucesso, vermelho de erro) NÃO mudaram: são
+ * significado, não identidade, e ficariam ambíguos se seguissem o
+ * acento.
+ *
  * Contraste medido, não estimado: foreground #F2F0EB sobre #0F0F10 =
  * 17,3:1; muted-foreground #9C9A94 sobre card #17181A = 6,3:1; acento
- * #E0A526 sobre o fundo = 8,6:1; texto #1A1408 sobre o botão âmbar =
- * 8,3:1. Todos acima do mínimo 4.5:1 da WCAG AA.
+ * #38BDF8 sobre o fundo = 8,9:1; texto #071825 sobre o botão ciano =
+ * 9,6:1. Todos acima do mínimo 4.5:1 da WCAG AA.
  */
 
 @theme inline {
@@ -87,8 +93,8 @@
   --popover: #1b1c1f;
   --popover-foreground: #f2f0eb;
 
-  --primary: #e0a526;
-  --primary-foreground: #1a1408;
+  --primary: #38bdf8;
+  --primary-foreground: #071825;
 
   --secondary: #222326;
   --secondary-foreground: #e8e6e1;
@@ -99,36 +105,36 @@
   --accent: #26272b;
   --accent-foreground: #f2f0eb;
 
-  /* Erro é vermelho e só erro é vermelho: com o acento em âmbar, a cor
+  /* Erro é vermelho e só erro é vermelho: com o acento em ciano, a cor
      de falha volta a ter o significado que tem em todo lugar. Sempre
      acompanhada de ícone e texto. */
   --destructive: #f87171;
 
   --border: rgba(242, 240, 235, 0.1);
   --input: rgba(242, 240, 235, 0.16);
-  --ring: #e0a526;
+  --ring: #38bdf8;
 
-  --chart-1: #e0a526;
-  --chart-2: #f3c96b;
+  --chart-1: #38bdf8;
+  --chart-2: #7dd3fc;
   --chart-3: #9c9a94;
-  --chart-4: #60a5fa;
+  --chart-4: #a78bfa;
   --chart-5: #4ade80;
 
   --radius: 0.75rem;
 
   --sidebar: #131316;
   --sidebar-foreground: #d3d1cc;
-  --sidebar-primary: #e0a526;
-  --sidebar-primary-foreground: #1a1408;
+  --sidebar-primary: #38bdf8;
+  --sidebar-primary-foreground: #071825;
   --sidebar-accent: #222326;
   --sidebar-accent-foreground: #f2f0eb;
   --sidebar-border: rgba(242, 240, 235, 0.1);
-  --sidebar-ring: #e0a526;
+  --sidebar-ring: #38bdf8;
 
   /* O acento. Mesmo valor do primary — existe como token próprio para
      que "cor de destaque em texto" e "cor de fundo de botão" possam
      divergir um dia sem trocar em vinte arquivos. */
-  --acento: #e0a526;
+  --acento: #38bdf8;
 
   /* Cores dos status. Cada uma vem acompanhada de rótulo em texto na
      interface — a cor reforça, nunca carrega sozinha o significado. */
@@ -251,7 +257,7 @@
     overflow: hidden;
     border: 1px solid rgba(242, 240, 235, 0.1);
     background:
-      radial-gradient(60% 100% at 0% 0%, rgba(224, 165, 38, 0.08), transparent 55%),
+      radial-gradient(60% 100% at 0% 0%, rgba(56, 189, 248, 0.08), transparent 55%),
       #141416;
   }
 }

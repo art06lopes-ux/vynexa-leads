@@ -56,6 +56,12 @@ export function FormularioCheckout() {
 
       setLink(dados.url);
       toast.success("Link gerado. Mande para o cliente.");
+      // Limpa os campos: o uso real é gerar um link atrás do outro para
+      // clientes diferentes, e sobrar a descrição/valor anteriores é o
+      // jeito mais fácil de cobrar o cliente errado pelo valor errado.
+      setDescricao("");
+      setValor("");
+      setEmail("");
       router.refresh();
     } catch {
       setErro("Falha de rede ao gerar o link.");

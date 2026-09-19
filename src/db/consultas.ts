@@ -71,15 +71,21 @@ export async function obterBusca(id: string): Promise<Busca | null> {
   return rows[0] ? plano<Busca>(rows[0]) : null;
 }
 
-export async function listarBuscasRecentes(limite = 8): Promise<Busca[]> {
+export async function listarBuscasRecentes(limite = 8, pagina = 1): Promise<Busca[]> {
   const { rows } = await getBanco().execute({
     sql: `SELECT id, segmento, pais, estado, cidade, rotulo_resolvido, raio_final_km,
-                 expansoes, status, quantidade_encontrada, quantidade_nova, erro,
-                 criado_em, concluido_em
-          FROM buscas ORDER BY criado_em DESC LIMIT ?`,
-    args: [limite],
+                 expansoes, status, quantidade_encontrada, quantidade_nova, quantidade_receita,
+                 erro, criado_em, concluido_em
+          FROM buscas ORDER BY criado_em DESC LIMIT ? OFFSET ?`,
+    args: [limite, (pagina - 1) * limite],
   });
   return planos<Busca>(rows);
+}
+
+/** Total de caçadas já executadas — usado pela paginação do Histórico. */
+export async function contarBuscas(): Promise<number> {
+  const { rows } = await getBanco().execute(`SELECT COUNT(*) AS n FROM buscas`);
+  return Number(rows[0]?.n ?? 0);
 }
 
 // ---------------------------------------------------------------------

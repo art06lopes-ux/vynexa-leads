@@ -109,7 +109,10 @@ export function Dock() {
         aria-label="Seções"
         onMouseMove={aoMover}
         onMouseLeave={aoSair}
-        className="vidro brasa pointer-events-auto flex items-end gap-1 rounded-2xl px-2 pb-2 pt-3 shadow-[0_18px_50px_-20px_rgba(0,0,0,0.9)]"
+        // `overflow-x-auto` é rede de segurança: os 8 itens passam da
+        // largura disponível em telas bem estreitas (iPhone SE/mini), e
+        // sem isto o dock estourava a tela em vez de rolar.
+        className="vidro brasa pointer-events-auto flex max-w-full items-end gap-1 overflow-x-auto rounded-2xl px-2 pb-2 pt-3 shadow-[0_18px_50px_-20px_rgba(0,0,0,0.9)]"
       >
         {ITENS.map(({ href, rotulo, Icone }, i) => {
           // Exato na raiz, prefixo nas demais: sem isso "/" ficaria aceso
@@ -129,7 +132,7 @@ export function Dock() {
               // `origin-bottom`: cresce para cima, como no macOS, e não
               // para os dois lados empurrando os vizinhos.
               className={cn(
-                "group relative flex h-14 w-[2.9rem] origin-bottom cursor-pointer flex-col items-center justify-center gap-1 rounded-xl text-[0.6rem] font-medium will-change-transform sm:w-[4.25rem] sm:text-[0.65rem]",
+                "group relative flex h-14 w-[2.9rem] shrink-0 origin-bottom cursor-pointer flex-col items-center justify-center gap-1 rounded-xl text-[0.6rem] font-medium will-change-transform sm:w-[4.25rem] sm:text-[0.65rem]",
                 ativo ? "bg-white/8 text-foreground" : "text-muted-foreground hover:text-foreground",
               )}
             >

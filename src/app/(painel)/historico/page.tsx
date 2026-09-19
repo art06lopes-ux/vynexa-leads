@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CircleAlert, Radar } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleAlert, Radar } from "lucide-react";
 
 import { CabecalhoPagina } from "@/components/painel/cabecalho-pagina";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { listarBuscasRecentes } from "@/db/consultas";
+import { contarBuscas, listarBuscasRecentes } from "@/db/consultas";
 import { nomeDoPais } from "@/lib/geo/paises";
 import { rotuloDoSegmento } from "@/lib/osm/segmentos";
 import type { Busca } from "@/db/tipos";
 
 export const metadata: Metadata = { title: "Histórico" };
 export const dynamic = "force-dynamic";
+
+const POR_PAGINA = 60;
 
 const ROTULO: Record<Busca["status"], { texto: string; classe: string }> = {
   pendente: { texto: "Na fila", classe: "border-slate-400/25 bg-slate-400/10 text-slate-300" },
@@ -20,8 +22,15 @@ const ROTULO: Record<Busca["status"], { texto: string; classe: string }> = {
   erro: { texto: "Erro", classe: "border-destructive/30 bg-destructive/10 text-destructive" },
 };
 
-export default async function PaginaHistorico() {
-  const buscas = await listarBuscasRecentes(60);
+export default async function PaginaHistorico({ searchParams }: PageProps<"/historico">) {
+  const sp = await searchParams;
+  const pagina = Math.max(1, Number(Array.isArray(sp.pagina) ? sp.pagina[0] : sp.pagina) || 1);
+
+  const [buscas, total] = await Promise.all([
+    listarBuscasRecentes(POR_PAGINA, pagina),
+    contarBuscas(),
+  ]);
+  const ultimaPagina = Math.max(1, Math.ceil(total / POR_PAGINA));
 
   return (
     <div className="flex flex-col gap-6">
@@ -120,6 +129,54 @@ export default async function PaginaHistorico() {
           </table>
         </div>
       )}
+
+      {ultimaPagina > 1 && (
+        <nav
+          aria-label="Paginação"
+          className="flex items-center justify-between gap-3 border-t border-border pt-4"
+        >
+          <Paginacao pagina={pagina - 1} desabilitado={pagina <= 1} direcao="anterior" />
+          <p className="num text-sm text-muted-foreground">
+            Página {pagina} de {ultimaPagina}
+          </p>
+          <Paginacao pagina={pagina + 1} desabilitado={pagina >= ultimaPagina} direcao="proxima" />
+        </nav>
+      )}
     </div>
+  );
+}
+
+function Paginacao({
+  pagina,
+  desabilitado,
+  direcao,
+}: {
+  pagina: number;
+  desabilitado: boolean;
+  direcao: "anterior" | "proxima";
+}) {
+  const rotulo = direcao === "anterior" ? "Anterior" : "Próxima";
+
+  if (desabilitado) {
+    return (
+      <span className="inline-flex h-11 items-center gap-1.5 px-3 text-sm text-muted-foreground/50">
+        {direcao === "anterior" && <ChevronLeft className="size-4" aria-hidden="true" />}
+        {rotulo}
+        {direcao === "proxima" && <ChevronRight className="size-4" aria-hidden="true" />}
+      </span>
+    );
+  }
+
+  return (
+    <Button
+      render={<Link href={`/historico?pagina=${pagina}`} />}
+      nativeButton={false}
+      variant="ghost"
+      className="h-11 cursor-pointer gap-1.5"
+    >
+      {direcao === "anterior" && <ChevronLeft className="size-4" aria-hidden="true" />}
+      {rotulo}
+      {direcao === "proxima" && <ChevronRight className="size-4" aria-hidden="true" />}
+    </Button>
   );
 }

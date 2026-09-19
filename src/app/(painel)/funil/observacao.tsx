@@ -29,23 +29,30 @@ export function ObservacaoLead({ empresaId, observacao }: { empresaId: string; o
 
   if (editando) {
     return (
-      <textarea
-        autoFocus
-        value={texto}
-        onChange={(e) => setTexto(e.target.value)}
-        onBlur={salvar}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            setTexto(observacao ?? "");
-            setEditando(false);
-          }
-        }}
-        maxLength={500}
-        rows={3}
-        placeholder="O que combinou, quando voltar…"
-        aria-label="Observação"
-        className="w-full resize-none rounded-md border border-input bg-transparent px-2 py-1.5 text-xs outline-none focus-visible:border-ring"
-      />
+      <div className="flex flex-col gap-1">
+        <textarea
+          autoFocus
+          value={texto}
+          onChange={(e) => setTexto(e.target.value)}
+          onBlur={salvar}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setTexto(observacao ?? "");
+              setEditando(false);
+            }
+          }}
+          maxLength={500}
+          rows={3}
+          placeholder="O que combinou, quando voltar…"
+          aria-label="Observação"
+          className="w-full resize-none rounded-md border border-input bg-transparent px-2 py-1.5 text-xs outline-none focus-visible:border-ring"
+        />
+        {/* Só aparece perto do teto: abaixo disso o limite não é uma
+            informação que ajuda, só polui uma anotação de passagem. */}
+        {texto.length > 400 && (
+          <span className="num self-end text-[0.65rem] text-muted-foreground">{texto.length}/500</span>
+        )}
+      </div>
     );
   }
 

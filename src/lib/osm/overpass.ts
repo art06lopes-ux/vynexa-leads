@@ -242,28 +242,14 @@ export function montarConsultaContagem(segmentos: readonly Segmento[], bbox: Bbo
   return `[out:json][timeout:40];\n${blocos}\n${contagens}`;
 }
 
-/**
- * Executa a consulta de contagem.
- *
- * Só o espelho principal, e não os dois com retentativa da `executar`:
- * contar 45 segmentos numa cidade já é pesado para o servidor público da
- * Overpass, e um segundo espelho com o mesmo orçamento estouraria o
- * `maxDuration` da rota (ver route.ts). Um "sem dado, tente de novo" é
- * melhor do que a função morrer no meio da segunda tentativa.
- *
- * A Overpass pode devolver 200 com a lista de elementos incompleta
- * quando o `[timeout:]` da CONSULTA (não da requisição HTTP) estoura no
- * meio — aí vem um campo `remark` em vez do erro de status. Sem checar
- * isso, a tela mostrava "0 nichos" como se a região realmente não
- * tivesse nada, quando na verdade a Overpass só não terminou a tempo.
- */
-export async function contarPorSegmento(
+async function executarContagem(
   segmentos: readonly Segmento[],
   bbox: Bbox,
+  espelho: string,
 ): Promise<Map<string, number>> {
   const consulta = montarConsultaContagem(segmentos, bbox);
 
-  const resposta = await fetch(ESPELHOS[0]!, {
+  const resposta = await fetch(espelho, {
     method: "POST",
     headers: {
       "User-Agent": getOsmUserAgent(),
@@ -294,6 +280,36 @@ export async function contarPorSegmento(
     const total = Number(dados.elements?.[i]?.tags?.total ?? 0);
     if (total > 0) resultado.set(s.slug, total);
   });
+  return resultado;
+}
+
+/**
+ * Quantos estabelecimentos de cada segmento existem numa região.
+ *
+ * Contar os ~40 segmentos numa cidade inteira de uma vez estourava o
+ * timeout da Overpass com frequência (servidor público, sob carga
+ * variável) — ela respondia 200 com um `remark` de aviso em vez dos
+ * dados, e a contagem virava "zero em tudo" silenciosamente. A consulta
+ * é dividida ao meio e as duas metades saem em paralelo, uma para cada
+ * espelho: cada uma tem metade do trabalho a fazer dentro do mesmo
+ * orçamento de tempo, o que muda de "estoura quase sempre" para
+ * "estoura raramente" sem abrir mão de nenhum segmento.
+ */
+export async function contarPorSegmento(
+  segmentos: readonly Segmento[],
+  bbox: Bbox,
+): Promise<Map<string, number>> {
+  const meio = Math.ceil(segmentos.length / 2);
+  const grupos = [segmentos.slice(0, meio), segmentos.slice(meio)];
+
+  const resultados = await Promise.all(
+    grupos.map((grupo, i) => executarContagem(grupo, bbox, ESPELHOS[i % ESPELHOS.length]!)),
+  );
+
+  const resultado = new Map<string, number>();
+  for (const parcial of resultados) {
+    for (const [slug, total] of parcial) resultado.set(slug, total);
+  }
   return resultado;
 }
 

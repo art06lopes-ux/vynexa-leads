@@ -113,6 +113,45 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
   }
 
   /**
+   * Mesmo ranking, agora a partir da contagem do OpenStreetMap — a única
+   * fonte que existe fora do Brasil. Os campos de região são texto livre
+   * (exceto o distrito de Portugal), então isto é debounced e disparado
+   * por efeito: é sincronização com o que o operador está digitando, não
+   * consequência de um clique só.
+   */
+  useEffect(() => {
+    if (escopo !== "intl") return;
+
+    const regiao = regiaoIntl.trim();
+    const cidadeTexto = cidadeIntl.trim();
+    const token = ++tokenNichos.current;
+
+    const espera = setTimeout(async () => {
+      if (!regiao && !cidadeTexto) {
+        if (token === tokenNichos.current) setNichos(null);
+        return;
+      }
+
+      setCarregandoNichos(true);
+      try {
+        const params = new URLSearchParams({ pais });
+        if (regiao) params.set("estado", regiao);
+        if (cidadeTexto) params.set("cidade", cidadeTexto);
+        const resposta = await fetch(`/api/osm/nichos?${params}`);
+        if (!resposta.ok) throw new Error("falha");
+        const dados = (await resposta.json()) as { nichos: Nicho[] };
+        if (token === tokenNichos.current) setNichos(dados.nichos);
+      } catch {
+        if (token === tokenNichos.current) setNichos(null);
+      } finally {
+        if (token === tokenNichos.current) setCarregandoNichos(false);
+      }
+    }, 900);
+
+    return () => clearTimeout(espera);
+  }, [escopo, pais, regiaoIntl, cidadeIntl]);
+
+  /**
    * Ranking de nichos por quantidade de estabelecimentos da Receita na
    * região — para o operador ver qual segmento tem mais chance de dar
    * empresa antes de escolher e caçar. Só existe para o Brasil, porque só
@@ -253,7 +292,10 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
                 type="button"
                 role="radio"
                 aria-checked={escopo === valor}
-                onClick={() => setEscopo(valor)}
+                onClick={() => {
+                  setEscopo(valor);
+                  setNichos(null);
+                }}
                 className={cn(
                   "h-11 flex-1 cursor-pointer px-3 text-sm font-medium transition-colors duration-200",
                   escopo === valor
@@ -404,14 +446,23 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
             </div>
           )}
 
-          {escopo === "br" && uf !== "" && (carregandoNichos || (nichos && nichos.length > 0)) && (
+          {((escopo === "br" && uf !== "") ||
+            (escopo === "intl" && (regiaoIntl.trim() !== "" || cidadeIntl.trim() !== ""))) &&
+            (carregandoNichos || (nichos && nichos.length > 0)) && (
             <div className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 p-4">
               <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <Flame className="size-3.5 text-acento" aria-hidden="true" />
-                Nichos com mais chance {cidade ? `em ${cidade}` : `em ${uf}`}
+                Nichos com mais chance{" "}
+                {escopo === "br"
+                  ? cidade
+                    ? `em ${cidade}`
+                    : `em ${uf}`
+                  : `em ${cidadeIntl.trim() || regiaoIntl.trim()}`}
               </p>
               {carregandoNichos ? (
-                <p className="text-xs text-muted-foreground">Consultando a base da Receita…</p>
+                <p className="text-xs text-muted-foreground">
+                  {escopo === "br" ? "Consultando a base da Receita…" : "Consultando o OpenStreetMap…"}
+                </p>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {nichos!.slice(0, 6).map((n) => (
@@ -435,9 +486,11 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
                 </div>
               )}
               <p className="text-xs text-muted-foreground">
-                Quantidade de estabelecimentos ativos da Receita na região e a participação do
-                nicho no total mapeado ali. É volume real, não é chance de venda — a ferramenta
-                não tem dado de conversão por nicho para calcular isso.
+                {escopo === "br"
+                  ? "Quantidade de estabelecimentos ativos da Receita na região e a participação do nicho no total mapeado ali."
+                  : "Quantidade de estabelecimentos mapeados no OpenStreetMap na região e a participação do nicho no total mapeado ali. O OSM depende de quem mapeou o lugar — pode não cobrir tudo o que existe."}{" "}
+                É volume real, não é chance de venda — a ferramenta não tem dado de conversão por
+                nicho para calcular isso.
               </p>
             </div>
           )}

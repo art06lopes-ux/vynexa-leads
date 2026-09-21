@@ -211,6 +211,88 @@ export async function buscarEstabelecimentos(
   return { elementos, brutos };
 }
 
+type RespostaContagem = {
+  elements?: Array<{ type: string; tags?: { total?: string } }>;
+};
+
+/**
+ * Quantos estabelecimentos de cada segmento existem numa região — o
+ * "Nichos com mais chance" para fora do Brasil, onde não há base da
+ * Receita. Uma consulta só, com um bloco `out count` por segmento (é
+ * barato: a Overpass só conta, não devolve os elementos).
+ *
+ * Ordem dos segmentos == ordem dos `out count` == ordem dos elementos
+ * na resposta: é assim que a contagem volta a ser associada ao slug
+ * certo, sem depender de nome de set no JSON.
+ */
+export function montarConsultaContagem(segmentos: readonly Segmento[], bbox: Bbox): string {
+  const area = `(${bbox.sul},${bbox.oeste},${bbox.norte},${bbox.leste})`;
+
+  const blocos = segmentos
+    .map((s, i) => {
+      const linhas = s.filtros.map((filtro) => `  nwr${clausula(filtro)}${area};`).join("\n");
+      return `(\n${linhas}\n)->.s${i};`;
+    })
+    .join("\n");
+
+  const contagens = segmentos.map((_, i) => `.s${i} out count;`).join("\n");
+
+  return `[out:json][timeout:15];\n${blocos}\n${contagens}`;
+}
+
+/**
+ * Executa a consulta de contagem — versão rápida da `executar`, sem as
+ * duas voltas de retentativa com pausa de 30s: isto roda numa
+ * requisição da interface enquanto o operador espera, não num job do
+ * worker. Falhar rápido e mostrar "sem dado" é melhor que travar a tela.
+ */
+export async function contarPorSegmento(
+  segmentos: readonly Segmento[],
+  bbox: Bbox,
+): Promise<Map<string, number>> {
+  const consulta = montarConsultaContagem(segmentos, bbox);
+  let ultimoErro: unknown = null;
+
+  for (const espelho of ESPELHOS) {
+    try {
+      const resposta = await agendar(() =>
+        fetch(espelho, {
+          method: "POST",
+          headers: {
+            "User-Agent": getOsmUserAgent(),
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({ data: consulta }),
+          // 18s e não os 25/28 de folga da consulta normal: isto roda
+          // dentro do `maxDuration` da rota (ver route.ts) e precisa
+          // sobrar tempo para tentar o segundo espelho se o primeiro
+          // falhar, sem estourar o teto da função na Vercel.
+          signal: AbortSignal.timeout(18_000),
+        }),
+      );
+
+      if (!resposta.ok) {
+        ultimoErro = new ErroOverpass(`A Overpass respondeu ${resposta.status}.`);
+        continue;
+      }
+
+      const dados = (await resposta.json()) as RespostaContagem;
+      const resultado = new Map<string, number>();
+      segmentos.forEach((s, i) => {
+        const total = Number(dados.elements?.[i]?.tags?.total ?? 0);
+        if (total > 0) resultado.set(s.slug, total);
+      });
+      return resultado;
+    } catch (erro) {
+      ultimoErro = erro;
+    }
+  }
+
+  throw ultimoErro instanceof ErroOverpass
+    ? ultimoErro
+    : new ErroOverpass("Não consegui falar com a Overpass API.");
+}
+
 async function executar(consulta: string): Promise<RespostaOverpass> {
   let ultimoErro: unknown = null;
 

@@ -48,6 +48,8 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
 
   const [nichos, setNichos] = useState<Nicho[] | null>(null);
   const [carregandoNichos, setCarregandoNichos] = useState(false);
+  const [erroNichos, setErroNichos] = useState<string | null>(null);
+  const [tentativaIntl, setTentativaIntl] = useState(0);
   const tokenNichos = useRef(0);
 
   const [segmento, setSegmento] = useState(SEGMENTOS[0]!.slug);
@@ -128,28 +130,35 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
 
     const espera = setTimeout(async () => {
       if (!regiao && !cidadeTexto) {
-        if (token === tokenNichos.current) setNichos(null);
+        if (token === tokenNichos.current) {
+          setNichos(null);
+          setErroNichos(null);
+        }
         return;
       }
 
       setCarregandoNichos(true);
+      setErroNichos(null);
       try {
         const params = new URLSearchParams({ pais });
         if (regiao) params.set("estado", regiao);
         if (cidadeTexto) params.set("cidade", cidadeTexto);
         const resposta = await fetch(`/api/osm/nichos?${params}`);
-        if (!resposta.ok) throw new Error("falha");
-        const dados = (await resposta.json()) as { nichos: Nicho[] };
-        if (token === tokenNichos.current) setNichos(dados.nichos);
-      } catch {
-        if (token === tokenNichos.current) setNichos(null);
+        const dados = (await resposta.json()) as { nichos?: Nicho[]; erro?: string };
+        if (!resposta.ok) throw new Error(dados.erro ?? "Falha ao consultar o OpenStreetMap.");
+        if (token === tokenNichos.current) setNichos(dados.nichos ?? []);
+      } catch (erro) {
+        if (token === tokenNichos.current) {
+          setNichos(null);
+          setErroNichos(erro instanceof Error ? erro.message : "Falha ao consultar o OpenStreetMap.");
+        }
       } finally {
         if (token === tokenNichos.current) setCarregandoNichos(false);
       }
     }, 900);
 
     return () => clearTimeout(espera);
-  }, [escopo, pais, regiaoIntl, cidadeIntl]);
+  }, [escopo, pais, regiaoIntl, cidadeIntl, tentativaIntl]);
 
   /**
    * Ranking de nichos por quantidade de estabelecimentos da Receita na
@@ -160,21 +169,26 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
   async function buscarNichos(ufAtual: string, cidadeAtual: string) {
     if (ufAtual === "") {
       setNichos(null);
+      setErroNichos(null);
       return;
     }
 
     const token = ++tokenNichos.current;
     setCarregandoNichos(true);
+    setErroNichos(null);
 
     try {
       const params = new URLSearchParams({ uf: ufAtual });
       if (cidadeAtual) params.set("cidade", cidadeAtual);
       const resposta = await fetch(`/api/receita/nichos?${params}`);
-      if (!resposta.ok) throw new Error("falha");
-      const dados = (await resposta.json()) as { nichos: Nicho[] };
-      if (token === tokenNichos.current) setNichos(dados.nichos);
-    } catch {
-      if (token === tokenNichos.current) setNichos(null);
+      const dados = (await resposta.json()) as { nichos?: Nicho[]; erro?: string };
+      if (!resposta.ok) throw new Error(dados.erro ?? "Falha ao consultar a Receita Federal.");
+      if (token === tokenNichos.current) setNichos(dados.nichos ?? []);
+    } catch (erro) {
+      if (token === tokenNichos.current) {
+        setNichos(null);
+        setErroNichos(erro instanceof Error ? erro.message : "Falha ao consultar a Receita Federal.");
+      }
     } finally {
       if (token === tokenNichos.current) setCarregandoNichos(false);
     }
@@ -448,7 +462,7 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
 
           {((escopo === "br" && uf !== "") ||
             (escopo === "intl" && (regiaoIntl.trim() !== "" || cidadeIntl.trim() !== ""))) &&
-            (carregandoNichos || (nichos && nichos.length > 0)) && (
+            (carregandoNichos || erroNichos || (nichos && nichos.length > 0)) && (
             <div className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 p-4">
               <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <Flame className="size-3.5 text-acento" aria-hidden="true" />
@@ -461,8 +475,24 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
               </p>
               {carregandoNichos ? (
                 <p className="text-xs text-muted-foreground">
-                  {escopo === "br" ? "Consultando a base da Receita…" : "Consultando o OpenStreetMap…"}
+                  {escopo === "br" ? "Consultando a base da Receita…" : "Consultando o OpenStreetMap… pode levar até 40s."}
                 </p>
+              ) : erroNichos ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="flex items-center gap-1.5 text-xs text-amber-300/90">
+                    <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" />
+                    {erroNichos}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      escopo === "br" ? void buscarNichos(uf, cidade) : setTentativaIntl((n) => n + 1)
+                    }
+                    className="cursor-pointer text-xs font-medium text-acento underline-offset-2 hover:underline"
+                  >
+                    Tentar de novo
+                  </button>
+                </div>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {nichos!.slice(0, 6).map((n) => (
@@ -485,13 +515,15 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
                   ))}
                 </div>
               )}
-              <p className="text-xs text-muted-foreground">
-                {escopo === "br"
-                  ? "Quantidade de estabelecimentos ativos da Receita na região e a participação do nicho no total mapeado ali."
-                  : "Quantidade de estabelecimentos mapeados no OpenStreetMap na região e a participação do nicho no total mapeado ali. O OSM depende de quem mapeou o lugar — pode não cobrir tudo o que existe."}{" "}
-                É volume real, não é chance de venda — a ferramenta não tem dado de conversão por
-                nicho para calcular isso.
-              </p>
+              {!erroNichos && (
+                <p className="text-xs text-muted-foreground">
+                  {escopo === "br"
+                    ? "Quantidade de estabelecimentos ativos da Receita na região e a participação do nicho no total mapeado ali."
+                    : "Quantidade de estabelecimentos mapeados no OpenStreetMap na região e a participação do nicho no total mapeado ali. O OSM depende de quem mapeou o lugar — pode não cobrir tudo o que existe."}{" "}
+                  É volume real, não é chance de venda — a ferramenta não tem dado de conversão por
+                  nicho para calcular isso.
+                </p>
+              )}
             </div>
           )}
 

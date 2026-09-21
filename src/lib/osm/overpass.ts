@@ -213,6 +213,8 @@ export async function buscarEstabelecimentos(
 
 type RespostaContagem = {
   elements?: Array<{ type: string; tags?: { total?: string } }>;
+  /** Presente quando a Overpass devolveu 200 mas não terminou a tempo. */
+  remark?: string;
 };
 
 /**
@@ -237,60 +239,62 @@ export function montarConsultaContagem(segmentos: readonly Segmento[], bbox: Bbo
 
   const contagens = segmentos.map((_, i) => `.s${i} out count;`).join("\n");
 
-  return `[out:json][timeout:15];\n${blocos}\n${contagens}`;
+  return `[out:json][timeout:40];\n${blocos}\n${contagens}`;
 }
 
 /**
- * Executa a consulta de contagem — versão rápida da `executar`, sem as
- * duas voltas de retentativa com pausa de 30s: isto roda numa
- * requisição da interface enquanto o operador espera, não num job do
- * worker. Falhar rápido e mostrar "sem dado" é melhor que travar a tela.
+ * Executa a consulta de contagem.
+ *
+ * Só o espelho principal, e não os dois com retentativa da `executar`:
+ * contar 45 segmentos numa cidade já é pesado para o servidor público da
+ * Overpass, e um segundo espelho com o mesmo orçamento estouraria o
+ * `maxDuration` da rota (ver route.ts). Um "sem dado, tente de novo" é
+ * melhor do que a função morrer no meio da segunda tentativa.
+ *
+ * A Overpass pode devolver 200 com a lista de elementos incompleta
+ * quando o `[timeout:]` da CONSULTA (não da requisição HTTP) estoura no
+ * meio — aí vem um campo `remark` em vez do erro de status. Sem checar
+ * isso, a tela mostrava "0 nichos" como se a região realmente não
+ * tivesse nada, quando na verdade a Overpass só não terminou a tempo.
  */
 export async function contarPorSegmento(
   segmentos: readonly Segmento[],
   bbox: Bbox,
 ): Promise<Map<string, number>> {
   const consulta = montarConsultaContagem(segmentos, bbox);
-  let ultimoErro: unknown = null;
 
-  for (const espelho of ESPELHOS) {
-    try {
-      const resposta = await agendar(() =>
-        fetch(espelho, {
-          method: "POST",
-          headers: {
-            "User-Agent": getOsmUserAgent(),
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: new URLSearchParams({ data: consulta }),
-          // 18s e não os 25/28 de folga da consulta normal: isto roda
-          // dentro do `maxDuration` da rota (ver route.ts) e precisa
-          // sobrar tempo para tentar o segundo espelho se o primeiro
-          // falhar, sem estourar o teto da função na Vercel.
-          signal: AbortSignal.timeout(18_000),
-        }),
-      );
+  const resposta = await fetch(ESPELHOS[0]!, {
+    method: "POST",
+    headers: {
+      "User-Agent": getOsmUserAgent(),
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({ data: consulta }),
+    signal: AbortSignal.timeout(42_000),
+  }).catch(() => {
+    throw new ErroOverpass("Não consegui falar com a Overpass API. Tente de novo.");
+  });
 
-      if (!resposta.ok) {
-        ultimoErro = new ErroOverpass(`A Overpass respondeu ${resposta.status}.`);
-        continue;
-      }
-
-      const dados = (await resposta.json()) as RespostaContagem;
-      const resultado = new Map<string, number>();
-      segmentos.forEach((s, i) => {
-        const total = Number(dados.elements?.[i]?.tags?.total ?? 0);
-        if (total > 0) resultado.set(s.slug, total);
-      });
-      return resultado;
-    } catch (erro) {
-      ultimoErro = erro;
-    }
+  if (!resposta.ok) {
+    throw new ErroOverpass(`A Overpass respondeu ${resposta.status}. Tente de novo.`);
   }
 
-  throw ultimoErro instanceof ErroOverpass
-    ? ultimoErro
-    : new ErroOverpass("Não consegui falar com a Overpass API.");
+  const dados = await resposta.json().catch(() => {
+    // Overpass sob carga às vezes devolve uma página de erro em HTML com
+    // status 200 — sem isso, quem via a falha era o `SyntaxError` do
+    // parser, não uma mensagem que o operador entende.
+    throw new ErroOverpass("A Overpass devolveu uma resposta inválida. Tente de novo.");
+  }) as RespostaContagem;
+  if (dados.remark) {
+    throw new ErroOverpass("A Overpass não terminou de contar a tempo. Tente de novo ou estreite a região.");
+  }
+
+  const resultado = new Map<string, number>();
+  segmentos.forEach((s, i) => {
+    const total = Number(dados.elements?.[i]?.tags?.total ?? 0);
+    if (total > 0) resultado.set(s.slug, total);
+  });
+  return resultado;
 }
 
 async function executar(consulta: string): Promise<RespostaOverpass> {

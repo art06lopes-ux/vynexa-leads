@@ -3,10 +3,10 @@ import { contarPorSegmento, ErroOverpass } from "@/lib/osm/overpass";
 import { rotuloDoSegmento, SEGMENTOS } from "@/lib/osm/segmentos";
 import { exigirSessaoNaApi } from "@/server/sessao";
 
-// Padrão da Vercel (10s) não basta: a Overpass conta 45 segmentos numa
-// região, e até dois espelhos a 18s cada passa disso. Dentro do teto do
-// plano Hobby (60s).
-export const maxDuration = 45;
+// Padrão da Vercel (10s) não basta: a Overpass sozinha já tem até 42s de
+// orçamento para contar 45 segmentos numa região. Dentro do teto do
+// plano Hobby (60s), com folga para o Nominatim antes dela.
+export const maxDuration = 55;
 
 /**
  * Ranking de segmentos por quantidade de estabelecimentos mapeados no

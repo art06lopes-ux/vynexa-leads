@@ -299,17 +299,41 @@ export async function contarPorSegmento(
   segmentos: readonly Segmento[],
   bbox: Bbox,
 ): Promise<Map<string, number>> {
-  const meio = Math.ceil(segmentos.length / 2);
-  const grupos = [segmentos.slice(0, meio), segmentos.slice(meio)];
+  // 4 grupos, não 2: uma cidade grande (Sevilha, Orlando) ainda estourava
+  // o timeout com a metade dos segmentos. Um quarto por consulta reduz
+  // bem mais o trabalho da Overpass por chamada — os 2 espelhos recebem
+  // 2 requisições cada, concorrentes.
+  const TAMANHO_GRUPO = Math.ceil(segmentos.length / 4);
+  const grupos: Segmento[][] = [];
+  for (let i = 0; i < segmentos.length; i += TAMANHO_GRUPO) {
+    grupos.push(segmentos.slice(i, i + TAMANHO_GRUPO));
+  }
 
-  const resultados = await Promise.all(
+  const resultados = await Promise.allSettled(
     grupos.map((grupo, i) => executarContagem(grupo, bbox, ESPELHOS[i % ESPELHOS.length]!)),
   );
 
   const resultado = new Map<string, number>();
-  for (const parcial of resultados) {
-    for (const [slug, total] of parcial) resultado.set(slug, total);
+  let algumSucesso = false;
+  let ultimoErro: unknown = null;
+  for (const r of resultados) {
+    if (r.status === "fulfilled") {
+      algumSucesso = true;
+      for (const [slug, total] of r.value) resultado.set(slug, total);
+    } else {
+      ultimoErro = r.reason;
+    }
   }
+
+  // Só falha de verdade se NENHUM grupo voltou: um ranking com 3/4 dos
+  // segmentos ainda ajuda o operador a escolher. Silenciar o pedaço que
+  // faltou é melhor do que jogar fora o resto que deu certo.
+  if (!algumSucesso) {
+    throw ultimoErro instanceof ErroOverpass
+      ? ultimoErro
+      : new ErroOverpass("Não consegui falar com a Overpass API. Tente de novo.");
+  }
+
   return resultado;
 }
 

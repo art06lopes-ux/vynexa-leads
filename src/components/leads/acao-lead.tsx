@@ -13,6 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { BotaoGerarAbordagem } from "@/components/leads/botao-gerar-abordagem";
 import type { EmpresaListada } from "@/db/consultas";
 import { formatarTelefone, montarLinkWhatsApp } from "@/lib/leads/whatsapp";
 import { cn } from "@/lib/utils";
@@ -55,11 +56,10 @@ export function AcaoLead({ empresa }: { empresa: EmpresaListada }) {
 
   const mensagem = empresa.mensagem_gerada;
 
-  // Estado explícito e não botão sumido — mesmo raciocínio do "sem
-  // telefone utilizável" mais abaixo: o operador precisa saber que falta
-  // a análise, não achar que a linha está quebrada.
+  // Sem esperar a fila do worker chegar nesta empresa: o operador pede a
+  // abordagem dessa linha específica e ela é gerada na hora, no clique.
   if (!mensagem) {
-    return <span className="text-xs text-muted-foreground">Sem mensagem gerada</span>;
+    return <BotaoGerarAbordagem empresaId={empresa.id} />;
   }
 
   const linkWhatsapp = montarLinkWhatsApp(empresa.telefone, mensagem, empresa.pais);

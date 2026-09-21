@@ -4,6 +4,7 @@ import { AtSign, BadgeCheck, Camera, MessageCircle, Sparkles } from "lucide-reac
 
 import { ObservacaoLead } from "@/app/(painel)/funil/observacao";
 import { BadgeScore } from "@/components/leads/acao-lead";
+import { BotaoGerarAbordagem } from "@/components/leads/botao-gerar-abordagem";
 import { LinkContato } from "@/components/leads/link-contato";
 import { SeletorEtapa } from "@/components/leads/seletor-etapa";
 import { CabecalhoPagina } from "@/components/painel/cabecalho-pagina";
@@ -201,10 +202,12 @@ function Cartao({ c }: { c: CartaoFunil }) {
             <span className="sr-only">Instagram de {c.nome}</span>
           </a>
         )}
-        {c.mensagem_gerada && (
+        {c.mensagem_gerada ? (
           <span title="Mensagem da IA pronta" className="inline-flex size-9 items-center justify-center text-muted-foreground">
             <Sparkles className="size-4" aria-hidden="true" />
           </span>
+        ) : (
+          <BotaoGerarAbordagem empresaId={c.empresa_id} className="h-9 px-2" />
         )}
         <span className="ml-auto text-[0.7rem] text-muted-foreground">{tempo}</span>
       </div>

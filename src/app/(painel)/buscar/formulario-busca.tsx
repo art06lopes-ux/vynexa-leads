@@ -457,6 +457,14 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
                   ? "Distrito de uma lista fechada, para o Nominatim acertar a área; cidade continua texto livre."
                   : "Fora do Brasil e de Portugal não existe fonte gratuita e universal de subdivisões, então estes dois campos são texto livre, resolvidos pelo Nominatim. Escreva no idioma local."}
               </p>
+              {regiaoIntl.trim() === "" && cidadeIntl.trim() === "" && (
+                <p className="flex items-start gap-1.5 text-xs text-amber-300/90 sm:col-span-3">
+                  <AlertCircle className="mt-px size-3.5 shrink-0" aria-hidden="true" />
+                  Sem estado/região nem cidade, a busca cobre o país inteiro. Em países grandes
+                  (EUA, Canadá, Austrália…) a Overpass não consegue varrer essa área numa consulta
+                  só e a caçada falha — preencha ao menos um dos dois campos.
+                </p>
+              )}
             </div>
           )}
 

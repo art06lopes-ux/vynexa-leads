@@ -4,7 +4,7 @@ import { agora, novoId } from "@/db/cliente";
 import type { Busca, PayloadBusca } from "@/db/tipos";
 import { classificarStatusSite } from "@/lib/leads/classificacao";
 import { normalizarLocalidade } from "@/lib/geo/localidade";
-import { idiomaDoPais } from "@/lib/geo/paises";
+import { idiomaDoPais, nomeDoPais } from "@/lib/geo/paises";
 import { acharSegmento, type Segmento } from "@/lib/osm/segmentos";
 import { expandirBbox, raioAproximadoKm, resolverLugar, type Bbox } from "@/lib/osm/nominatim";
 import { buscarEstabelecimentos, type ElementoOsm } from "@/lib/osm/overpass";
@@ -45,6 +45,18 @@ const GANHO_MINIMO = 3;
  */
 const TETO_ABSOLUTO = 5000;
 
+/**
+ * Acima disto, o país é grande demais para uma consulta só à Overpass.
+ *
+ * Portugal inteiro (1142 km de alcance) funciona bem. Os Estados Unidos
+ * inteiro (17624 km) não: a consulta estourava o timeout da Overpass e
+ * voltava vazia — a caçada terminava "Concluída, 0 achadas" sem avisar
+ * que não deu para cobrir a área, parecendo que o país simplesmente não
+ * tinha nenhuma empresa do segmento. 3000 km deixa passar países do
+ * tamanho de Espanha/França e barra os continentais.
+ */
+const RAIO_MAXIMO_PAIS_INTEIRO_KM = 3000;
+
 export async function processarBusca(banco: Client, payload: PayloadBusca): Promise<string> {
   const { rows } = await banco.execute({
     sql: `SELECT id, segmento, pais, estado, cidade, status FROM buscas WHERE id = ?`,
@@ -84,6 +96,20 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
         estado: busca.estado,
         cidade: busca.cidade,
       });
+
+  // Mesmo problema do "Brasil inteiro" acima, mas sem uma Receita Federal
+  // para cobrir o buraco: um país grande sem estado/cidade não tem como
+  // dar certo na Overpass. Falhar aqui, com um motivo claro, é melhor do
+  // que "Concluída, 0 achadas" — que parece resultado real, não falha.
+  if (lugar && busca.pais !== "BR" && !busca.estado && !busca.cidade) {
+    const raio = raioAproximadoKm(lugar.bbox);
+    if (raio > RAIO_MAXIMO_PAIS_INTEIRO_KM) {
+      throw new Error(
+        `${nomeDoPais(busca.pais)} é grande demais para uma busca sem estado/região — a Overpass ` +
+          `não cobre isso numa única consulta. Escolha um estado ou cidade.`,
+      );
+    }
+  }
 
   // `alvo` 0 significa "todas as empresas mapeadas na região". Aí não há
   // escada de expansão: o operador quer o que existe ali dentro, não o

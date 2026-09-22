@@ -12,8 +12,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ProgressoBusca } from "@/components/leads/progresso-busca";
 import type { UF } from "@/lib/geo/ibge";
-import { PAISES } from "@/lib/geo/paises";
+import { nomeDoPais, PAISES } from "@/lib/geo/paises";
 import { DISTRITOS_PT } from "@/lib/geo/portugal";
+import { regioesDoPais } from "@/lib/geo/regioes-intl";
 import { SEGMENTOS } from "@/lib/osm/segmentos";
 import { cn } from "@/lib/utils";
 
@@ -245,6 +246,11 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
       return;
     }
 
+    if (escopo === "intl" && regioesDoPais(pais) && regiaoIntl.trim() === "") {
+      setErro(`Escolha um estado — ${nomeDoPais(pais)} é grande demais para buscar inteiro.`);
+      return;
+    }
+
     const corpo =
       escopo === "br"
         ? { segmento: segmentoFinal, pais: "BR", estado: uf || null, cidade: cidade || null, alvo }
@@ -428,6 +434,19 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
                       ))}
                     </SelectContent>
                   </Select>
+                ) : regioesDoPais(pais) ? (
+                  <Select value={regiaoIntl} onValueChange={(v) => setRegiaoIntl(v ?? "")}>
+                    <SelectTrigger id={`${idPais}-regiao`} className="h-11 w-full">
+                      <SelectValue placeholder="Escolha um estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {regioesDoPais(pais)!.map((r) => (
+                        <SelectItem key={r} value={r}>
+                          {r}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <Input
                     id={`${idPais}-regiao`}
@@ -453,16 +472,23 @@ export function FormularioBusca({ estados, erroIbge }: { estados: UF[]; erroIbge
               </div>
 
               <p className="text-xs text-muted-foreground sm:col-span-3">
-                {pais === "PT"
-                  ? "Distrito de uma lista fechada, para o Nominatim acertar a área; cidade continua texto livre."
-                  : "Fora do Brasil e de Portugal não existe fonte gratuita e universal de subdivisões, então estes dois campos são texto livre, resolvidos pelo Nominatim. Escreva no idioma local."}
+                {pais === "PT" || regioesDoPais(pais)
+                  ? "Estado de uma lista fechada, para o Nominatim acertar a área; cidade continua texto livre."
+                  : "Fora do Brasil, Portugal, EUA, Canadá e Austrália não existe fonte gratuita e universal de subdivisões, então estes dois campos são texto livre, resolvidos pelo Nominatim. Escreva no idioma local."}
               </p>
-              {regiaoIntl.trim() === "" && cidadeIntl.trim() === "" && (
+              {regioesDoPais(pais) && regiaoIntl.trim() === "" && (
                 <p className="flex items-start gap-1.5 text-xs text-amber-300/90 sm:col-span-3">
                   <AlertCircle className="mt-px size-3.5 shrink-0" aria-hidden="true" />
-                  Sem estado/região nem cidade, a busca cobre o país inteiro. Em países grandes
-                  (EUA, Canadá, Austrália…) a Overpass não consegue varrer essa área numa consulta
-                  só e a caçada falha — preencha ao menos um dos dois campos.
+                  {nomeDoPais(pais)} é grande demais para a Overpass cobrir numa consulta só —
+                  escolha um estado antes de caçar.
+                </p>
+              )}
+              {!regioesDoPais(pais) && regiaoIntl.trim() === "" && cidadeIntl.trim() === "" && (
+                <p className="flex items-start gap-1.5 text-xs text-amber-300/90 sm:col-span-3">
+                  <AlertCircle className="mt-px size-3.5 shrink-0" aria-hidden="true" />
+                  Sem estado/região nem cidade, a busca cobre o país inteiro. Se ele for grande, a
+                  Overpass não consegue varrer essa área numa consulta só e a caçada falha —
+                  preencha ao menos um dos dois campos.
                 </p>
               )}
             </div>

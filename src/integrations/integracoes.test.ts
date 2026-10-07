@@ -202,3 +202,34 @@ describe("proposta fala pela empresa", () => {
     assert.equal(falarComoEmpresa("Visita e vitrine continuam iguais."), "Visita e vitrine continuam iguais.", "não mexe em palavras que só começam igual");
   });
 });
+
+describe("Google Places: área que não acha nada", () => {
+  it("tenta uma vez só pelo texto, sem restrição de área", async () => {
+    const { GooglePlacesProvider } = await import("@/integrations/leads/google-places");
+    const chamadas: Array<Record<string, unknown>> = [];
+    const falso = (async (_url: string, init: RequestInit) => {
+      const corpo = JSON.parse(String(init.body)) as Record<string, unknown>;
+      chamadas.push(corpo);
+      const lugares = corpo.locationRestriction ? [] : [{ id: "pz", displayName: { text: "Solar SC" }, addressComponents: [{ shortText: "BR", types: ["country"] }] }];
+      return new Response(JSON.stringify({ places: lugares }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const r = await new GooglePlacesProvider(falso).buscar({
+      termo: "energia solar", pais: "BR", estado: "SC", cidade: null, bairro: null, cep: null, local: null, centro: null, raioKm: null,
+      retangulo: { sul: -1, oeste: -1, norte: 0, leste: 0 }, idioma: "pt", maxRequisicoes: 5,
+    });
+    assert.equal(chamadas.length, 2);
+    assert.equal(chamadas[1].textQuery, "energia solar em Santa Catarina", "sigla vira nome do estado");
+    assert.equal(r.lugares.length, 1);
+  });
+
+  it("busca por estado não traz empresa do estado vizinho", async () => {
+    const { GooglePlacesProvider } = await import("@/integrations/leads/google-places");
+    const lugar = (id: string, uf: string) => ({ id, displayName: { text: id }, addressComponents: [{ shortText: "BR", types: ["country"] }, { shortText: uf, longText: uf, types: ["administrative_area_level_1"] }] });
+    const falso = (async () => new Response(JSON.stringify({ places: [lugar("em-sc", "SC"), lugar("em-rs", "RS")] }), { status: 200 })) as unknown as typeof fetch;
+    const r = await new GooglePlacesProvider(falso).buscar({
+      termo: "energia solar", pais: "BR", estado: "SC", cidade: null, bairro: null, cep: null, local: null, centro: null, raioKm: null,
+      retangulo: { sul: -1, oeste: -1, norte: 0, leste: 0 }, idioma: "pt", maxRequisicoes: 1,
+    });
+    assert.deepEqual(r.lugares.map((l) => l.nome), ["em-sc"]);
+  });
+});

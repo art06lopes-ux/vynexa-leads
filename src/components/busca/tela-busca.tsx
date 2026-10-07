@@ -208,11 +208,10 @@ export function TelaBusca({
           novo.pais = soPais;
         } else {
           novo.pais = c.pais ?? "";
-          const partes = c.local.split(/\s*,\s*/);
-          const uf = partes.find((p) => UFS.includes(p.toUpperCase()));
-          if (novo.pais === "BR" && uf) novo.estado = uf.toUpperCase();
-          novo.cidade = partes[0] ?? "";
-          novo.local = c.local;
+          if (novo.pais === "BR" && c.uf) novo.estado = c.uf;
+          novo.cidade = c.cidade ?? "";
+          // Só o estado ("em Santa Catarina"): busca no estado inteiro, sem cidade.
+          novo.local = c.cidade ? c.local : "";
         }
       } else if (!c.local && /qualquer lugar|anywhere|worldwide|todo o mundo/i.test(texto)) {
         novo.pais = "";

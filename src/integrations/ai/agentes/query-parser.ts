@@ -1,5 +1,6 @@
 import { obterIA } from "@/integrations/ai";
 import type { EsquemaResposta } from "@/integrations/ai/tipos";
+import { separarLocalBR } from "@/lib/geo/estados-br";
 import { codigoDoPaisPorNome } from "@/lib/geo/mundo";
 import { interpretarConsulta, type ConsultaInterpretada, type FiltroSite } from "@/services/consulta-natural";
 
@@ -63,10 +64,13 @@ PEDIDO: """${texto.slice(0, 300)}"""`,
     if (avaliacoes > 0) reconhecido.push(`${avaliacoes}+ avaliações`);
     if (nota > 0 && nota <= 5) reconhecido.push(`Nota ${nota}+`);
 
+    const br = local && (pais === null || pais === "BR") ? separarLocalBR(local) : { cidade: local, uf: null };
     return {
       termo,
       local,
-      pais,
+      pais: br.uf ? "BR" : pais,
+      uf: br.uf,
+      cidade: br.cidade,
       site,
       comWhatsapp: bruto.com_whatsapp === true || regras.comWhatsapp,
       comEmail: bruto.com_email === true || regras.comEmail,

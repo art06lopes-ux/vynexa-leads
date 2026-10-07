@@ -66,3 +66,30 @@ describe("interpretarConsulta", () => {
     assert.equal(c.pais, "PT");
   });
 });
+
+describe("estados do Brasil na frase", () => {
+  it("nome ou sigla do estado vira estado, não cidade", () => {
+    const sc = interpretarConsulta("energia solar em santa catarina");
+    assert.equal(sc.termo, "energia solar");
+    assert.equal(sc.pais, "BR");
+    assert.equal(sc.uf, "SC");
+    assert.equal(sc.cidade, null);
+    const sigla = interpretarConsulta("energia solar em SC");
+    assert.equal(sigla.uf, "SC");
+    assert.equal(sigla.pais, "BR");
+    assert.equal(sigla.cidade, null);
+  });
+
+  it("cidade com estado separa os dois; cidade sozinha continua cidade", () => {
+    const c = interpretarConsulta("energia solar em Joinville, Santa Catarina");
+    assert.deepEqual([c.cidade, c.uf], ["Joinville", "SC"]);
+    const m = interpretarConsulta("barbearia em Manacapuru, AM");
+    assert.deepEqual([m.cidade, m.uf], ["Manacapuru", "AM"]);
+    const f = interpretarConsulta("energia solar em Florianópolis");
+    assert.deepEqual([f.cidade, f.uf], ["Florianópolis", null]);
+    const sp = interpretarConsulta("dentista em São Paulo");
+    assert.deepEqual([sp.cidade, sp.uf], ["São Paulo", "SP"], "São Paulo sozinho é a capital");
+    const hifen = interpretarConsulta("pet shop em Embu-Guaçu");
+    assert.equal(hifen.cidade, "Embu-Guaçu");
+  });
+});

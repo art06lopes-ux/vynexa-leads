@@ -1,4 +1,5 @@
 import { obterSegredo } from "@/integrations/segredos";
+import { ESTADOS_BR } from "@/lib/geo/estados-br";
 import { resolverLugar } from "@/lib/osm/nominatim";
 
 import { ErroProvedor, type ConsultaBusca, type LeadProvider, type LugarEncontrado, type Progresso, type Retangulo, type ResultadoProvedor } from "./tipos";
@@ -193,6 +194,10 @@ export class GooglePlacesProvider implements LeadProvider {
 
     if (consulta.linkMaps) return this.buscarComoNoMaps(chave, consulta, consulta.linkMaps, progresso);
 
+    // No Brasil a tela manda a sigla ("SC"); o geocodificador e o Google
+    // entendem melhor o nome ("Santa Catarina").
+    const estado = consulta.pais === "BR" && consulta.estado && ESTADOS_BR[consulta.estado.toUpperCase()] ? ESTADOS_BR[consulta.estado.toUpperCase()] : consulta.estado;
+
     // 1. Qual área cobrir.
     let area: Retangulo | null = consulta.retangulo;
     let rotulo: string | null = null;
@@ -202,7 +207,7 @@ export class GooglePlacesProvider implements LeadProvider {
     if (!area && consulta.pais && (consulta.estado || consulta.cidade)) {
       // Geocodificação gratuita pelo Nominatim: não gasta requisição paga.
       try {
-        const lugar = await resolverLugar({ pais: consulta.pais, estado: consulta.estado, cidade: consulta.cidade });
+        const lugar = await resolverLugar({ pais: consulta.pais, estado, cidade: consulta.cidade });
         area = lugar.bbox;
         rotulo = lugar.rotulo;
         if (consulta.raioKm) area = retanguloDoCirculo(lugar.latitude, lugar.longitude, consulta.raioKm);
@@ -214,7 +219,7 @@ export class GooglePlacesProvider implements LeadProvider {
     // 2. O texto. Com área, só o termo (+ bairro/CEP, que refinam dentro
     // dela); sem área, o local vai junto e o Google interpreta.
     const refinos = [consulta.bairro, consulta.cep].filter(Boolean).join(" ");
-    const localTexto = [consulta.bairro, consulta.cidade, consulta.estado, consulta.local].filter(Boolean).join(", ");
+    const localTexto = [...new Set([consulta.bairro, consulta.cidade, estado, consulta.local].filter(Boolean))].join(", ");
     const textoComLocal = localTexto ? `${consulta.termo} em ${localTexto}` : consulta.termo;
     const textoNaArea = refinos ? `${consulta.termo} ${refinos}` : consulta.termo;
 
@@ -272,6 +277,14 @@ export class GooglePlacesProvider implements LeadProvider {
       await varrer(textoComLocal, null);
     }
 
+    // Rede de segurança: a área veio errada (geocodificador achou outro
+    // lugar com o mesmo nome) ou pequena demais. Uma consulta a mais, só
+    // com o texto — como o próprio Google Maps faria.
+    if (vistos.size === 0 && area && localTexto && requisicoes < consulta.maxRequisicoes) {
+      area = null;
+      await varrer(textoComLocal, null);
+    }
+
     let lugares = [...vistos.values()];
 
     // Raio: o retângulo cobre os cantos, o círculo não. Corta o que ficou fora.
@@ -281,6 +294,11 @@ export class GooglePlacesProvider implements LeadProvider {
         (l) => l.latitude === null || l.longitude === null || distanciaKm(centro, { lat: l.latitude, lng: l.longitude }) <= consulta.raioKm! * 1.02,
       );
     }
+
+    // O retângulo de um estado pega pedaço do vizinho (SC × RS). Busca
+    // por estado devolve só o estado; quem não tem estado no endereço fica.
+    const uf = consulta.pais === "BR" && consulta.estado ? consulta.estado.toUpperCase() : null;
+    if (uf && ESTADOS_BR[uf]) lugares = lugares.filter((l) => !l.estado || l.estado.toUpperCase() === uf);
 
     return { lugares, requisicoes, area, rotulo: rotulo ?? (localTexto || null), aviso };
   }

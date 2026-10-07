@@ -1,3 +1,4 @@
+import { separarLocalBR } from "@/lib/geo/estados-br";
 import { codigoDoPaisPorNome, paisDaRegiao } from "@/lib/geo/mundo";
 import { simplificar } from "@/services/normalizacao";
 
@@ -21,6 +22,10 @@ export type ConsultaInterpretada = {
   termo: string;
   local: string | null;
   pais: string | null;
+  /** No Brasil: sigla do estado, quando o local cita um ("Santa Catarina", "SC"). */
+  uf: string | null;
+  /** Cidade, sem o estado ("Florianópolis, SC" → "Florianópolis"). Nula quando o local é só o estado. */
+  cidade: string | null;
   site: FiltroSite;
   comWhatsapp: boolean;
   comEmail: boolean;
@@ -150,12 +155,25 @@ export function interpretarConsulta(texto: string): ConsultaInterpretada {
   termo = termo.replace(/\s+(de|do|da|of)$/i, "").trim();
 
   let pais: string | null = null;
+  let uf: string | null = null;
+  let cidade: string | null = null;
   if (local) {
     const partes = local.split(/\s*[,/-]\s*/).filter(Boolean);
     const ultimo = partes[partes.length - 1] ?? local;
     pais = codigoDoPaisPorNome(ultimo) ?? codigoDoPaisPorNome(local) ?? paisDaRegiao(partes[0] ?? local) ?? paisDaRegiao(local);
+    if (!codigoDoPaisPorNome(local) && (pais === null || pais === "BR")) {
+      const br = separarLocalBR(local);
+      if (br.uf) {
+        pais = "BR";
+        uf = br.uf;
+      }
+      cidade = br.cidade;
+    } else if (!codigoDoPaisPorNome(local)) {
+      cidade = partes[0] ?? null;
+    }
     // O local é SÓ o país: busca no país inteiro.
     if (codigoDoPaisPorNome(local)) reconhecido.unshift(`País: ${local}`);
+    else if (uf && !cidade) reconhecido.unshift(`Estado: ${uf}`);
     else reconhecido.unshift(`Local: ${local}`);
   } else if (qualquerLugar) {
     reconhecido.unshift("Qualquer lugar");
@@ -167,6 +185,8 @@ export function interpretarConsulta(texto: string): ConsultaInterpretada {
     termo,
     local,
     pais,
+    uf,
+    cidade,
     site,
     comWhatsapp,
     comEmail,

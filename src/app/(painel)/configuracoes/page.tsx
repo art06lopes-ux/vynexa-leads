@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { Cabecalho, Cartao } from "@/components/base/cartao";
 import { BotaoNotificacoes } from "@/components/configuracoes/botao-push";
 import { ConexaoGoogle } from "@/components/configuracoes/conexao-google";
+import { ZerarDados } from "@/components/configuracoes/zerar";
 import { Campo, CampoSegredo, Copiavel, FormConfig, Produtos, SeletorAbas, Supressao, TesteEmail, UploadLogo } from "@/components/configuracoes/abas";
 import { getBanco, planos } from "@/db/cliente";
 import { lerIdentidade } from "@/db/painel";
@@ -18,6 +19,12 @@ export default async function PaginaConfiguracoes({ searchParams }: PageProps<"/
   const { aba: abaBruta } = await searchParams;
   const aba = typeof abaBruta === "string" ? abaBruta : "identidade";
   const banco = getBanco();
+  const contagens =
+    aba === "avancado"
+      ? await getBanco()
+          .execute(`SELECT (SELECT COUNT(*) FROM leads) AS leads, (SELECT COUNT(*) FROM vendas) AS vendas`)
+          .then(({ rows }) => ({ leads: Number(rows[0]?.leads ?? 0), vendas: Number(rows[0]?.vendas ?? 0) }))
+      : { leads: 0, vendas: 0 };
   const [identidade, segredos, provedores, conta, prods, supr, reqMes] = await Promise.all([
     lerIdentidade(),
     estadoDosSegredos(),
@@ -184,6 +191,9 @@ export default async function PaginaConfiguracoes({ searchParams }: PageProps<"/
               <Campo nome="google_teto_requisicoes" rotulo="Teto padrão de requisições por busca no Google" valor={c.google_teto_requisicoes || "10"} />
               <Campo nome="receita_ufs" rotulo="Estados importados da Receita Federal" valor={c.receita_ufs} placeholder="AM, PA" dica="Base de CNPJs usada como fonte complementar no Brasil (buscas pelo OpenStreetMap)." />
             </FormConfig>
+          </Cartao>
+          <Cartao titulo="Começar do zero" subtitulo="Apaga a carteira de leads e mantém as configurações">
+            <ZerarDados leads={contagens.leads} vendas={contagens.vendas} />
           </Cartao>
         </div>
       )}

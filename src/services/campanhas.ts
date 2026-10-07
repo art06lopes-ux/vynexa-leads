@@ -174,7 +174,11 @@ export async function editarEnvio(banco: Client, envioId: string, assunto: strin
   if (/[\r\n]/.test(assunto)) throw new Error("O assunto não pode ter quebra de linha.");
   if (assunto.trim().length < 3 || corpo.trim().length < 20) throw new Error("Assunto e corpo precisam de conteúdo.");
   const { rowsAffected } = await banco.execute({
-    sql: `UPDATE envios SET assunto = ?, corpo = ?, atualizado_em = ? WHERE id = ? AND status IN ('pendente','preparado','agendado','erro')`,
+    // Texto escrito à mão num envio que a IA não conseguiu preparar: passa
+    // a "preparado" e entra no próximo agendamento.
+    sql: `UPDATE envios SET assunto = ?, corpo = ?, erro = NULL, atualizado_em = ?,
+                 status = CASE WHEN status IN ('pendente','erro') THEN 'preparado' ELSE status END
+          WHERE id = ? AND status IN ('pendente','preparado','agendado','erro') AND enviado_em IS NULL`,
     args: [assunto.trim(), corpo.trim(), agora(), envioId],
   });
   if (rowsAffected === 0) throw new Error("Este e-mail já foi enviado e não pode mais ser editado.");

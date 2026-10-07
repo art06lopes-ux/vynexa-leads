@@ -14,7 +14,11 @@ import { carregarDados, carregarRemetente } from "@/services/inteligencia";
  * Fila de campanhas: preparar (IA escreve) e enviar (no ritmo).
  */
 
-export type PayloadCampanhaV2 = { campanhaId: string };
+export type PayloadCampanhaV2 = {
+  campanhaId: string;
+  /** Orçamento desta rodada, quando roda dentro de uma requisição (after()). */
+  orcamentoMs?: number;
+};
 
 const ORCAMENTO_MS = 3 * 60 * 1000;
 
@@ -48,7 +52,7 @@ export async function processarPreparo(banco: Client, p: PayloadCampanhaV2): Pro
   let preparados = 0;
   let falhas = 0;
   for (const linha of leads) {
-    if (Date.now() - inicio > ORCAMENTO_MS) break;
+    if (Date.now() - inicio > (p.orcamentoMs ?? ORCAMENTO_MS)) break;
     const leadId = String(linha.lead_id);
     try {
       const { dados, lead } = await carregarDados(banco, leadId);
@@ -122,7 +126,7 @@ export async function processarPreparo(banco: Client, p: PayloadCampanhaV2): Pro
   if (faltam > 0) {
     await banco.execute({
       sql: `INSERT INTO jobs (id, tipo, payload, status) VALUES (?, 'preparar_campanha', ?, 'pendente')`,
-      args: [novoId(), JSON.stringify(p)],
+      args: [novoId(), JSON.stringify({ campanhaId: p.campanhaId })],
     });
   } else {
     await banco.execute({
@@ -179,7 +183,7 @@ export async function processarEnvioCampanha(banco: Client, p: PayloadCampanhaV2
   let falhas = 0;
   let proximo: string | null = null;
 
-  while (Date.now() - inicio < ORCAMENTO_MS) {
+  while (Date.now() - inicio < (p.orcamentoMs ?? ORCAMENTO_MS)) {
     if (enviadosCampanhaHoje >= Number(c.limite_diario) || enviadosHoje >= teto) {
       proximo = "amanha";
       break;
@@ -260,7 +264,7 @@ export async function processarEnvioCampanha(banco: Client, p: PayloadCampanhaV2
       proximo === "amanha"
         ? `INSERT INTO jobs (id, tipo, payload, status, disponivel_em) VALUES (?, 'enviar_campanha', ?, 'pendente', datetime('now', '+1 day', 'start of day', '+11 hours'))`
         : `INSERT INTO jobs (id, tipo, payload, status, disponivel_em) VALUES (?, 'enviar_campanha', ?, 'pendente', ?)`,
-    args: proximo === "amanha" ? [novoId(), JSON.stringify(p)] : [novoId(), JSON.stringify(p), quando],
+    args: proximo === "amanha" ? [novoId(), JSON.stringify({ campanhaId: p.campanhaId })] : [novoId(), JSON.stringify({ campanhaId: p.campanhaId }), quando],
   });
 
   return `${enviados} enviado(s), ${falhas} falha(s)${proximo ? ` — retoma (${proximo})` : ""}`;

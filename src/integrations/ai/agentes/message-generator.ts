@@ -55,8 +55,10 @@ ${REGRAS_ABSOLUTAS}
 
 COMO SOAR
 - Como uma pessoa que encontrou a empresa e reparou em algo específico. Nada de "Somos uma empresa especializada em…", "Olá, tudo bem? Somos…", nem lista de serviços.
-- Comece pelo que você observou (ex.: "Encontrei a [nome] no Google e vi que vocês têm uma avaliação muito boa por aí. Notei também que ainda não encontrei um site próprio…"), depois a oportunidade em uma frase, depois uma pergunta curta que convide à resposta.
+- Comece pelo que você observou (ex.: "Vi a [nome] no Google e reparei que vocês têm uma avaliação muito boa por aí. Procurei um site próprio de vocês e não achei…"), depois a oportunidade em uma frase, depois uma pergunta curta que convide à resposta.
 - Cite o nome da empresa uma vez. Não use colchetes nem placeholders.
+- Não abra com "Olá da Vynexa" nem com o nome de quem envia; abra com um cumprimento simples. Não repita o mesmo verbo ("encontrei… não encontrei") — varie: "vi", "reparei", "procurei".
+- Frases curtas e naturais, como alguém digitando no celular.
 - Idioma de TODAS as versões: ${nomeIdioma(d.empresa.idioma_abordagem)}.`,
   };
 }

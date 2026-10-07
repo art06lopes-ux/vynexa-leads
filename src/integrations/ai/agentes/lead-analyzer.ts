@@ -47,7 +47,7 @@ ${fatos.texto}
 
 ${REGRAS_ABSOLUTAS}
 
-O QUE ESCREVER (tudo em português do Brasil, para o vendedor ler)
+O QUE ESCREVER (tudo em português do Brasil, para o VENDEDOR ler — em terceira pessoa, falando SOBRE a empresa, nunca COM ela: "não encontramos um site próprio", jamais "o site de vocês")
 - resumo: duas frases objetivas.
 - diagnostico: exemplo de tom — "Esta empresa possui boa reputação no Google, mas não possui um site próprio. Isso representa uma oportunidade para apresentar uma página profissional com serviços, localização, avaliações e botão direto para WhatsApp." Adapte aos fatos reais.
 - oportunidades: o que dá para oferecer, ligado ao que foi observado.

@@ -291,6 +291,11 @@
     font-family: var(--font-manrope), system-ui, sans-serif !important;
   }
 
+  /* Tiles claros do OSM, invertidos para o tema azul-noite. */
+  .mapa-escuro {
+    filter: invert(1) hue-rotate(195deg) brightness(0.78) contrast(0.92) saturate(0.55);
+  }
+
   .leaflet-popup-content-wrapper,
   .leaflet-popup-tip {
     background: #0d1838 !important;

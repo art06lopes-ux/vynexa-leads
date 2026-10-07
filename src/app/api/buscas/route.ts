@@ -5,6 +5,7 @@ import { acharSegmento } from "@/lib/osm/segmentos";
 import { obterProvedor } from "@/integrations/leads";
 import { ErroApi, json, lerCorpo, limitar, rota } from "@/server/api";
 import { NovaBusca } from "@/server/esquemas";
+import { usoGoogle } from "@/services/cota-google";
 import { ehLinkCurto, expandirLinkCurto, interpretarLinkMaps, type LinkMaps } from "@/services/link-maps";
 import { executarAgora } from "@/worker/fila";
 
@@ -49,6 +50,18 @@ export const POST = rota(async (req) => {
       409,
       "sem_configuracao",
     );
+  }
+
+  // Trava mensal do Google (custo zero): nunca passa do limite do mês.
+  if (b.provedor === "google_places") {
+    const uso = await usoGoogle(getBanco());
+    if (uso.restantes <= 0) {
+      throw new ErroApi(
+        `O limite do mês do Google Maps foi atingido (${uso.usadas} de ${uso.limite} requisições). As buscas voltam no dia 1º — ou aumente o limite em Configurações → Avançado, sabendo que acima de 1.000 por mês o Google cobra.`,
+        409,
+      );
+    }
+    b.maxRequisicoes = Math.min(b.maxRequisicoes, uso.restantes);
   }
 
   // OpenStreetMap: a caçada completa (expansão de raio + Receita Federal)

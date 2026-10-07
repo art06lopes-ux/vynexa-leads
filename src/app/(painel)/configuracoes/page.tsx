@@ -5,6 +5,7 @@ import { Cabecalho, Cartao } from "@/components/base/cartao";
 import { BotaoNotificacoes } from "@/components/configuracoes/botao-push";
 import { ConexaoGoogle } from "@/components/configuracoes/conexao-google";
 import { ZerarDados } from "@/components/configuracoes/zerar";
+import { LIMITE_MENSAL_PADRAO, usoGoogle } from "@/services/cota-google";
 import { Campo, CampoSegredo, Copiavel, FormConfig, Produtos, SeletorAbas, Supressao, TesteEmail, UploadLogo } from "@/components/configuracoes/abas";
 import { getBanco, planos } from "@/db/cliente";
 import { lerIdentidade } from "@/db/painel";
@@ -32,7 +33,7 @@ export default async function PaginaConfiguracoes({ searchParams }: PageProps<"/
     contaConectada().catch(() => null),
     banco.execute(`SELECT id, nome, tipo, descricao, entregaveis, preco_centavos, ordem, ativo FROM produtos ORDER BY ativo DESC, ordem, nome`),
     banco.execute(`SELECT tipo, valor, motivo, origem, criado_em FROM supressao ORDER BY criado_em DESC LIMIT 300`),
-    banco.execute(`SELECT COALESCE(SUM(requisicoes),0) n FROM buscas WHERE provedor = 'google_places' AND criado_em >= date('now','start of month')`),
+    usoGoogle(banco),
   ]);
   const c = identidade.config;
   const s = (nome: string) => segredos.find((x) => x.nome === nome)!;
@@ -82,7 +83,7 @@ export default async function PaginaConfiguracoes({ searchParams }: PageProps<"/
             s={s("GOOGLE_PLACES_API_KEY")}
             ajuda={
               <>
-                Fonte principal de leads. Ative a <b>Places API (New)</b> no Google Cloud, crie uma chave restrita a ela (sem restrição de referer — ela só é usada no servidor). O Google exige conta de faturamento com cartão; telefone, site e avaliações caem no SKU Enterprise, com cota mensal gratuita e cobrança acima dela. Requisições neste mês: <b className="text-foreground">{Number(reqMes.rows[0]?.n ?? 0)}</b>.
+                Fonte principal de leads. Ative a <b>Places API (New)</b> no Google Cloud, crie uma chave restrita a ela (sem restrição de referer — ela só é usada no servidor). O Google exige conta de faturamento com cartão; telefone, site e avaliações caem no SKU Enterprise, com cota mensal gratuita e cobrança acima dela. Uso neste mês: <b className="text-foreground">{reqMes.usadas} de {reqMes.limite}</b> requisições (o app para de buscar no limite; ajuste em Avançado).
               </>
             }
           />
@@ -188,7 +189,8 @@ export default async function PaginaConfiguracoes({ searchParams }: PageProps<"/
             <FormConfig>
               <Campo nome="app_url" rotulo="Endereço público do app" valor={c.app_url} placeholder="https://vynexa-leads.vercel.app" dica="Usado nos links dos e-mails (descadastro, rastreio) e nos webhooks." />
               <Campo nome="fuso" rotulo="Fuso horário" valor={c.fuso || "America/Manaus"} dica="Ex.: America/Manaus, America/Sao_Paulo, Europe/Lisbon." />
-              <Campo nome="google_teto_requisicoes" rotulo="Teto padrão de requisições por busca no Google" valor={c.google_teto_requisicoes || "10"} />
+              <Campo nome="google_teto_requisicoes" rotulo="Teto padrão de requisições por busca no Google" valor={c.google_teto_requisicoes || "10"} dica="Cada requisição traz até 20 empresas." />
+              <Campo nome="google_limite_mensal" rotulo="Limite de requisições ao Google por mês" valor={c.google_limite_mensal || String(LIMITE_MENSAL_PADRAO)} dica="O Google dá 1.000 grátis por mês e cobra o que passar. Com 900, sobra folga e o custo fica zero." />
               <Campo nome="receita_ufs" rotulo="Estados importados da Receita Federal" valor={c.receita_ufs} placeholder="AM, PA" dica="Base de CNPJs usada como fonte complementar no Brasil (buscas pelo OpenStreetMap)." />
             </FormConfig>
           </Cartao>

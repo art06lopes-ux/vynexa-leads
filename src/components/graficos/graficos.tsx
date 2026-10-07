@@ -132,9 +132,12 @@ export function GraficoBarras({
               return (
                 <g key={f}>
                   <line x1={margemEsq} x2={largura} y1={y} y2={y} stroke="rgba(122,150,255,0.1)" />
-                  <text x={margemEsq - 8} y={y + 4} textAnchor="end" className="fill-muted-foreground text-[10px] num">
-                    {compacto(max * f, formato, moeda)}
-                  </text>
+                  {/* Sem dados, a escala seria de centavos ("R$ 0,01") e não diria nada. */}
+                  {!vazio && (
+                    <text x={margemEsq - 8} y={y + 4} textAnchor="end" className="fill-muted-foreground text-[10px] num">
+                      {compacto(max * f, formato, moeda)}
+                    </text>
+                  )}
                 </g>
               );
             })}

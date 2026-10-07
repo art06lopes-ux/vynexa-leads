@@ -6,17 +6,13 @@ name: receita
 # em fluxo e grava só o recorte dos estados escolhidos em Ajustes. Não
 # cabe no worker de 5 minutos nem numa função da Vercel — por isso tem
 # fluxo próprio, com timeout largo e sem concorrência com ele mesmo.
+#
+# DESLIGADO o agendamento (07/10/2026): desde a v2 a busca é pelo Google
+# Maps, e a Receita só servia de complemento às buscas pelo OpenStreetMap.
+# Uma importação grava centenas de milhares de linhas — mais que a cota
+# diária do D1 gratuito (100 mil), o que deixava o painel fora do ar no
+# dia 15. Continua disponível para rodar à mão (Actions → receita → Run).
 on:
-  schedule:
-    # Dia 15 de cada mês, 06:00 UTC. A Receita publica a pasta nova por
-    # volta do dia 10; no 15 ela já está completa.
-    - cron: "0 6 15 * *"
-  # Mudou o importador ou este fluxo: roda para provar que ainda importa.
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/receita.yml"
-      - "src/worker/receita/**"
   workflow_dispatch:
     inputs:
       ufs:

@@ -194,3 +194,11 @@ describe("composição do e-mail", () => {
     assert.ok(html.includes('src="https://app/api/t/a/tok"'));
   });
 });
+
+describe("proposta fala pela empresa", () => {
+  it("troca a primeira pessoa do singular pela do plural", async () => {
+    const { falarComoEmpresa } = await import("@/integrations/ai/agentes/proposal-generator");
+    assert.equal(falarComoEmpresa("Atualmente, não encontrei um site. Notei que usa o Instagram."), "Atualmente, não encontramos um site. Notamos que usa o Instagram.");
+    assert.equal(falarComoEmpresa("Visita e vitrine continuam iguais."), "Visita e vitrine continuam iguais.", "não mexe em palavras que só começam igual");
+  });
+});

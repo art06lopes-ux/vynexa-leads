@@ -49,6 +49,7 @@ const CHAVES: Record<string, (v: string) => string | null> = {
     }
   },
   google_teto_requisicoes: (v) => (/^\d{1,2}$/.test(v) && Number(v) >= 1 && Number(v) <= 60 ? v : null),
+  google_limite_mensal: (v) => (/^\d{1,5}$/.test(v) && Number(v) >= 1 ? v : null),
   receita_ufs: (v) =>
     [...new Set(v.toUpperCase().split(/[,\s;]+/).filter((u) => /^[A-Z]{2}$/.test(u)))]
       .sort()

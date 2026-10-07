@@ -5,6 +5,7 @@ import type { Busca } from "@/db/tipos";
 import { ehProvedorBusca, obterProvedor, type ConsultaBusca } from "@/integrations/leads";
 import { notificar } from "@/integrations/notificacoes";
 import { idiomaProvavel } from "@/lib/geo/mundo";
+import { registrarUsoGoogle } from "@/services/cota-google";
 import { registrarLugares } from "@/services/registro";
 
 /**
@@ -75,6 +76,7 @@ export async function processarBuscaProvedor(banco: Client, payload: PayloadBusc
 
   const provedor = obterProvedor(busca.provedor);
   const resultado = await provedor.buscar(consulta, (texto) => etapa(banco, busca.id, texto));
+  if (busca.provedor === "google_places") await registrarUsoGoogle(banco, resultado.requisicoes);
 
   await etapa(banco, busca.id, "Analisando presença digital…");
   const registro = await registrarLugares(banco, resultado.lugares, { buscaId: busca.id });

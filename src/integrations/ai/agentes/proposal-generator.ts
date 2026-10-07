@@ -48,9 +48,33 @@ ${entregaveisProduto.length > 0 ? `ENTREGÁVEIS DO PRODUTO (use estes, sem acres
 
 ${REGRAS_ABSOLUTAS}
 - Não escreva valores nem prazos: eles entram depois, pelo vendedor.
+- A proposta fala pela empresa: primeira pessoa do PLURAL ("identificamos", "não encontramos um site", "vamos entregar"). Nunca "eu", "encontrei", "notei".
 
 Escreva em português do Brasil, em tom profissional e direto. titulo no formato "Proposta — <produto> para <empresa>". De 3 a 7 entregáveis e de 2 a 4 próximos passos.`,
   };
+}
+
+/**
+ * Rede de segurança do "nós": os fatos chegam escritos pelo operador
+ * ("não encontrei site"), e o modelo às vezes os copia. Na proposta,
+ * quem fala é a empresa.
+ */
+const SINGULAR_PARA_PLURAL: Record<string, string> = {
+  encontrei: "encontramos",
+  verifiquei: "verificamos",
+  notei: "notamos",
+  observei: "observamos",
+  identifiquei: "identificamos",
+  analisei: "analisamos",
+  percebi: "percebemos",
+  vi: "vimos",
+};
+
+export function falarComoEmpresa(texto: string): string {
+  return texto.replace(/(?<!\p{L})(encontrei|verifiquei|notei|observei|identifiquei|analisei|percebi|vi)(?!\p{L})/giu, (m) => {
+    const plural = SINGULAR_PARA_PLURAL[m.toLowerCase()]!;
+    return m[0] === m[0].toUpperCase() ? plural[0].toUpperCase() + plural.slice(1) : plural;
+  });
 }
 
 export function validarProposta(bruto: unknown, numeros: Set<string>): ConteudoProposta {
@@ -59,7 +83,7 @@ export function validarProposta(bruto: unknown, numeros: Set<string>): ConteudoP
   const entregaveis = lista(a?.entregaveis);
   const passos = lista(a?.proximos_passos);
   if (entregaveis.length === 0) throw new SaidaInvalida("proposta sem entregáveis.");
-  const v = (campo: string, texto: unknown, maximo = 1200) => validarTexto(String(texto ?? ""), { numeros, campo, maximo });
+  const v = (campo: string, texto: unknown, maximo = 1200) => falarComoEmpresa(validarTexto(String(texto ?? ""), { numeros, campo, maximo }));
   return {
     titulo: v("titulo", a.titulo, 160),
     contexto: v("contexto", a.contexto),

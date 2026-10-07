@@ -97,6 +97,8 @@ function FormCobranca({ v, aoFechar, asaasPronto }: { v: VendaListada; aoFechar:
 export function TabelaVendas({ vendas, asaasPronto, produtos }: { vendas: VendaListada[]; asaasPronto: boolean; produtos: Array<{ id: string; nome: string; preco_centavos: number }> }) {
   const router = useRouter();
   const [cobrando, setCobrando] = useState<string | null>(null);
+  const [pagando, setPagando] = useState<string | null>(null);
+  const [confirmandoPagamento, setConfirmandoPagamento] = useState(false);
   const [nova, setNova] = useState(false);
   const [f, setF] = useState({ descricao: "", valor: "", produtoId: "", meio: "pix", pago: false, clienteNome: "", clienteEmpresa: "", clienteDocumento: "" });
 
@@ -228,12 +230,8 @@ export function TabelaVendas({ vendas, asaasPronto, produtos }: { vendas: VendaL
                         )}
                         <button
                           type="button"
-                          onClick={async () => {
-                            const meio = window.prompt("Como foi pago? (pix, boleto, cartao, transferencia, dinheiro, outro)", "pix");
-                            if (!meio) return;
-                            if (!MEIO[meio]) return void toast.error("Forma de pagamento inválida.");
-                            if (await acao(v.id, { acao: "pago", meio })) router.refresh();
-                          }}
+                          onClick={() => setPagando((p) => (p === v.id ? null : v.id))}
+                          aria-expanded={pagando === v.id}
                           className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-sucesso/40 px-2.5 text-xs text-sucesso hover:bg-sucesso/10"
                         >
                           <Check className="size-3.5" /> Marcar pago
@@ -250,6 +248,38 @@ export function TabelaVendas({ vendas, asaasPronto, produtos }: { vendas: VendaL
                     )}
                   </div>
                 </div>
+                <AnimatePresence>
+                  {pagando === v.id && (
+                    <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="overflow-hidden">
+                      <div className="flex flex-wrap items-center gap-2 border-t border-fio bg-white/[0.02] p-4">
+                        <span className="w-full text-xs text-muted-foreground sm:w-auto">Como o cliente pagou?</span>
+                        {(["pix", "dinheiro", "transferencia", "cartao", "boleto", "outro"] as const).map((meio) => (
+                          <button
+                            key={meio}
+                            type="button"
+                            disabled={confirmandoPagamento}
+                            onClick={async () => {
+                              setConfirmandoPagamento(true);
+                              const ok = await acao(v.id, { acao: "pago", meio });
+                              setConfirmandoPagamento(false);
+                              if (ok) {
+                                setPagando(null);
+                                toast.success(`Pagamento confirmado (${MEIO[meio]}).`);
+                                router.refresh();
+                              }
+                            }}
+                            className="h-9 cursor-pointer rounded-lg border border-sucesso/40 px-3 text-sm text-sucesso hover:bg-sucesso/10 disabled:opacity-50"
+                          >
+                            {MEIO[meio]}
+                          </button>
+                        ))}
+                        <button type="button" onClick={() => setPagando(null)} className="h-9 cursor-pointer rounded-lg px-3 text-sm text-muted-foreground hover:bg-white/5">
+                          Cancelar
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 <AnimatePresence>{cobrando === v.id && <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="overflow-hidden"><FormCobranca v={v} aoFechar={() => setCobrando(null)} asaasPronto={asaasPronto} /></motion.div>}</AnimatePresence>
               </li>
             );

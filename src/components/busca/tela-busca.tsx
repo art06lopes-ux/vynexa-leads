@@ -144,11 +144,21 @@ function Alternar({ ativo, aoMudar, rotulo }: { ativo: boolean; aoMudar: (v: boo
 
 const campo = "h-10 w-full rounded-xl border border-fio bg-placa px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-brilho/60";
 
-export function TelaBusca({ provedores, buscaInicial }: { provedores: Provedores; buscaInicial: string | null }) {
+export function TelaBusca({
+  provedores,
+  buscaInicial,
+  usoGoogle,
+  tetoPadrao,
+}: {
+  provedores: Provedores;
+  buscaInicial: string | null;
+  usoGoogle: { usadas: number; limite: number; restantes: number };
+  tetoPadrao: number;
+}) {
   const router = useRouter();
   const params = useSearchParams();
   const googleOk = provedores.find((p) => p.nome === "google_places")?.disponivel ?? false;
-  const [f, setF] = useState<Formulario>(VAZIO);
+  const [f, setF] = useState<Formulario>({ ...VAZIO, maxRequisicoes: Math.min(Math.max(tetoPadrao, 1), 60) });
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [estado, setEstado] = useState<EstadoBusca | null>(null);
@@ -407,6 +417,14 @@ export function TelaBusca({ provedores, buscaInicial }: { provedores: Provedores
             <MapPin className="size-3.5 text-ciano" aria-hidden="true" />
             Google Maps
             {!googleOk && <span className="rounded bg-aviso/20 px-1 text-[0.6rem] text-aviso">sem chave</span>}
+            {googleOk && (
+              <span
+                title={`${usoGoogle.usadas} de ${usoGoogle.limite} requisições usadas este mês`}
+                className={cn("font-normal num", usoGoogle.restantes < 30 ? "text-aviso" : "text-muted-foreground")}
+              >
+                · restam {usoGoogle.restantes} no mês
+              </span>
+            )}
           </span>
 
           <div className="flex rounded-xl border border-fio bg-placa p-1" role="radiogroup" aria-label="Site">

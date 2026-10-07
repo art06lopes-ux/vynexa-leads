@@ -138,6 +138,10 @@ export function converterLugar(g: LugarGoogle, termo: string, paisPadrao: string
   };
 }
 
+function requisicoesTexto(n: number): string {
+  return n === 1 ? "1 requisição" : `${n} requisições`;
+}
+
 /** Divide um retângulo em quatro. */
 export function quadrantes(r: Retangulo): Retangulo[] {
   const latMeio = (r.sul + r.norte) / 2;
@@ -223,7 +227,7 @@ export class GooglePlacesProvider implements LeadProvider {
       let quantos = 0;
       for (let pagina = 0; pagina < 3; pagina += 1) {
         if (requisicoes >= consulta.maxRequisicoes) {
-          aviso = `A busca parou no teto de ${consulta.maxRequisicoes} requisições ao Google. Aumente o teto em Configurações para cobrir a área inteira.`;
+          aviso = `A busca parou no teto de ${requisicoesTexto(consulta.maxRequisicoes)} ao Google. Aumente o teto em "Mais filtros" para cobrir a área inteira.`;
           break;
         }
         const corpo: Record<string, unknown> = { textQuery: texto, pageSize: 20, languageCode: consulta.idioma };
@@ -262,7 +266,7 @@ export class GooglePlacesProvider implements LeadProvider {
         if (quantos >= 60 && nivel < 4) fila.push(...quadrantes(r).map((q) => ({ r: q, nivel: nivel + 1 })));
       }
       if (fila.length > 0 && !aviso) {
-        aviso = `Ainda há partes da área sem consultar (teto de ${consulta.maxRequisicoes} requisições).`;
+        aviso = `Ainda há partes da área sem consultar (teto de ${requisicoesTexto(consulta.maxRequisicoes)}).`;
       }
     } else {
       await varrer(textoComLocal, null);
@@ -300,7 +304,7 @@ export class GooglePlacesProvider implements LeadProvider {
 
     for (let pagina = 0; pagina < 3; pagina += 1) {
       if (requisicoes >= consulta.maxRequisicoes) {
-        aviso = `A busca parou no teto de ${consulta.maxRequisicoes} requisições ao Google.`;
+        aviso = `A busca parou no teto de ${requisicoesTexto(consulta.maxRequisicoes)} ao Google. Aumente o teto em "Mais filtros" para trazer mais resultados.`;
         break;
       }
       const corpo: Record<string, unknown> = { textQuery: link.consulta, pageSize: 20, languageCode: consulta.idioma };

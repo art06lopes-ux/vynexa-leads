@@ -157,10 +157,16 @@ export function TelaBusca({ provedores, buscaInicial }: { provedores: Provedores
 
   const mudar = <K extends keyof Formulario>(k: K, v: Formulario[K]) => setF((a) => ({ ...a, [k]: v }));
 
-  const paises = useMemo(
-    () => CODIGOS_ISO.map((c) => ({ c, n: nomePaisPt(c) })).sort((a, b) => (a.c === "BR" ? -1 : b.c === "BR" ? 1 : a.n.localeCompare(b.n, "pt-BR"))),
-    [],
-  );
+  // Nomes de país vêm do Intl, e o Node e o navegador trazem versões
+  // diferentes da tabela ("Hong Kong" × "Hong Kong, RAE da China"). A
+  // lista completa só é montada no navegador; antes disso, só o Brasil.
+  const [paises, setPaises] = useState([{ c: "BR", n: "Brasil" }]);
+  useEffect(() => {
+    const t = setTimeout(() =>
+      setPaises(CODIGOS_ISO.map((c) => ({ c, n: nomePaisPt(c) })).sort((a, b) => (a.c === "BR" ? -1 : b.c === "BR" ? 1 : a.n.localeCompare(b.n, "pt-BR")))),
+    );
+    return () => clearTimeout(t);
+  }, []);
 
   // Municípios do IBGE quando o país é Brasil e há UF.
   useEffect(() => {

@@ -1,4 +1,6 @@
 import type { Client } from "@libsql/client";
+import type { LugarEncontrado } from "@/integrations/leads/tipos";
+import { registrarLugares } from "@/services/registro";
 
 import { agora, novoId } from "@/db/cliente";
 import type { Busca } from "@/db/tipos";
@@ -244,42 +246,41 @@ async function cnpjsConhecidos(banco: Client, cnpjs: string[]): Promise<Set<stri
 }
 
 async function inserir(banco: Client, busca: Busca, segmento: Segmento, novos: Estabelecimento[]): Promise<void> {
-  // A cidade digitada na busca tem acento e caixa certos; a da Receita
-  // não tem acento. Quando a busca foi por cidade, os dois são o mesmo
-  // lugar e o nome digitado é o melhor. Numa busca por estado inteiro,
-  // fica o da Receita normalizado — sem acento, mas é o que a fonte tem.
-  const statements = novos.map((e) => {
-    const telefone = melhorTelefone(e);
-    return {
-      sql: `INSERT OR IGNORE INTO empresas (
-              id, busca_id, fonte, osm_id, cnpj, nome, pais, estado, cidade, endereco,
-              telefone, telefone_origem, email, email_origem,
-              categoria, cnae, fundada_em, idioma_abordagem, status_site, whatsapp
-            ) VALUES (?,?,'receita',NULL,?,?,'BR',?,?,?,?,?,?,?,?,?,?,'pt-BR',?,?)`,
-      args: [
-        novoId(),
-        busca.id,
-        e.cnpj,
-        // A base guarda o nome como veio; a limpeza do prefixo de CNPJ é
-        // feita aqui, na leitura, para não reescrever milhões de linhas.
-        caixaMista(limparRazaoSocial(e.nome)),
-        e.uf,
-        busca.cidade ?? normalizarLocalidade(e.municipio),
-        montarEndereco(e),
-        telefone,
-        telefone ? "receita" : null,
-        e.email,
-        e.email ? "receita" : null,
-        segmento.slug,
-        e.cnae,
-        e.inicio_atividade,
-        classificarStatusSite({ website: null, telefone, email: e.email }),
-        abreWhatsapp(telefone, "BR"),
-      ],
-    };
-  });
-
-  for (let i = 0; i < statements.length; i += 100) {
-    await banco.batch(statements.slice(i, i + 100), "write");
-  }
+  // Passa pelo registro comum (src/services/registro.ts): dedup por
+  // telefone/domínio/nome+endereço, score, lead e histórico — igual a
+  // qualquer outra fonte. A cidade digitada na busca tem acento e caixa
+  // certos; a da Receita não tem acento, e só vale numa busca por estado.
+  const lugares: LugarEncontrado[] = novos.map((e) => ({
+    fonte: "receita",
+    externoId: e.cnpj,
+    fonteUrl: null,
+    // A base guarda o nome como veio; a limpeza do prefixo de CNPJ é
+    // feita aqui, na leitura, para não reescrever milhões de linhas.
+    nome: caixaMista(limparRazaoSocial(e.nome)),
+    categoria: segmento.slug,
+    categoriaRotulo: segmento.rotulo,
+    pais: "BR",
+    estado: e.uf,
+    cidade: busca.cidade ?? normalizarLocalidade(e.municipio),
+    bairro: e.bairro ? caixaMista(e.bairro) : null,
+    cep: e.cep,
+    endereco: montarEndereco(e),
+    latitude: null,
+    longitude: null,
+    telefone: melhorTelefone(e),
+    email: e.email,
+    website: null,
+    instagram: null,
+    facebook: null,
+    avaliacaoNota: null,
+    avaliacaoQtd: null,
+    statusNegocio: null,
+  }));
+  await registrarLugares(banco, lugares, { buscaId: busca.id });
+  // `cnae` e `fundada_em` não fazem parte do formato comum: completa aqui.
+  const extras = novos.map((e) => ({
+    sql: `UPDATE empresas SET cnae = COALESCE(cnae, ?), fundada_em = COALESCE(fundada_em, ?) WHERE cnpj = ?`,
+    args: [e.cnae, e.inicio_atividade, e.cnpj],
+  }));
+  for (let j = 0; j < extras.length; j += 100) await banco.batch(extras.slice(j, j + 100), "write");
 }

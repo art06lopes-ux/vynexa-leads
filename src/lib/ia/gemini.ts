@@ -1,3 +1,4 @@
+import { obterSegredo } from "@/integrations/segredos";
 import { criarLimitador } from "@/lib/osm/limitador";
 
 /**
@@ -44,11 +45,12 @@ export type EsquemaResposta = {
   required: string[];
 };
 
-export function getChaveGemini(): string {
-  const chave = (process.env.GEMINI_API_KEY ?? "").replace(/\s+/g, "");
+export async function getChaveGemini(): Promise<string> {
+  // Configurada pela tela (cifrada no banco) ou pela variável de ambiente.
+  const chave = ((await obterSegredo("GEMINI_API_KEY")) ?? "").replace(/\s+/g, "");
   if (chave === "") {
     throw new ErroGemini(
-      "GEMINI_API_KEY ausente. Gere uma chave gratuita em https://aistudio.google.com/apikey e cadastre nos segredos do GitHub. Ver docs/SETUP.md.",
+      "A IA ainda não está configurada. Gere uma chave gratuita em https://aistudio.google.com/apikey e cole em Configurações → Integrações.",
     );
   }
   return chave;
@@ -66,11 +68,12 @@ export async function pedirJson<T>(
   instrucao: string,
   esquema: EsquemaResposta,
 ): Promise<T> {
+  const chave = await getChaveGemini();
   const resposta = await agendar(() =>
     fetch(ENDPOINT, {
       method: "POST",
       headers: {
-        "x-goog-api-key": getChaveGemini(),
+        "x-goog-api-key": chave,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

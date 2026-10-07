@@ -9,11 +9,10 @@
  */
 import { agora, ehLimiteDiarioD1, getBanco } from "@/db/cliente";
 import type { Job, PayloadBusca } from "@/db/tipos";
+import { ErroIA } from "@/integrations/ai/tipos";
+import { ErroProvedor } from "@/integrations/leads/tipos";
 import { ErroGemini } from "@/lib/ia/gemini";
-import { processarAnaliseIA, type PayloadAnalise } from "@/worker/handlers/analise-ia";
-import { processarBusca } from "@/worker/handlers/busca";
-import { processarEnvio, processarGeracao, type PayloadCampanha } from "@/worker/handlers/campanha";
-import { processarEnriquecimento, type PayloadEnriquecer } from "@/worker/handlers/enriquecer-email";
+import { despachar } from "@/worker/fila";
 
 /**
  * Orçamento de tempo.
@@ -129,8 +128,9 @@ async function main() {
         // como tentativa faria a análise desistir de vez depois de seis
         // esperas e a fila morreria até alguém caçar de novo. Espera meia
         // hora e devolve a tentativa.
-        const cota = erro instanceof ErroGemini && erro.temporario;
-        const desiste = !cota && job.tentativas >= MAX_TENTATIVAS;
+        const cota = (erro instanceof ErroGemini || erro instanceof ErroIA || erro instanceof ErroProvedor) && erro.temporario;
+        const semConfiguracao = Boolean((erro as { semConfiguracao?: boolean }).semConfiguracao);
+        const desiste = !cota && (semConfiguracao || job.tentativas >= MAX_TENTATIVAS);
 
         const espera = cota ? 30 : (ESPERA_MINUTOS[Math.min(job.tentativas - 1, ESPERA_MINUTOS.length - 1)] ?? 5);
 
@@ -152,7 +152,7 @@ async function main() {
         // fica girando para sempre esperando um job que já desistiu. E
         // enquanto ainda vai tentar, a tela mostra o motivo e a hora —
         // "rastreando" por vinte minutos sem explicação parece travado.
-        if (job.tipo === "busca") {
+        if (job.tipo === "busca" || job.tipo === "busca_google") {
           const { buscaId } = JSON.parse(job.payload) as PayloadBusca;
           await banco.execute({
             sql: desiste
@@ -213,7 +213,8 @@ async function reservarProximo(banco: ReturnType<typeof getBanco>): Promise<Job 
       sql: `SELECT id, tipo, payload, status, tentativas, lease_ate, erro, criado_em, atualizado_em
             FROM jobs
             WHERE status = 'pendente' AND (disponivel_em IS NULL OR disponivel_em <= ?)
-            ORDER BY CASE tipo WHEN 'busca' THEN 0 WHEN 'envio_email' THEN 1 WHEN 'gerar_emails' THEN 2 ELSE 3 END,
+            ORDER BY CASE tipo WHEN 'busca_google' THEN 0 WHEN 'busca' THEN 0 WHEN 'enviar_campanha' THEN 1
+                               WHEN 'preparar_campanha' THEN 2 WHEN 'avaliar_site' THEN 3 ELSE 4 END,
                      criado_em
             LIMIT 1`,
       args: [agora()],
@@ -238,23 +239,6 @@ async function reservarProximo(banco: ReturnType<typeof getBanco>): Promise<Job 
 /** Instante daqui a N minutos, no formato do `datetime('now')` do SQLite. */
 function emMinutos(minutos: number): string {
   return new Date(Date.now() + minutos * 60_000).toISOString().replace("T", " ").slice(0, 19);
-}
-
-function despachar(banco: ReturnType<typeof getBanco>, job: Job): Promise<string> {
-  switch (job.tipo) {
-    case "busca":
-      return processarBusca(banco, JSON.parse(job.payload) as PayloadBusca);
-    case "analise_ia":
-      return processarAnaliseIA(banco, JSON.parse(job.payload) as PayloadAnalise);
-    case "enriquecer_email":
-      return processarEnriquecimento(banco, JSON.parse(job.payload) as PayloadEnriquecer);
-    case "gerar_emails":
-      return processarGeracao(banco, JSON.parse(job.payload) as PayloadCampanha);
-    case "envio_email":
-      return processarEnvio(banco, JSON.parse(job.payload) as PayloadCampanha);
-    default:
-      return Promise.reject(new Error(`Tipo de job desconhecido: ${job.tipo}`));
-  }
 }
 
 main().catch((erro) => {

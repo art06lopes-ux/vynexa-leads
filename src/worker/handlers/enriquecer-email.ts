@@ -209,7 +209,7 @@ function normalizarUrl(site: string): URL | null {
  * fecha a porta. Não tenta ser esperto com regras parciais — na dúvida,
  * não entra. Sem robots.txt (404), a convenção é que pode.
  */
-async function robotsPermite(base: URL): Promise<boolean> {
+export async function robotsPermite(base: URL): Promise<boolean> {
   try {
     const r = await fetch(new URL("/robots.txt", base), {
       headers: { "User-Agent": getOsmUserAgent() },

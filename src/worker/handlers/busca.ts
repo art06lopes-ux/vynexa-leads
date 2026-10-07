@@ -2,14 +2,12 @@ import type { Client } from "@libsql/client";
 
 import { agora, novoId } from "@/db/cliente";
 import type { Busca, PayloadBusca } from "@/db/tipos";
-import { classificarStatusSite } from "@/lib/leads/classificacao";
-import { normalizarLocalidade } from "@/lib/geo/localidade";
-import { idiomaDoPais, nomeDoPais } from "@/lib/geo/paises";
+import { nomeDoPais } from "@/lib/geo/paises";
+import type { LugarEncontrado } from "@/integrations/leads/tipos";
+import { registrarLugares } from "@/services/registro";
 import { acharSegmento, type Segmento } from "@/lib/osm/segmentos";
 import { expandirBbox, raioAproximadoKm, resolverLugar, type Bbox } from "@/lib/osm/nominatim";
 import { buscarEstabelecimentos, type ElementoOsm } from "@/lib/osm/overpass";
-import { abreWhatsapp } from "@/lib/leads/whatsapp";
-import { TETO_POR_JOB } from "@/worker/handlers/analise-ia";
 import { complementarComReceita } from "@/worker/handlers/receita";
 
 /**
@@ -299,13 +297,15 @@ async function concluir(banco: Client, buscaId: string): Promise<void> {
  * mais para nada. Um job só; ele se reenfileira enquanto houver empresa.
  */
 async function pedirAnalise(banco: Client): Promise<void> {
+  // v2: a análise de IA não roda mais em toda a carteira — só nos leads
+  // novos de prioridade alta, e os demais sob demanda (modo em massa).
   const { rows } = await banco.execute(
-    `SELECT 1 FROM jobs WHERE tipo = 'analise_ia' AND status IN ('pendente','em_andamento') LIMIT 1`,
+    `SELECT id FROM leads WHERE analisado_em IS NULL AND prioridade = 'alta' AND criado_em >= datetime('now', '-1 hour') LIMIT 200`,
   );
-  if (rows.length > 0) return;
+  if (rows.length === 0) return;
   await banco.execute({
     sql: `INSERT INTO jobs (id, tipo, payload, status) VALUES (?, 'analise_ia', ?, 'pendente')`,
-    args: [novoId(), JSON.stringify({ limite: TETO_POR_JOB })],
+    args: [novoId(), JSON.stringify({ leadIds: rows.map((r) => String(r.id)), analisar: true, gerarMensagens: false, automatico: true })],
   });
 }
 
@@ -351,48 +351,35 @@ async function osmIdsConhecidos(banco: Client, ids: string[]): Promise<Set<strin
 }
 
 async function inserirEmpresas(banco: Client, busca: Busca, novos: ElementoOsm[]): Promise<void> {
-  const idioma = idiomaDoPais(busca.pais);
-
-  const statements = novos.map((e) => ({
-    // `INSERT OR IGNORE` cobre a corrida em que duas execuções do worker
-    // se sobrepõem: a checagem por `osmIdsConhecidos` é uma leitura, não
-    // um cadeado, e quem garante de fato é o UNIQUE em `osm_id`.
-    sql: `INSERT OR IGNORE INTO empresas (
-            id, busca_id, fonte, osm_id, nome, pais, estado, cidade, endereco,
-            latitude, longitude, telefone, telefone_origem, email, email_origem, website,
-            instagram, facebook, categoria, idioma_abordagem, status_site, whatsapp
-          ) VALUES (?,?,'osm',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-    args: [
-      novoId(),
-      busca.id,
-      e.osmId,
-      e.nome,
-      busca.pais,
-      // O endereço da empresa manda, quando existe; o da busca é o
-      // reserva. Uma busca por estado inteiro não sabe a cidade de cada
-      // empresa, e herdar a da busca inventaria o dado.
-      // A normalização só arruma grafia — sem ela o filtro de cidade
-      // lista "Belo Horizonte", "Belo Horizonte - MG" e "belo horizonte"
-      // como três lugares distintos.
-      normalizarLocalidade(e.estado) ?? busca.estado,
-      normalizarLocalidade(e.cidade) ?? busca.cidade,
-      e.endereco,
-      e.latitude,
-      e.longitude,
-      e.telefone,
-      e.telefone === null ? null : "osm",
-      e.email,
-      e.email === null ? null : "osm",
-      e.website,
-      e.instagram,
-      e.facebook,
-      e.categoria,
-      idioma,
-      classificarStatusSite(e),
-      abreWhatsapp(e.telefone, busca.pais),
-    ] as const,
+  // Pelo registro comum: dedup (telefone, domínio, nome+endereço além do
+  // osm_id), score, lead e histórico — igual ao Google Places.
+  const segmento = acharSegmento(busca.segmento);
+  const lugares: LugarEncontrado[] = novos.map((e) => ({
+    fonte: "osm",
+    externoId: e.osmId,
+    fonteUrl: `https://www.openstreetmap.org/${e.osmId}`,
+    nome: e.nome,
+    categoria: e.categoria,
+    categoriaRotulo: segmento?.rotulo ?? null,
+    pais: busca.pais,
+    // O endereço da empresa manda, quando existe; o da busca é o reserva.
+    // Uma busca por estado inteiro não sabe a cidade de cada empresa, e
+    // herdar a da busca inventaria o dado.
+    estado: e.estado ?? busca.estado,
+    cidade: e.cidade ?? busca.cidade,
+    bairro: null,
+    cep: null,
+    endereco: e.endereco,
+    latitude: e.latitude,
+    longitude: e.longitude,
+    telefone: e.telefone,
+    email: e.email,
+    website: e.website,
+    instagram: e.instagram,
+    facebook: e.facebook,
+    avaliacaoNota: null,
+    avaliacaoQtd: null,
+    statusNegocio: null,
   }));
-
-  // Em lote: um `execute` por empresa seriam 50 viagens ao Turso.
-  await banco.batch(statements.map((s) => ({ sql: s.sql, args: [...s.args] })), "write");
+  await registrarLugares(banco, lugares, { buscaId: busca.id });
 }

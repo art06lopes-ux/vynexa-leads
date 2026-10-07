@@ -185,25 +185,50 @@ export async function enviarEmail(entrada: {
   assunto: string;
   corpo: string;
   remetenteNome?: string;
+  /** Versão HTML (opcional). Com ela a mensagem vai multipart/alternative. */
+  html?: string;
+  /** Cabeçalhos extras, ex.: List-Unsubscribe. Valores sem quebra de linha. */
+  cabecalhos?: Record<string, string>;
 }): Promise<string> {
   const token = await accessToken();
 
   const { rows } = await getBanco().execute(`SELECT email FROM contas_google WHERE id = 1`);
   const de = String(rows[0]?.email ?? "");
 
-  // Texto puro de propósito. E-mail de primeira abordagem em HTML cheio
-  // de imagem cai em promoção; texto simples de uma pessoa para outra é
-  // o que chega na caixa de entrada.
-  const mensagem = [
+  const extras = Object.entries(entrada.cabecalhos ?? {})
+    .filter(([nome, valor]) => /^[A-Za-z-]+$/.test(nome) && !/[\r\n]/.test(valor))
+    .map(([nome, valor]) => `${nome}: ${valor}`);
+
+  const topo = [
     `From: ${entrada.remetenteNome ? `${assuntoCodificado(entrada.remetenteNome)} <${de}>` : de}`,
     `To: ${entrada.para}`,
     `Subject: ${assuntoCodificado(entrada.assunto)}`,
+    ...extras,
     "MIME-Version: 1.0",
-    "Content-Type: text/plain; charset=UTF-8",
-    "Content-Transfer-Encoding: 8bit",
-    "",
-    entrada.corpo,
-  ].join("\r\n");
+  ];
+
+  // Texto puro continua sendo a parte principal: e-mail de abordagem que
+  // é só HTML cheio de imagem cai em promoção. O HTML, quando vem, é a
+  // mesma mensagem com a assinatura e o logo.
+  const fronteira = `vynexa-${crypto.randomUUID()}`;
+  const mensagem = entrada.html
+    ? [
+        ...topo,
+        `Content-Type: multipart/alternative; boundary="${fronteira}"`,
+        "",
+        `--${fronteira}`,
+        "Content-Type: text/plain; charset=UTF-8",
+        "Content-Transfer-Encoding: 8bit",
+        "",
+        entrada.corpo,
+        `--${fronteira}`,
+        "Content-Type: text/html; charset=UTF-8",
+        "Content-Transfer-Encoding: 8bit",
+        "",
+        entrada.html,
+        `--${fronteira}--`,
+      ].join("\r\n")
+    : [...topo, "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: 8bit", "", entrada.corpo].join("\r\n");
 
   const resposta = await fetch(ENVIO, {
     method: "POST",

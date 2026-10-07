@@ -34,6 +34,13 @@ describe("começar do zero", () => {
     assert.equal(parcial.concluido, false);
     assert.ok(parcial.restantes > 0);
 
+    assert.equal(
+      await n(`SELECT COUNT(*) n FROM sqlite_master WHERE type = 'index' AND sql IS NOT NULL AND tbl_name = 'empresas'`),
+      0,
+      "parado no meio: índices comuns derrubados, definição guardada",
+    );
+    assert.equal(await n(`SELECT COUNT(*) n FROM configuracoes WHERE chave = 'zerar_indices_pendentes'`), 1);
+
     const r = await zerarDados(banco, { incluirVendas: false, orcamentoMs: 30_000 });
     assert.equal(r.concluido, true);
     assert.equal(await n(`SELECT COUNT(*) n FROM leads`), 0);
@@ -42,6 +49,8 @@ describe("começar do zero", () => {
     assert.equal(await n(`SELECT COUNT(*) n FROM vendas WHERE lead_id IS NULL`), 1, "venda fica, sem o lead");
     assert.equal(await n(`SELECT COUNT(*) n FROM supressao`), 1, "não contatar é mantido");
     assert.equal(await n(`SELECT COUNT(*) n FROM configuracoes WHERE chave = 'empresa_nome'`), 1);
+    assert.equal(await n(`SELECT COUNT(*) n FROM sqlite_master WHERE type = 'index' AND name = 'empresas_nome_idx'`), 1, "índices recriados");
+    assert.equal(await n(`SELECT COUNT(*) n FROM configuracoes WHERE chave = 'zerar_indices_pendentes'`), 0);
 
     await zerarDados(banco, { incluirVendas: true, orcamentoMs: 30_000 });
     assert.equal(await n(`SELECT COUNT(*) n FROM vendas`), 0);

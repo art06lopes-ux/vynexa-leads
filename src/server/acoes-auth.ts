@@ -4,7 +4,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
-import { limitar } from "@/server/api";
+import { limitar } from "@/server/erros";
 import { criarValorDeSessao, NOME_COOKIE, OPCOES_COOKIE, senhaCorreta } from "@/lib/auth";
 import type { EstadoAcao } from "@/server/estado-acao";
 

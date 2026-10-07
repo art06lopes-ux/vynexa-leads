@@ -14,7 +14,8 @@
     "push:chaves": "tsx scripts/gerar-chaves-push.ts",
     "icones": "tsx scripts/gerar-icones.ts",
     "receita": "tsx --env-file-if-exists=.env.local src/worker/receita/importar.ts",
-    "test": "node --import tsx --test \"src/**/*.test.ts\""
+    "test": "node --import tsx --test \"src/**/*.test.ts\"",
+    "v2:pos-migracao": "tsx --env-file-if-exists=.env.local scripts/v2-pos-migracao.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

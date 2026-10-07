@@ -5,36 +5,37 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Identidade Vynexa Dev: grafite com ciano.
+ * Identidade Vynexa Leads v2: azul-noite com azul elétrico.
  *
- * A ferramenta é escura por definição, não por preferência do sistema:
- * é um painel de trabalho usado por horas seguidas. Por isso `:root` já
- * carrega o tema escuro e `.dark` repete os mesmos valores — os
- * componentes do shadcn que consultam a variante continuam funcionando,
- * e não existe um modo claro pela metade.
+ * Tirada da referência que o operador escolheu (painel escuro, cartões
+ * de vidro, um bloco-herói com brilho azul) e transformada em sistema:
  *
- * O acento aparece em três lugares: o número principal, o botão de ação
- * e o ponto "ao vivo". Fora disso a página é grafite, texto e espaço.
- * Um acento usado em tudo deixa de destacar qualquer coisa.
+ *   tinta   #050A18  o chão — azul-marinho quase preto, não cinza
+ *   placa   #0A1330  cartões
+ *   placa+  #0F1B42  elevação (popover, hover)
+ *   texto   #EAF0FF  / mudo #8E9BC2 (6,9:1 sobre a placa)
+ *   azul    #3366FF  botão e ação; brilho #4D7CFF; ciano #6FD3FF para "ao vivo"
  *
- * Trocado de âmbar para ciano (pedido explícito: clima de painel de
- * dados, tipo Linear/Vercel/Stripe) — os status semânticos (âmbar de
- * aviso, verde de sucesso, vermelho de erro) NÃO mudaram: são
- * significado, não identidade, e ficariam ambíguos se seguissem o
- * acento.
+ * Uma ousadia só: o bloco-herói com o gradiente azul (`.heroi`). O resto
+ * é placa, fio de 1px e texto — o brilho só funciona se for raro.
  *
- * Contraste medido, não estimado: foreground #F2F0EB sobre #0F0F10 =
- * 17,3:1; muted-foreground #9C9A94 sobre card #17181A = 6,3:1; acento
- * #38BDF8 sobre o fundo = 8,9:1; texto #071825 sobre o botão ciano =
- * 9,6:1. Todos acima do mínimo 4.5:1 da WCAG AA.
+ * Contraste medido: texto #EAF0FF sobre #0A1330 = 15,9:1; mudo #8E9BC2
+ * sobre #0A1330 = 6,9:1; branco sobre o botão #3366FF = 4,9:1.
+ * Status (verde, âmbar, vermelho) são significado, não marca — sempre
+ * com ícone e texto ao lado.
+ *
+ * A ferramenta é escura por definição (painel de trabalho usado por
+ * horas): `:root` já carrega o tema escuro, e `.dark` repete os valores
+ * para os componentes do shadcn que consultam a variante.
  */
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-mono-numeros), ui-monospace, monospace;
-  --font-heading: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -65,14 +66,15 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
   --color-acento: var(--acento);
-
-  /* Escala densa (dashboard): passos de 8 a 32px, e não de 24 a 96px.
-     Uma tela de prospecção vive de caber muita linha na dobra. */
-  --spacing-densa-1: 0.5rem;
-  --spacing-densa-2: 0.75rem;
-  --spacing-densa-3: 1rem;
-  --spacing-densa-4: 1.5rem;
-  --spacing-densa-5: 2rem;
+  --color-placa: var(--placa);
+  --color-placa-2: var(--placa-2);
+  --color-fio: var(--fio);
+  --color-azul: var(--azul);
+  --color-brilho: var(--brilho);
+  --color-ciano: var(--ciano);
+  --color-sucesso: var(--sucesso);
+  --color-aviso: var(--aviso);
+  --color-perigo: var(--perigo);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -85,63 +87,55 @@
 
 :root,
 .dark {
-  --background: #0f0f10;
-  --foreground: #f2f0eb;
+  --tinta: #050a18;
+  --placa: #0a1330;
+  --placa-2: #0f1b42;
+  --fio: rgba(122, 150, 255, 0.12);
+  --azul: #3366ff;
+  --brilho: #4d7cff;
+  --ciano: #6fd3ff;
+  --sucesso: #2bd47d;
+  --aviso: #f5b83d;
+  --perigo: #ff5c6c;
 
-  --card: #17181a;
-  --card-foreground: #f2f0eb;
-  --popover: #1b1c1f;
-  --popover-foreground: #f2f0eb;
+  --background: var(--tinta);
+  --foreground: #eaf0ff;
+  --card: var(--placa);
+  --card-foreground: #eaf0ff;
+  --popover: #0d1838;
+  --popover-foreground: #eaf0ff;
+  --primary: var(--azul);
+  --primary-foreground: #ffffff;
+  --secondary: #121f4a;
+  --secondary-foreground: #dfe7ff;
+  --muted: #0d1736;
+  --muted-foreground: #8e9bc2;
+  --accent: #14224f;
+  --accent-foreground: #eaf0ff;
+  --destructive: var(--perigo);
+  --border: var(--fio);
+  --input: rgba(122, 150, 255, 0.2);
+  --ring: var(--brilho);
 
-  --primary: #38bdf8;
-  --primary-foreground: #071825;
+  /* Séries de gráfico, passo escuro da paleta validada (skill dataviz). */
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #9085e9;
 
-  --secondary: #222326;
-  --secondary-foreground: #e8e6e1;
+  --radius: 0.875rem;
 
-  --muted: #1c1d20;
-  --muted-foreground: #9c9a94;
+  --sidebar: #070e24;
+  --sidebar-foreground: #c9d3f2;
+  --sidebar-primary: var(--azul);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #101c45;
+  --sidebar-accent-foreground: #eaf0ff;
+  --sidebar-border: var(--fio);
+  --sidebar-ring: var(--brilho);
 
-  --accent: #26272b;
-  --accent-foreground: #f2f0eb;
-
-  /* Erro é vermelho e só erro é vermelho: com o acento em ciano, a cor
-     de falha volta a ter o significado que tem em todo lugar. Sempre
-     acompanhada de ícone e texto. */
-  --destructive: #f87171;
-
-  --border: rgba(242, 240, 235, 0.1);
-  --input: rgba(242, 240, 235, 0.16);
-  --ring: #38bdf8;
-
-  --chart-1: #38bdf8;
-  --chart-2: #7dd3fc;
-  --chart-3: #9c9a94;
-  --chart-4: #a78bfa;
-  --chart-5: #4ade80;
-
-  --radius: 0.75rem;
-
-  --sidebar: #131316;
-  --sidebar-foreground: #d3d1cc;
-  --sidebar-primary: #38bdf8;
-  --sidebar-primary-foreground: #071825;
-  --sidebar-accent: #222326;
-  --sidebar-accent-foreground: #f2f0eb;
-  --sidebar-border: rgba(242, 240, 235, 0.1);
-  --sidebar-ring: #38bdf8;
-
-  /* O acento. Mesmo valor do primary — existe como token próprio para
-     que "cor de destaque em texto" e "cor de fundo de botão" possam
-     divergir um dia sem trocar em vinte arquivos. */
-  --acento: #38bdf8;
-
-  /* Cores dos status. Cada uma vem acompanhada de rótulo em texto na
-     interface — a cor reforça, nunca carrega sozinha o significado. */
-  --status-sem-site: #4ade80;
-  --status-rede-social: #fbbf24;
-  --status-tem-site: #60a5fa;
-  --status-sem-dado: #94a3b8;
+  --acento: var(--ciano);
 }
 
 @layer base {
@@ -156,114 +150,178 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    /* Um único gradiente quase imperceptível no topo, para o grafite não
-       ser chapado. Sem grade, sem brasa: textura de fundo compete com
-       tabela. */
-    background-image: radial-gradient(70rem 30rem at 50% -14%, rgba(242, 240, 235, 0.045), transparent 65%);
+    background-image:
+      radial-gradient(60rem 28rem at 78% -10%, rgba(51, 102, 255, 0.16), transparent 62%),
+      radial-gradient(40rem 30rem at -10% 110%, rgba(111, 211, 255, 0.05), transparent 60%);
     background-attachment: fixed;
   }
 
-  /* O anel de foco é a única pista de navegação por teclado. Reforçado,
-     nunca removido. */
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-ring;
   }
 
-  /* Números de telefone e contadores em tabular: sem isso as colunas
-     dançam a cada linha porque o "1" é mais estreito que o "8". */
   .num {
     font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background: rgba(77, 124, 255, 0.4);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(122, 150, 255, 0.25) transparent;
   }
 }
 
 @layer components {
-  /* Superfície elevada: usada em cabeçalho, cartões e dock. Borda de 1px
-     e fundo um tom acima do chão — é isso que separa um bloco do outro,
-     não sombra nem brilho. */
-  .vidro {
-    @apply border border-white/8 bg-white/4 backdrop-blur-xl;
+  /* Cartão padrão: placa, fio, um realce quase invisível no topo. */
+  .placa {
+    position: relative;
+    border: 1px solid var(--fio);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 40%), var(--placa);
+    border-radius: var(--radius-xl);
   }
 
-  /* Cartão que reage ao ponteiro: levanta 2px e a borda clareia. Só no
-     ponteiro fino — no toque não existe hover, e o estado ficaria preso. */
-  .brasa {
-    transition: border-color 200ms ease, transform 200ms ease;
+  /* O bloco-herói: a única superfície com brilho. */
+  .heroi {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(77, 124, 255, 0.45);
+    border-radius: var(--radius-2xl);
+    background:
+      radial-gradient(90% 120% at 100% 0%, rgba(51, 102, 255, 0.55), transparent 55%),
+      radial-gradient(60% 80% at 0% 100%, rgba(25, 45, 140, 0.55), transparent 60%),
+      linear-gradient(160deg, #0e1c55, #0a1440 60%, #08102f);
+    box-shadow:
+      0 0 0 1px rgba(77, 124, 255, 0.12),
+      0 20px 60px -20px rgba(51, 102, 255, 0.45);
   }
 
-  @media (hover: hover) and (pointer: fine) {
-    .brasa:hover {
-      transform: translateY(-2px);
-      border-color: rgba(242, 240, 235, 0.18);
-    }
+  /* Ícone em pastilha azul, como na referência. */
+  .pastilha {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.6rem;
+    background: linear-gradient(180deg, #3d73ff, #2453e6);
+    color: #fff;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.25),
+      0 4px 14px -4px rgba(51, 102, 255, 0.7);
   }
 
-  /* Chip "ao vivo": ponto âmbar que pulsa. */
+  .pastilha-muda {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.6rem;
+    background: rgba(77, 124, 255, 0.12);
+    color: var(--ciano);
+    border: 1px solid rgba(77, 124, 255, 0.2);
+  }
+
   .ao-vivo::before {
     content: "";
     display: inline-block;
-    width: 0.5rem;
-    height: 0.5rem;
+    width: 0.45rem;
+    height: 0.45rem;
     border-radius: 9999px;
-    background: var(--acento);
-    animation: pulso-vivo 1.8s ease-in-out infinite;
+    background: var(--sucesso);
+    box-shadow: 0 0 10px var(--sucesso);
+    animation: pulso-vivo 2s ease-in-out infinite;
   }
 
   @keyframes pulso-vivo {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.4; transform: scale(0.8); }
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.45;
+    }
   }
 
-  /* Rótulo-olho: o texto minúsculo em caixa alta com espaçamento largo
-     que encabeça cada bloco. É a peça que mais separa "painel" de
-     "formulário": dá ritmo e diz o que cada número é antes do número.
-     `.olho` é o rótulo do bloco principal; `.olho-mudo`, dos demais. */
-  .olho {
-    font-size: 0.65rem;
+  /* Rótulo pequeno de seção: caixa normal, sem tracking largo. */
+  .rotulo {
+    font-size: 0.75rem;
     font-weight: 600;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--acento);
-  }
-
-  .olho-mudo {
-    font-size: 0.65rem;
-    font-weight: 600;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
     color: var(--muted-foreground);
-  }
-
-  /* Quadro do número principal: só um fundo mais escuro e borda. As
-     classes abaixo existem para os componentes que já as usam; todas
-     ficaram silenciosas de propósito. */
-  .moldura {
-    position: relative;
   }
 
   .fio {
     height: 1px;
-    background: var(--border);
+    background: var(--fio);
   }
 
-  .riscos::before {
-    content: none;
-  }
-
-  /* Painel-herói: o bloco grande do topo. Borda e fundo um pouco mais
-     escuros que o cartão comum, e um brilho âmbar quase invisível no
-     canto — o único lugar da página onde o acento toca o fundo. */
-  .heroi {
+  /* Esqueleto de carregamento, com um brilho que passa. */
+  .esqueleto {
     position: relative;
     overflow: hidden;
-    border: 1px solid rgba(242, 240, 235, 0.1);
-    background:
-      radial-gradient(60% 100% at 0% 0%, rgba(56, 189, 248, 0.08), transparent 55%),
-      #141416;
+    background: rgba(122, 150, 255, 0.08);
+    border-radius: 0.5rem;
+  }
+
+  .esqueleto::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(122, 150, 255, 0.12), transparent);
+    animation: brilho-esqueleto 1.4s ease-in-out infinite;
+  }
+
+  @keyframes brilho-esqueleto {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  /* Mapa (Leaflet) no tema escuro. */
+  .leaflet-container {
+    background: #050a18 !important;
+    font-family: var(--font-manrope), system-ui, sans-serif !important;
+  }
+
+  .leaflet-popup-content-wrapper,
+  .leaflet-popup-tip {
+    background: #0d1838 !important;
+    color: #eaf0ff !important;
+    border: 1px solid var(--fio);
+    box-shadow: 0 12px 40px -10px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  .leaflet-popup-content {
+    margin: 14px 16px !important;
+  }
+
+  .leaflet-control-zoom a {
+    background: #0d1838 !important;
+    color: #eaf0ff !important;
+    border-color: var(--fio) !important;
+  }
+
+  .leaflet-control-attribution {
+    background: rgba(5, 10, 24, 0.75) !important;
+    color: #8e9bc2 !important;
+  }
+
+  .leaflet-control-attribution a {
+    color: #6fd3ff !important;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ao-vivo::before {
+  .ao-vivo::before,
+  .esqueleto::after {
     animation: none !important;
   }
 

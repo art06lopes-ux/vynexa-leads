@@ -200,6 +200,13 @@ SELECT
   analisado_em, criado_em, atualizado_em
 FROM bak12_leads;
 
+-- Toda empresa tem lead na v2. Antes, o lead só nascia na análise de IA
+-- ou no primeiro contato; empresas sem ele ganham um, na etapa "novo".
+-- O score delas é calculado depois, por `npm run v2:pos-migracao`.
+INSERT INTO leads (id, empresa_id, etapa, etapa_em, criado_em, atualizado_em)
+SELECT lower(hex(randomblob(16))), e.id, 'novo', e.criado_em, e.criado_em, e.criado_em
+FROM empresas e WHERE NOT EXISTS (SELECT 1 FROM leads l WHERE l.empresa_id = e.id);
+
 CREATE INDEX leads_score_idx ON leads (score_oportunidade DESC);
 CREATE INDEX leads_etapa_idx ON leads (etapa, etapa_em DESC);
 CREATE INDEX leads_prioridade_idx ON leads (prioridade);

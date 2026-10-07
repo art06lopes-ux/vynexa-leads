@@ -25,6 +25,12 @@ import { NOME_COOKIE, sessaoValida } from "@/lib/auth";
 const PUBLICAS = [
   "/login",
   "/api/webhooks",
+  // Abertos por quem RECEBE o e-mail (sem sessão): pixel de abertura,
+  // link rastreado, página de descadastro e o logo que aparece no e-mail.
+  // Nenhum expõe dado: o token é aleatório e só identifica um envio.
+  "/api/t",
+  "/descadastro",
+  "/api/marca",
   // O navegador busca o manifesto SEM cookies, e o service worker precisa
   // existir mesmo depois de a sessão expirar — senão a instalação como
   // aplicativo falha em silêncio e a notificação nunca chega. Nenhum dos

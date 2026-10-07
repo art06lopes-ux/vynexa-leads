@@ -1,9 +1,10 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+import { limitar } from "@/server/api";
 import { criarValorDeSessao, NOME_COOKIE, OPCOES_COOKIE, senhaCorreta } from "@/lib/auth";
 import type { EstadoAcao } from "@/server/estado-acao";
 
@@ -12,6 +13,14 @@ export async function entrar(_anterior: EstadoAcao, form: FormData): Promise<Est
   const destinoBruto = String(form.get("destino") ?? "");
 
   if (senha === "") return { mensagem: "Informe a senha." };
+
+  // Força bruta: no máximo 8 tentativas por IP a cada 15 minutos.
+  const ip = ((await headers()).get("x-forwarded-for") ?? "local").split(",")[0]!.trim();
+  try {
+    await limitar(`login:${ip}`, 8, 15 * 60);
+  } catch {
+    return { mensagem: "Muitas tentativas. Aguarde 15 minutos e tente de novo." };
+  }
 
   if (!senhaCorreta(senha)) {
     // Uma pausa curta encarece a tentativa em força bruta sem atrapalhar

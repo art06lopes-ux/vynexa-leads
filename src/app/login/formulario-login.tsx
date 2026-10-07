@@ -17,7 +17,7 @@ export function FormularioLogin({ destino }: { destino?: string }) {
   const idErro = useId();
 
   return (
-    <Card className="vidro">
+    <Card className="placa">
       <CardContent className="pt-6">
         <form action={acao} className="flex flex-col gap-4">
           {destino && <input type="hidden" name="destino" value={destino} />}

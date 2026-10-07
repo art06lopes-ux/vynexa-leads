@@ -52,12 +52,16 @@ export function NovaCampanha({ provedores, provedorPadrao, categorias, cidades }
   }, [filtro.site]);
 
   useEffect(() => {
-    const guardado = lerParaCampanha();
-    if (guardado?.ids.length) {
-      setIds(guardado.ids);
-      setOrigem(guardado.origem);
-      void resumir(guardado.ids);
-    }
+    // sessionStorage só existe no navegador: lido depois da montagem.
+    const t = setTimeout(() => {
+      const guardado = lerParaCampanha();
+      if (guardado?.ids.length) {
+        setIds(guardado.ids);
+        setOrigem(guardado.origem);
+        void resumir(guardado.ids);
+      }
+    }, 0);
+    return () => clearTimeout(t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function buscarPorFiltro() {

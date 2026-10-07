@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { formatar, type FormatoNumero } from "@/components/motion/contador";
 import { cn } from "@/lib/utils";
@@ -236,7 +236,7 @@ export function GraficoArea({
   const [ref, largura] = useLargura<HTMLDivElement>();
   const [foco, setFoco] = useState<number | null>(null);
   const reduzir = useReducedMotion();
-  const id = useRef(`ga-${Math.random().toString(36).slice(2)}`).current;
+  const id = `ga-${useId().replace(/:/g, "")}`;
 
   const topo = 10;
   const base = eixo ? 20 : 4;

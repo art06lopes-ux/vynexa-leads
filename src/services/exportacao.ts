@@ -73,7 +73,6 @@ function escaparXml(texto: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     // Caracteres de controle quebram o XML do Excel.
-    // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "");
 }
 

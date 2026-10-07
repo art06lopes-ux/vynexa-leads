@@ -1,7 +1,5 @@
 import { marcarComoPaga } from "@/db/vendas";
 import { ehLimiteDiarioD1 } from "@/db/cliente";
-import { formatarDinheiro } from "@/lib/pagamento/dinheiro";
-import { notificarTodos } from "@/lib/push/enviar";
 import { assinaturaValida } from "@/lib/pagamento/stripe";
 
 /**
@@ -85,16 +83,8 @@ export async function POST(request: Request) {
       nome: detalhes?.name ?? null,
     });
 
-    // Só na primeira confirmação: a Stripe reenvia eventos, e cada reenvio
-    // não pode virar mais uma notificação no celular.
-    if (primeiraVez) {
-      const centavos = typeof sessao.amount_total === "number" ? sessao.amount_total : 0;
-      await notificarTodos({
-        titulo: "Venda realizada",
-        corpo: `Você recebeu: ${formatarDinheiro(centavos)}${detalhes?.name ? ` · ${detalhes.name}` : ""}`,
-        url: "/vendas",
-      });
-    }
+    // A notificação (central + push) sai de dentro de `marcarComoPaga`,
+    // só na primeira confirmação: a Stripe reenvia eventos.
   } catch (erro) {
     if (!ehLimiteDiarioD1(erro)) throw erro;
     console.error("Webhook da Stripe: cota diária do D1 esgotada, venda não marcada como paga.", vendaId);

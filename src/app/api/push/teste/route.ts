@@ -14,7 +14,7 @@ export async function POST() {
   const resultado = await notificarTodos({
     titulo: "Vynexa Leads · teste",
     corpo: "Se você está lendo isto no celular, as notificações estão funcionando.",
-    url: "/ajustes",
+    url: "/configuracoes",
   });
 
   return Response.json(resultado);

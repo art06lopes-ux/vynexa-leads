@@ -30,6 +30,7 @@ const PUBLICAS = [
   // Nenhum expõe dado: o token é aleatório e só identifica um envio.
   "/api/t",
   "/descadastro",
+  "/api/descadastro",
   "/api/marca",
   // O navegador busca o manifesto SEM cookies, e o service worker precisa
   // existir mesmo depois de a sessão expirar — senão a instalação como

@@ -121,7 +121,8 @@ export default function MapaLeads() {
   }, [ativos, busca]);
 
   useEffect(() => {
-    void carregar();
+    const t = setTimeout(() => void carregar(), 0);
+    return () => clearTimeout(t);
   }, [carregar]);
 
   // Desenha os marcadores.

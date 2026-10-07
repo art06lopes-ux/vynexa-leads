@@ -1,36 +1,94 @@
 import "server-only";
 
 import { agora, getBanco, novoId, planos } from "@/db/cliente";
-import { PERIODOS, type ChavePeriodo, type PontoReceita } from "@/lib/vendas/periodos";
+import { comemorarVenda } from "@/services/financeiro";
 
-export type StatusVenda = "pendente" | "pago" | "cancelado" | "reembolsado";
+/**
+ * Vendas e cobranças — leitura para a tela de Pagamentos, e as escritas
+ * que o checkout da Stripe (cartão, legado) ainda usa.
+ */
 
-export type Venda = {
+export type VendaListada = {
   id: string;
-  produto_id: string | null;
-  lead_id: string | null;
   descricao: string;
   valor_centavos: number;
   moeda: string;
-  status: StatusVenda;
-  origem: "stripe" | "manual";
-  meio_pagamento: "pix" | "transferencia" | "dinheiro" | "cartao_stripe" | "outro" | null;
-  stripe_session_id: string | null;
-  cliente_email: string | null;
+  status: "pendente" | "pago" | "vencido" | "cancelado" | "reembolsado";
+  origem: string;
+  meio_pagamento: string | null;
   cliente_nome: string | null;
+  cliente_empresa: string | null;
+  cliente_email: string | null;
+  cliente_telefone: string | null;
+  cliente_documento: string | null;
+  lead_id: string | null;
+  campanha_nome: string | null;
+  produto_nome: string | null;
   criado_em: string;
   pago_em: string | null;
+  cobranca_status: string | null;
+  cobranca_link: string | null;
+  cobranca_vencimento: string | null;
+  cobranca_forma: string | null;
 };
 
-export {
-  PERIODOS,
-  ehPeriodo,
-  type ChavePeriodo,
-  type PontoReceita,
-} from "@/lib/vendas/periodos";
+export async function listarVendas(limite = 100): Promise<VendaListada[]> {
+  const { rows } = await getBanco().execute({
+    sql: `SELECT v.id, v.descricao, v.valor_centavos, v.moeda, v.status, v.origem, v.meio_pagamento, v.cliente_nome, v.cliente_empresa,
+                 v.cliente_email, v.cliente_telefone, v.cliente_documento, v.lead_id, c.nome campanha_nome, p.nome produto_nome,
+                 v.criado_em, v.pago_em,
+                 cb.status cobranca_status, cb.link_pagamento cobranca_link, cb.vencimento cobranca_vencimento, cb.forma cobranca_forma
+          FROM vendas v
+          LEFT JOIN campanhas c ON c.id = v.campanha_id
+          LEFT JOIN produtos p ON p.id = v.produto_id
+          LEFT JOIN cobrancas cb ON cb.id = (SELECT id FROM cobrancas WHERE venda_id = v.id ORDER BY criado_em DESC LIMIT 1)
+          ORDER BY COALESCE(v.pago_em, v.criado_em) DESC LIMIT ?`,
+    args: [limite],
+  });
+  return planos<VendaListada>(rows);
+}
+
+export type ResumoFinanceiro = {
+  totalCentavos: number;
+  mesCentavos: number;
+  vendas: number;
+  ticketCentavos: number;
+  pendentesCentavos: number;
+  pendentes: number;
+  recebidosMes: number;
+  vencidos: number;
+  vencidosCentavos: number;
+};
+
+export async function resumoFinanceiro(): Promise<ResumoFinanceiro> {
+  const { rows } = await getBanco().execute(`
+    SELECT
+      COALESCE(SUM(CASE WHEN status = 'pago' THEN valor_centavos END), 0) total,
+      COALESCE(SUM(CASE WHEN status = 'pago' AND pago_em >= date('now','start of month') THEN valor_centavos END), 0) mes,
+      SUM(status = 'pago') vendas,
+      COALESCE(SUM(CASE WHEN status = 'pendente' THEN valor_centavos END), 0) pend_c,
+      SUM(status = 'pendente') pend,
+      SUM(status = 'pago' AND pago_em >= date('now','start of month')) rec_mes,
+      SUM(status = 'vencido') venc,
+      COALESCE(SUM(CASE WHEN status = 'vencido' THEN valor_centavos END), 0) venc_c
+    FROM vendas`);
+  const r = rows[0] ?? {};
+  const n = (k: string) => Number(r[k] ?? 0);
+  return {
+    totalCentavos: n("total"),
+    mesCentavos: n("mes"),
+    vendas: n("vendas"),
+    ticketCentavos: n("vendas") > 0 ? Math.round(n("total") / n("vendas")) : 0,
+    pendentesCentavos: n("pend_c"),
+    pendentes: n("pend"),
+    recebidosMes: n("rec_mes"),
+    vencidos: n("venc"),
+    vencidosCentavos: n("venc_c"),
+  };
+}
 
 // ---------------------------------------------------------------------
-// Escrita
+// Stripe (checkout hospedado, cartão)
 // ---------------------------------------------------------------------
 
 export async function criarVendaPendente(entrada: {
@@ -45,188 +103,29 @@ export async function criarVendaPendente(entrada: {
   await getBanco().execute({
     sql: `INSERT INTO vendas (id, descricao, valor_centavos, moeda, status, origem, lead_id, cliente_email, cliente_nome)
           VALUES (?, ?, ?, ?, 'pendente', 'stripe', ?, ?, ?)`,
-    args: [
-      id,
-      entrada.descricao,
-      entrada.valorCentavos,
-      entrada.moeda,
-      entrada.leadId ?? null,
-      entrada.clienteEmail ?? null,
-      entrada.clienteNome ?? null,
-    ],
+    args: [id, entrada.descricao, entrada.valorCentavos, entrada.moeda, entrada.leadId ?? null, entrada.clienteEmail ?? null, entrada.clienteNome ?? null],
   });
   return id;
 }
 
 export async function anexarSessaoStripe(vendaId: string, sessionId: string): Promise<void> {
-  await getBanco().execute({
-    sql: `UPDATE vendas SET stripe_session_id = ? WHERE id = ?`,
-    args: [sessionId, vendaId],
-  });
+  await getBanco().execute({ sql: `UPDATE vendas SET stripe_session_id = ? WHERE id = ?`, args: [sessionId, vendaId] });
 }
 
-export async function registrarVendaManual(entrada: {
-  descricao: string;
-  valorCentavos: number;
-  moeda: string;
-  clienteNome?: string | null;
-}): Promise<void> {
-  await getBanco().execute({
-    sql: `INSERT INTO vendas (id, descricao, valor_centavos, moeda, status, origem, cliente_nome, pago_em)
-          VALUES (?, ?, ?, ?, 'pago', 'manual', ?, ?)`,
-    args: [
-      novoId(),
-      entrada.descricao,
-      entrada.valorCentavos,
-      entrada.moeda,
-      entrada.clienteNome ?? null,
-      agora(),
-    ],
-  });
-}
-
-/**
- * Marca a venda como paga, a partir do webhook.
- *
- * `WHERE status <> 'pago'` torna a operação idempotente: a Stripe reenvia
- * o mesmo evento até receber 200, e sem essa condição o `pago_em` seria
- * reescrito a cada reenvio. `rowsAffected` diz se foi a primeira vez.
- */
+/** Idempotente (`WHERE status <> 'pago'`); notifica só na primeira vez. */
 export async function marcarComoPaga(
   vendaId: string,
   dados: { sessionId: string; paymentIntent: string | null; email: string | null; nome: string | null },
 ): Promise<boolean> {
-  const { rowsAffected } = await getBanco().execute({
+  const banco = getBanco();
+  const { rowsAffected } = await banco.execute({
     sql: `UPDATE vendas
-          SET status = 'pago',
-              pago_em = ?,
-              meio_pagamento = 'cartao_stripe',
-              stripe_session_id = COALESCE(stripe_session_id, ?),
-              stripe_payment_intent = ?,
-              cliente_email = COALESCE(?, cliente_email),
-              cliente_nome = COALESCE(?, cliente_nome)
+          SET status = 'pago', pago_em = ?, meio_pagamento = 'cartao_stripe',
+              stripe_session_id = COALESCE(stripe_session_id, ?), stripe_payment_intent = ?,
+              cliente_email = COALESCE(?, cliente_email), cliente_nome = COALESCE(?, cliente_nome)
           WHERE id = ? AND status <> 'pago'`,
     args: [agora(), dados.sessionId, dados.paymentIntent, dados.email, dados.nome, vendaId],
   });
+  if (rowsAffected > 0) await comemorarVenda(banco, vendaId);
   return rowsAffected > 0;
-}
-
-export async function cancelarVenda(vendaId: string): Promise<void> {
-  await getBanco().execute({
-    sql: `UPDATE vendas SET status = 'cancelado' WHERE id = ? AND status = 'pendente'`,
-    args: [vendaId],
-  });
-}
-
-// ---------------------------------------------------------------------
-// Leitura
-// ---------------------------------------------------------------------
-
-export type ResumoVendas = {
-  totalCentavos: number;
-  quantidade: number;
-  ticketCentavos: number;
-  pendentes: number;
-};
-
-export async function obterResumo(periodo: ChavePeriodo): Promise<ResumoVendas> {
-  const dias = PERIODOS[periodo].dias;
-  const banco = getBanco();
-
-  const [{ rows: pagas }, { rows: pend }] = await Promise.all([
-    banco.execute({
-      sql: `SELECT COALESCE(SUM(valor_centavos), 0) AS total, COUNT(*) AS n
-            FROM vendas
-            WHERE status = 'pago' AND pago_em >= date('now', ?)`,
-      args: [`-${dias - 1} days`],
-    }),
-    banco.execute(`SELECT COUNT(*) AS n FROM vendas WHERE status = 'pendente'`),
-  ]);
-
-  const total = Number(pagas[0]?.total ?? 0);
-  const quantidade = Number(pagas[0]?.n ?? 0);
-
-  return {
-    totalCentavos: total,
-    quantidade,
-    // Divisão inteira e guarda contra zero: sem venda, ticket médio é
-    // zero, não NaN aparecendo na tela como "R$ NaN".
-    ticketCentavos: quantidade > 0 ? Math.round(total / quantidade) : 0,
-    pendentes: Number(pend[0]?.n ?? 0),
-  };
-}
-
-/**
- * Receita confirmada por dia — período atual e o anterior, alinhados.
- *
- * Dias sem venda entram como zero: a linha precisa mostrar os dias
- * parados, que é exatamente a informação de um gráfico de receita.
- */
-export async function obterSerieReceita(
-  periodo: ChavePeriodo,
-): Promise<{ atual: PontoReceita[]; anterior: PontoReceita[] }> {
-  const dias = PERIODOS[periodo].dias;
-
-  const { rows } = await getBanco().execute({
-    sql: `SELECT date(pago_em) AS dia, SUM(valor_centavos) AS total
-          FROM vendas
-          WHERE status = 'pago' AND pago_em >= date('now', ?)
-          GROUP BY dia`,
-    args: [`-${dias * 2 - 1} days`],
-  });
-
-  const porDia = new Map(rows.map((r) => [String(r.dia), Number(r.total)]));
-  const janela = (deslocamento: number): PontoReceita[] =>
-    Array.from({ length: dias }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - deslocamento - (dias - 1 - i));
-      const chave = d.toISOString().slice(0, 10);
-      return { dia: chave, valor: porDia.get(chave) ?? 0 };
-    });
-
-  return { atual: janela(0), anterior: janela(dias) };
-}
-
-/**
- * Recebido hoje e ontem, para o painel-herói e a variação.
- *
- * Só o que está `pago`. A comparação com ontem é o número que a
- * referência mostra como "+63% vs ontem" — e ela fica nula quando ontem
- * foi zero, porque "+∞%" não é informação.
- */
-export async function obterHojeEOntem(): Promise<{
-  hojeCentavos: number;
-  ontemCentavos: number;
-  vendasHoje: number;
-  variacao: number | null;
-}> {
-  const { rows } = await getBanco().execute(`
-    SELECT
-      COALESCE(SUM(CASE WHEN date(pago_em) = date('now')            THEN valor_centavos END), 0) AS hoje,
-      COALESCE(SUM(CASE WHEN date(pago_em) = date('now', '-1 day')  THEN valor_centavos END), 0) AS ontem,
-      COALESCE(SUM(CASE WHEN date(pago_em) = date('now')            THEN 1 END), 0)              AS n_hoje
-    FROM vendas WHERE status = 'pago'
-  `);
-
-  const hoje = Number(rows[0]?.hoje ?? 0);
-  const ontem = Number(rows[0]?.ontem ?? 0);
-
-  return {
-    hojeCentavos: hoje,
-    ontemCentavos: ontem,
-    vendasHoje: Number(rows[0]?.n_hoje ?? 0),
-    variacao: ontem > 0 ? Math.round(((hoje - ontem) / ontem) * 100) : null,
-  };
-}
-
-export async function listarVendas(limite = 30): Promise<Venda[]> {
-  const { rows } = await getBanco().execute({
-    sql: `SELECT id, produto_id, lead_id, descricao, valor_centavos, moeda, status, origem,
-                 meio_pagamento, stripe_session_id, cliente_email, cliente_nome, criado_em, pago_em
-          FROM vendas
-          ORDER BY COALESCE(pago_em, criado_em) DESC
-          LIMIT ?`,
-    args: [limite],
-  });
-  return planos<Venda>(rows);
 }

@@ -259,13 +259,16 @@ export function TelaBusca({ provedores, buscaInicial }: { provedores: Provedores
   useEffect(() => {
     if (iniciou.current) return;
     iniciou.current = true;
-    const q = params.get("q");
-    if (q) {
-      const form = aplicarFrase(q);
-      if (params.get("auto") === "1") void buscar(form);
-    } else if (buscaInicial) {
-      setEstado({ id: buscaInicial, status: "em_andamento", etapa: null, erro: null, resumo: null, rotulo: "" });
-    }
+    const t = setTimeout(() => {
+      const q = params.get("q");
+      if (q) {
+        const form = aplicarFrase(q);
+        if (params.get("auto") === "1") void buscar(form);
+      } else if (buscaInicial) {
+        setEstado({ id: buscaInicial, status: "em_andamento", etapa: null, erro: null, resumo: null, rotulo: "" });
+      }
+    }, 0);
+    return () => clearTimeout(t);
   }, [params, aplicarFrase, buscar, buscaInicial]);
 
   // Acompanha o andamento.
@@ -613,7 +616,8 @@ function Resultados({ estado, filtros, aoLimpar }: { estado: EstadoBusca; filtro
   );
 
   useEffect(() => {
-    void carregar(1);
+    const t = setTimeout(() => void carregar(1), 0);
+    return () => clearTimeout(t);
   }, [carregar]);
 
   // Rolagem infinita: carrega a próxima página perto do fim.

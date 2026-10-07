@@ -81,11 +81,12 @@ function BuscaTopo() {
 }
 
 export function Shell({ children, contadores, logoUrl, empresa, responsavel }: Props) {
-  const [gaveta, setGaveta] = useState(false);
   const pathname = usePathname();
-
-  // Fecha a gaveta ao trocar de página (navegação pelo histórico também).
-  useEffect(() => setGaveta(false), [pathname]);
+  // A gaveta guarda a página em que foi aberta: trocar de página (link,
+  // voltar do navegador) a fecha sem precisar de efeito.
+  const [abertaEm, setAbertaEm] = useState<string | null>(null);
+  const gaveta = abertaEm === pathname;
+  const setGaveta = (aberta: boolean) => setAbertaEm(aberta ? pathname : null);
 
   return (
     <ProvedorNotificacoes logoUrl={logoUrl} empresa={empresa}>

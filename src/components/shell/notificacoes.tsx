@@ -107,13 +107,14 @@ export function ProvedorNotificacoes({ children, logoUrl, empresa }: { children:
   }, [router]);
 
   useEffect(() => {
-    void recarregar();
+    const primeira = setTimeout(() => void recarregar(), 0);
     const id = setInterval(() => {
       if (document.visibilityState === "visible") void recarregar();
     }, INTERVALO_MS);
     const aoVoltar = () => document.visibilityState === "visible" && void recarregar();
     document.addEventListener("visibilitychange", aoVoltar);
     return () => {
+      clearTimeout(primeira);
       clearInterval(id);
       document.removeEventListener("visibilitychange", aoVoltar);
     };

@@ -2,10 +2,9 @@ import type { Client } from "@libsql/client";
 import type { LugarEncontrado } from "@/integrations/leads/tipos";
 import { registrarLugares } from "@/services/registro";
 
-import { agora, novoId } from "@/db/cliente";
+import { agora } from "@/db/cliente";
 import type { Busca } from "@/db/tipos";
 import { normalizarLocalidade } from "@/lib/geo/localidade";
-import { classificarStatusSite } from "@/lib/leads/classificacao";
 import { abreWhatsapp, ehCelularBrasil } from "@/lib/leads/whatsapp";
 import { cnaesDoSegmento } from "@/lib/receita/cnaes";
 import { caixaMista, chaveDeMunicipio, chaveDeNome, limparRazaoSocial } from "@/lib/receita/texto";

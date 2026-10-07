@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   cookieStore.delete("google_oauth_estado");
 
   const voltar = (mensagem: string, ok: boolean) =>
-    Response.redirect(`${url.origin}/ajustes?google=${ok ? "ok" : "erro"}&msg=${encodeURIComponent(mensagem)}`, 302);
+    Response.redirect(`${url.origin}/configuracoes?aba=email&google=${ok ? "ok" : "erro"}&msg=${encodeURIComponent(mensagem)}`, 302);
 
   if (erroGoogle) return voltar(`O Google recusou: ${erroGoogle}`, false);
   if (!codigo || !estado || !esperado || estado !== esperado) {

@@ -114,7 +114,7 @@ export async function enviarUm(banco: Client, envio: EnvioParaSair, provedor?: E
       remetenteNome: `${identidade.responsavelNome} · ${identidade.empresaNome}`,
       responderPara: config.email_resposta || null,
       cabecalhos: {
-        "List-Unsubscribe": `<${links.descadastro}>`,
+        "List-Unsubscribe": `<${base}/api/descadastro/${token}>, <${links.descadastro}>`,
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       },
     });

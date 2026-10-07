@@ -72,8 +72,8 @@ export async function POST(request: Request) {
       valorCentavos: centavos,
       moeda,
       vendaId,
-      urlSucesso: `${origem}/vendas?pago=1`,
-      urlCancelamento: `${origem}/vendas?cancelado=1`,
+      urlSucesso: `${origem}/pagamentos?pago=1`,
+      urlCancelamento: `${origem}/pagamentos?cancelado=1`,
       emailCliente: clienteEmail || null,
     });
 

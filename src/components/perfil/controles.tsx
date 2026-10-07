@@ -28,10 +28,11 @@ import { acaoLead } from "./acao";
 export function SeletorEtapa({ leadId, etapa }: { leadId: string; etapa: EtapaLead }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
-  const [atual, setAtual] = useState(etapa);
+  // Valor otimista enquanto o servidor confirma; depois, vale a prop.
+  const [otimista, setOtimista] = useState<{ base: EtapaLead; valor: EtapaLead } | null>(null);
+  const atual = otimista && otimista.base === etapa ? otimista.valor : etapa;
+  const setAtual = (valor: EtapaLead) => setOtimista({ base: etapa, valor });
   const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => setAtual(etapa), [etapa]);
   useEffect(() => {
     if (!aberto) return;
     const fora = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setAberto(false);
@@ -214,7 +215,7 @@ export function EditarContatos({ leadId, inicial }: { leadId: string; inicial: {
           <input value={v[k] ?? ""} onChange={(e) => setV((a) => ({ ...a, [k]: e.target.value || null }))} className="h-9 w-full rounded-lg border border-fio bg-white/[0.03] px-3 text-sm outline-none focus:border-brilho/60" />
         </label>
       ))}
-      <p className="text-[0.7rem] text-muted-foreground">Preenchido à mão: fica marcado como origem "manual".</p>
+      <p className="text-[0.7rem] text-muted-foreground">Preenchido à mão: fica marcado como origem &quot;manual&quot;.</p>
       <div className="flex gap-2">
         <button type="submit" disabled={salvando} className="h-9 cursor-pointer rounded-lg bg-azul px-3 text-sm font-semibold text-white">
           {salvando ? "Salvando…" : "Salvar"}

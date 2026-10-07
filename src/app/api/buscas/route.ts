@@ -95,3 +95,13 @@ export const POST = rota(async (req) => {
   after(() => executarAgora(getBanco(), jobId));
   return json({ id: buscaId }, 202);
 });
+
+/**
+ * Limpa o histórico de buscas. Só o histórico: as empresas e os leads
+ * encontrados continuam na carteira (perdem apenas o vínculo com a
+ * busca). Buscas ainda rodando ficam, para não cortar um job no meio.
+ */
+export const DELETE = rota(async () => {
+  const { rowsAffected } = await getBanco().execute(`DELETE FROM buscas WHERE status NOT IN ('pendente', 'em_andamento')`);
+  return json({ apagadas: rowsAffected });
+});

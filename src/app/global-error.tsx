@@ -18,8 +18,7 @@ export default function ErroGlobal({ reset }: { error: Error & { digest?: string
         <div>
           <h1 className="text-lg font-semibold">Não deu para carregar agora</h1>
           <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
-            O banco de dados está indisponível no momento — provavelmente a cota mensal
-            gratuita do Turso foi atingida. Ela reseta sozinha; tente de novo em instantes.
+            Algo falhou ao montar esta tela. Tente de novo; se continuar, o banco pode ter atingido a cota diária gratuita do Cloudflare D1, que reseta às 20h (horário de Manaus).
           </p>
         </div>
         <button

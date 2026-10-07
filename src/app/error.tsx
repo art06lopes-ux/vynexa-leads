@@ -5,7 +5,7 @@ import { DatabaseZap, RotateCw } from "lucide-react";
 /**
  * Rede de segurança do painel inteiro.
  *
- * A maioria das telas lê o Turso direto no Server Component, sem
+ * A maioria das telas lê o banco direto no Server Component, sem
  * try/catch — de propósito, para não esconder o erro real em cada
  * página. Este arquivo é o único lugar que precisa saber lidar com
  * "o banco caiu", e cobre qualquer rota dentro do layout raiz.
@@ -17,8 +17,7 @@ export default function Erro({ reset }: { error: Error & { digest?: string }; re
       <div>
         <h1 className="text-lg font-semibold">Não deu para carregar agora</h1>
         <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
-          O banco de dados está indisponível no momento — provavelmente a cota mensal
-          gratuita do Turso foi atingida. Ela reseta sozinha; tente de novo em instantes.
+          Algo falhou ao montar esta tela. Tente de novo; se continuar, o banco pode ter atingido a cota diária gratuita do Cloudflare D1, que reseta às 20h (horário de Manaus).
         </p>
       </div>
       <button

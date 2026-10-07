@@ -9,6 +9,7 @@ import { SeloPresenca } from "@/components/leads/presenca";
 import { Contador } from "@/components/motion/contador";
 import { Entrada, Escalonado, ItemEscalonado } from "@/components/motion/entrada";
 import type { QualidadeSite, StatusSite } from "@/db/tipos";
+import { LimparBuscas } from "@/components/dashboard/limpar-buscas";
 import { atividadeRecente, buscasRecentes, lerIdentidade, melhoresOportunidades, obterKpis, porEtapa, serieDiaria, serieMensal } from "@/db/painel";
 import { hojePorExtenso, rotuloDia, rotuloMes, saudacao } from "@/lib/datas";
 import { haQuantoTempo } from "@/services/crm";
@@ -147,6 +148,7 @@ export default async function Dashboard() {
                 ))}
               </ul>
             )}
+            {buscas.length > 0 && <LimparBuscas />}
           </Cartao>
         </Entrada>
       </div>
@@ -252,6 +254,7 @@ export default async function Dashboard() {
                 ))}
               </ul>
             )}
+            {buscas.length > 0 && <LimparBuscas />}
           </Cartao>
         </Entrada>
       </div>

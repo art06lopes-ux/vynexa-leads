@@ -85,7 +85,9 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
   // cobre todos os municípios, interior incluído, sem pedir nada a
   // ninguém. Fora do Brasil não há Receita, então o país inteiro vai ao
   // OSM como sempre.
-  const brasilInteiro = busca.pais === "BR" && !busca.estado;
+  // Cidade sem estado (ex.: "Manacapuru") NÃO é o país inteiro: o
+  // Nominatim resolve a cidade sozinha.
+  const brasilInteiro = busca.pais === "BR" && !busca.estado && !busca.cidade;
 
   const lugar = brasilInteiro
     ? null

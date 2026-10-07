@@ -19,6 +19,8 @@ export type PayloadAnaliseMassa = {
   gerarMensagens: boolean;
   /** Disparado sozinho após uma busca: sem IA configurada, não incomoda. */
   automatico?: boolean;
+  /** Orçamento de tempo desta rodada (execução imediata numa requisição). */
+  orcamentoMs?: number;
   /** Para a notificação final. */
   total?: number;
   falhas?: number;
@@ -33,7 +35,7 @@ export async function processarAnaliseMassa(banco: Client, p: PayloadAnaliseMass
   let feitos = 0;
   const restantes = [...p.leadIds];
 
-  while (restantes.length > 0 && Date.now() - inicio < ORCAMENTO_MS) {
+  while (restantes.length > 0 && Date.now() - inicio < (p.orcamentoMs ?? ORCAMENTO_MS)) {
     const leadId = restantes[0];
     try {
       if (p.analisar) await analisarEGravar(banco, leadId);
@@ -60,7 +62,7 @@ export async function processarAnaliseMassa(banco: Client, p: PayloadAnaliseMass
   if (restantes.length > 0) {
     await banco.execute({
       sql: `INSERT INTO jobs (id, tipo, payload, status) VALUES (?, 'analise_ia', ?, 'pendente')`,
-      args: [novoId(), JSON.stringify({ ...p, leadIds: restantes, total, falhas } satisfies PayloadAnaliseMassa)],
+      args: [novoId(), JSON.stringify({ ...p, orcamentoMs: undefined, leadIds: restantes, total, falhas } satisfies PayloadAnaliseMassa)],
     });
   } else if (!p.automatico) {
     await notificar(banco, {

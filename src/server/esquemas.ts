@@ -10,7 +10,9 @@ const opcional = (max: number) => texto(max).optional().transform((v) => (v ? v 
 
 export const NovaBusca = z.object({
   consultaNatural: opcional(300),
-  termo: texto(80).min(2, "Informe a categoria (ex.: barbearia)."),
+  // Com link do Maps a categoria sai do próprio link; sem ele, é obrigatória.
+  termo: texto(80).default(""),
+  linkMaps: z.string().trim().max(2000).optional(),
   provedor: z.enum(["google_places", "osm"]),
   pais: z
     .string()
@@ -42,7 +44,7 @@ export const NovaBusca = z.object({
     })
     .default({ site: "todos", comWhatsapp: false, comEmail: false, avaliacoesMin: null, notaMin: null, scoreMin: null }),
   maxRequisicoes: z.number().int().min(1).max(60).default(10),
-});
+}).refine((b) => b.linkMaps || b.termo.length >= 2, { message: "Informe a categoria (ex.: barbearia).", path: ["termo"] });
 
 const bool = z
   .union([z.boolean(), z.enum(["1", "0", "true", "false"])])

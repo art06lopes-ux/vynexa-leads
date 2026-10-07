@@ -239,6 +239,35 @@ describe("venda, webhook do Asaas e notificação", () => {
     assert.equal(cob.status, "recebido");
   });
 
+  it("gerar o link de cobrança avisa; o pagamento pelo link avisa de novo", async () => {
+    const { registrarVenda, emitirCobranca, processarWebhookAsaas } = await import("@/services/financeiro");
+    const { definirPagamentos } = await import("@/integrations/pagamentos/asaas");
+    definirPagamentos({
+      nome: "falso",
+      pronto: async () => ({ ok: true, motivo: null, ambiente: "sandbox" }),
+      criarCobranca: async () => ({ externoId: "pay_link", clienteExternoId: "cus_1", link: "https://sandbox.asaas.com/i/pay_link", status: "PENDING" }),
+    } as unknown as Parameters<typeof definirPagamentos>[0]);
+    try {
+      const vendaId = await registrarVenda(banco, {
+        leadId: null, produtoId: null, descricao: "Landing page", valorCentavos: 50000, moeda: "BRL", meioPagamento: null, pago: false,
+        cliente: { nome: "Ana", empresa: "Hamburgueria Y", email: null, telefone: null, documento: null },
+      });
+      const { link } = await emitirCobranca(banco, { vendaId, forma: "PIX", vencimento: "2026-10-20", documento: "52998224725", email: null, telefone: null, nome: "Ana" });
+      assert.equal(link, "https://sandbox.asaas.com/i/pay_link");
+      const gerado = await um<{ titulo: string; corpo: string }>(`SELECT titulo, corpo FROM notificacoes WHERE tipo = 'pagamento' ORDER BY rowid DESC LIMIT 1`);
+      assert.equal(gerado.titulo, "Link de cobrança gerado");
+      assert.match(gerado.corpo, /Hamburgueria Y · R\$\s?500,00 · vence 20\/10\/2026/);
+
+      const ev = { id: "evt_link", event: "PAYMENT_RECEIVED", payment: { id: "pay_link", status: "RECEIVED", value: 500, billingType: "PIX" } };
+      assert.equal((await processarWebhookAsaas(banco, ev, JSON.stringify(ev))).vendaPaga, true);
+      const pago = await um<{ titulo: string; corpo: string }>(`SELECT titulo, corpo FROM notificacoes WHERE tipo = 'venda' ORDER BY rowid DESC LIMIT 1`);
+      assert.match(pago.titulo, /^Pagamento recebido · R\$\s?500,00$/);
+      assert.equal(pago.corpo, "Hamburgueria Y pagou no Pix · Landing page");
+    } finally {
+      definirPagamentos(null);
+    }
+  });
+
   it("evento de cobrança desconhecida é registrado e ignorado", async () => {
     const { processarWebhookAsaas } = await import("@/services/financeiro");
     const ev = { id: "evt_x", event: "PAYMENT_CONFIRMED", payment: { id: "pay_nao_existe" } };

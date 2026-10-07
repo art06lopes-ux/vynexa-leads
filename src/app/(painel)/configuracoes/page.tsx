@@ -157,6 +157,15 @@ export default async function PaginaConfiguracoes({ searchParams }: PageProps<"/
               <Copiavel texto={`${base}/api/webhooks/resend`} />
             </div>
           </Cartao>
+          <Cartao titulo="Aviso no celular" subtitulo="Quando você gera um link de cobrança e quando o cliente paga">
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <p>
+                No iPhone: abra o Vynexa Leads no Safari → Compartilhar → <strong className="text-foreground">Adicionar à Tela de Início</strong>. Abra pelo ícone
+                novo (o “V” da Vynexa) e toque em ativar abaixo. Os avisos chegam na tela de bloqueio com esse ícone, mesmo com o app fechado.
+              </p>
+              <BotaoNotificacoes />
+            </div>
+          </Cartao>
         </div>
       )}
 
@@ -175,9 +184,6 @@ export default async function PaginaConfiguracoes({ searchParams }: PageProps<"/
               <Campo nome="google_teto_requisicoes" rotulo="Teto padrão de requisições por busca no Google" valor={c.google_teto_requisicoes || "10"} />
               <Campo nome="receita_ufs" rotulo="Estados importados da Receita Federal" valor={c.receita_ufs} placeholder="AM, PA" dica="Base de CNPJs usada como fonte complementar no Brasil (buscas pelo OpenStreetMap)." />
             </FormConfig>
-          </Cartao>
-          <Cartao titulo="Notificações neste aparelho" subtitulo="Push no celular ou no computador (PWA)">
-            <BotaoNotificacoes />
           </Cartao>
         </div>
       )}

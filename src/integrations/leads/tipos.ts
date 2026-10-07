@@ -59,6 +59,12 @@ export type ConsultaBusca = {
   idioma: string;
   /** Teto de requisições pagas nesta busca (controle de custo). */
   maxRequisicoes: number;
+  /**
+   * Pesquisa colada de um link do Google Maps: o texto vai como está, e
+   * o centro do mapa vira preferência de lugar (não restrição) — é o que
+   * o próprio Maps faz, e o resultado fica igual ao que o operador viu.
+   */
+  linkMaps?: { consulta: string; centro: { lat: number; lng: number } | null; raioKm: number | null } | null;
 };
 
 export type ResultadoProvedor = {

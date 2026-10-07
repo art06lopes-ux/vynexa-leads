@@ -137,6 +137,13 @@ export class AsaasPaymentProvider implements PaymentProvider {
   }
 }
 
+let substituto: PaymentProvider | null = null;
+
 export function obterPagamentos(): PaymentProvider {
-  return new AsaasPaymentProvider();
+  return substituto ?? new AsaasPaymentProvider();
+}
+
+/** Troca o provedor (testes). `null` volta ao Asaas. */
+export function definirPagamentos(p: PaymentProvider | null): void {
+  substituto = p;
 }

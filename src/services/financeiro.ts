@@ -106,14 +106,26 @@ async function dadosDaVenda(banco: Client, vendaId: string): Promise<DadosVenda 
   };
 }
 
-/** A notificação de venda — com os dados que o toast mostra. */
-export async function comemorarVenda(banco: Client, vendaId: string): Promise<void> {
+const ROTULO_MEIO: Record<string, string> = { pix: "Pix", boleto: "boleto", cartao: "cartão" };
+
+/**
+ * A notificação de venda — com os dados que o toast mostra. Vai para a
+ * central, para o toast do painel e, por push, para a tela de bloqueio
+ * do celular. Quando foi o cliente que pagou o link, o título diz isso.
+ */
+export async function comemorarVenda(banco: Client, vendaId: string, comoChegou: "registrada" | "paga_pelo_link" = "registrada"): Promise<void> {
   const d = await dadosDaVenda(banco, vendaId);
   if (!d) return;
+  const valor = formatarDinheiro(d.valorCentavos, d.moeda);
+  const quem = d.empresa ?? d.cliente ?? "Cliente";
+  const meio = d.meio ? ROTULO_MEIO[d.meio] : null;
   await notificar(banco, {
     tipo: "venda",
-    titulo: "Nova venda!",
-    corpo: `${d.empresa ?? d.cliente ?? "Cliente"} · ${d.servico} · ${formatarDinheiro(d.valorCentavos, d.moeda)}`,
+    titulo: comoChegou === "paga_pelo_link" ? `Pagamento recebido · ${valor}` : "Nova venda!",
+    corpo:
+      comoChegou === "paga_pelo_link"
+        ? `${quem} pagou${meio ? ` no ${meio}` : ""} · ${d.servico}`
+        : `${quem} · ${d.servico} · ${valor}`,
     link: "/pagamentos",
     dados: d as unknown as Record<string, unknown>,
   });
@@ -169,6 +181,16 @@ export async function emitirCobranca(
     statements.push(eventoSql(String(venda.lead_id), "cobranca_criada", `Cobrança emitida no Asaas (${entrada.forma}) — vence ${entrada.vencimento}`, { cobrancaId: id }));
   }
   await banco.batch(statements, "write");
+
+  const quem = venda.cliente_empresa ? String(venda.cliente_empresa) : entrada.nome;
+  const [ano, mes, dia] = entrada.vencimento.split("-");
+  await notificar(banco, {
+    tipo: "pagamento",
+    titulo: "Link de cobrança gerado",
+    corpo: `${quem} · ${formatarDinheiro(Number(venda.valor_centavos), String(venda.moeda ?? "BRL"))} · vence ${dia}/${mes}/${ano}. Você recebe outro aviso quando o cliente pagar.`,
+    link: "/pagamentos",
+    dados: { vendaId: entrada.vendaId, cobrancaId: id, link: criada.link },
+  });
   return { cobrancaId: id, link: criada.link };
 }
 
@@ -237,7 +259,7 @@ export async function processarWebhookAsaas(banco: Client, evento: EventoAsaas, 
       if (l[0]?.lead_id) {
         await banco.execute(eventoSql(String(l[0].lead_id), "pagamento_confirmado", `Pagamento confirmado pelo Asaas (${meio})`, { vendaId }));
       }
-      await comemorarVenda(banco, vendaId);
+      await comemorarVenda(banco, vendaId, "paga_pelo_link");
     }
   } else if (interpretacao.statusVenda && interpretacao.statusVenda !== "pago") {
     await banco.execute({

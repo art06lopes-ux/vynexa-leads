@@ -18,7 +18,7 @@ export default async function PaginaBuscar({ searchParams }: PageProps<"/buscar"
       {!google?.disponivel && (
         <div className="mb-5">
           <AvisoConfiguracao titulo="Google Maps ainda não configurado">
-            A fonte principal é a Google Places API (oficial, com chave). Sem ela, a busca usa o OpenStreetMap — gratuito, mas sem avaliações e com menos telefones.
+            As buscas usam a Google Places API, a forma oficial de consultar o Google Maps. Cole a chave em Configurações → Integrações para buscar.
           </AvisoConfiguracao>
         </div>
       )}

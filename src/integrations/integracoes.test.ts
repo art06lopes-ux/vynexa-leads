@@ -122,6 +122,25 @@ describe("Google Places", () => {
     assert.equal(chamadas[1].pageToken, "t1");
   });
 
+  it("link do Maps: mesmo texto, centro como preferência (não restrição)", async () => {
+    const chamadas: Array<Record<string, unknown>> = [];
+    const falso = (async (_url: string, init: RequestInit) => {
+      chamadas.push(JSON.parse(String(init.body)) as Record<string, unknown>);
+      return new Response(JSON.stringify({ places: [lugarGoogle] }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const p = new GooglePlacesProvider(falso);
+    const r = await p.buscar({
+      termo: "hamburguerias manacapuru", pais: null, estado: null, cidade: null, bairro: null, cep: null, local: null, centro: null, raioKm: null,
+      retangulo: null, idioma: "pt", maxRequisicoes: 5,
+      linkMaps: { consulta: "hamburguerias manacapuru", centro: { lat: -3.288, lng: -60.627 }, raioKm: 2.9 },
+    });
+    assert.equal(chamadas.length, 1);
+    assert.equal(chamadas[0].textQuery, "hamburguerias manacapuru");
+    assert.equal(chamadas[0].locationRestriction, undefined);
+    assert.deepEqual(chamadas[0].locationBias, { circle: { center: { latitude: -3.288, longitude: -60.627 }, radius: 2900 } });
+    assert.equal(r.lugares.length, 1);
+  });
+
   it("chave recusada vira erro claro de configuração", async () => {
     const p = new GooglePlacesProvider((async () => new Response(JSON.stringify({ error: { message: "API key not valid", status: "PERMISSION_DENIED" } }), { status: 403 })) as unknown as typeof fetch);
     await assert.rejects(

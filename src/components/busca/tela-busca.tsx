@@ -28,6 +28,7 @@ import type { LeadListado } from "@/db/leads";
 import { CODIGOS_ISO, codigoDoPaisPorNome, nomePaisPt } from "@/lib/geo/mundo";
 import { cn } from "@/lib/utils";
 import { interpretarConsulta, type FiltroSite } from "@/services/consulta-natural";
+import { pareceLinkMaps } from "@/services/link-maps";
 
 /**
  * A tela de busca: pedido em linguagem natural ou formulário completo →
@@ -37,10 +38,11 @@ import { interpretarConsulta, type FiltroSite } from "@/services/consulta-natura
 
 type Provedores = Array<{ nome: "google_places" | "osm"; rotulo: string; disponivel: boolean }>;
 
+
 type Formulario = {
   consultaNatural: string;
   termo: string;
-  provedor: "google_places" | "osm";
+  provedor: "google_places";
   pais: string; // "" = qualquer lugar
   estado: string;
   cidade: string;
@@ -146,7 +148,7 @@ export function TelaBusca({ provedores, buscaInicial }: { provedores: Provedores
   const router = useRouter();
   const params = useSearchParams();
   const googleOk = provedores.find((p) => p.nome === "google_places")?.disponivel ?? false;
-  const [f, setF] = useState<Formulario>({ ...VAZIO, provedor: googleOk ? "google_places" : "osm" });
+  const [f, setF] = useState<Formulario>(VAZIO);
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [estado, setEstado] = useState<EstadoBusca | null>(null);
@@ -206,8 +208,8 @@ export function TelaBusca({ provedores, buscaInicial }: { provedores: Provedores
   );
 
   const buscar = useCallback(
-    async (form: Formulario) => {
-      if (!form.termo.trim()) {
+    async (form: Formulario, linkMaps?: string) => {
+      if (!linkMaps && !form.termo.trim()) {
         toast.error("Diga o que procurar — por exemplo, \"Barbearia\".");
         return;
       }
@@ -218,8 +220,9 @@ export function TelaBusca({ provedores, buscaInicial }: { provedores: Provedores
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             consultaNatural: form.consultaNatural || undefined,
-            termo: form.termo,
-            provedor: form.provedor,
+            termo: linkMaps ? "" : form.termo,
+            linkMaps,
+            provedor: "google_places",
             pais: form.pais || null,
             estado: form.estado || undefined,
             cidade: form.cidade || undefined,
@@ -243,7 +246,7 @@ export function TelaBusca({ provedores, buscaInicial }: { provedores: Provedores
           toast.error(d.erro ?? "Não conseguimos iniciar a busca.", d.codigo === "sem_configuracao" ? { action: { label: "Configurar", onClick: () => router.push("/configuracoes?aba=integracoes") } } : undefined);
           return;
         }
-        const rotulo = form.consultaNatural || `${form.termo}${form.cidade ? ` em ${form.cidade}` : form.pais ? ` em ${nomePaisPt(form.pais)}` : ""}`;
+        const rotulo = linkMaps ? "Pesquisa do Google Maps" : form.consultaNatural || `${form.termo}${form.cidade ? ` em ${form.cidade}` : form.pais ? ` em ${nomePaisPt(form.pais)}` : ""}`;
         setEstado({ id: d.id, status: "pendente", etapa: "Na fila…", erro: null, resumo: null, rotulo });
         router.replace(`/buscar?busca=${d.id}`, { scroll: false });
       } catch {
@@ -261,7 +264,10 @@ export function TelaBusca({ provedores, buscaInicial }: { provedores: Provedores
     iniciou.current = true;
     const t = setTimeout(() => {
       const q = params.get("q");
-      if (q) {
+      if (q && pareceLinkMaps(q)) {
+        setF((a) => ({ ...a, consultaNatural: q }));
+        if (params.get("auto") === "1") void buscar({ ...VAZIO, consultaNatural: q }, q);
+      } else if (q) {
         const form = aplicarFrase(q);
         if (params.get("auto") === "1") void buscar(form);
       } else if (buscaInicial) {
@@ -312,7 +318,8 @@ export function TelaBusca({ provedores, buscaInicial }: { provedores: Provedores
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          void buscar(aplicarFrase(f.consultaNatural));
+          if (pareceLinkMaps(f.consultaNatural)) void buscar(f, f.consultaNatural.trim());
+          else void buscar(aplicarFrase(f.consultaNatural));
         }}
         className="flex items-center gap-2 rounded-2xl border border-brilho/35 bg-placa/90 p-2 shadow-[0_18px_50px_-24px_rgba(51,102,255,0.8)] focus-within:border-brilho/70"
       >
@@ -322,11 +329,11 @@ export function TelaBusca({ provedores, buscaInicial }: { provedores: Provedores
         <input
           value={f.consultaNatural}
           onChange={(e) => mudar("consultaNatural", e.target.value)}
-          placeholder="Ex.: estética automotiva em Miami sem site com mais de 50 avaliações"
+          placeholder="Ex.: hamburguerias em Manacapuru sem site — ou cole um link do Google Maps"
           aria-label="Busca em linguagem natural"
           className="h-11 min-w-0 flex-1 bg-transparent px-2 text-base outline-none placeholder:text-muted-foreground/60"
         />
-        <button type="button" onClick={() => f.consultaNatural.trim() && aplicarFrase(f.consultaNatural)} className="hidden h-11 cursor-pointer items-center rounded-xl px-3 text-sm text-muted-foreground hover:bg-white/5 hover:text-foreground sm:inline-flex">
+        <button type="button" onClick={() => f.consultaNatural.trim() && !pareceLinkMaps(f.consultaNatural) && aplicarFrase(f.consultaNatural)} className="hidden h-11 cursor-pointer items-center rounded-xl px-3 text-sm text-muted-foreground hover:bg-white/5 hover:text-foreground sm:inline-flex">
           Preencher filtros
         </button>
         <motion.button whileTap={{ scale: 0.96 }} type="submit" disabled={enviando || !f.consultaNatural.trim()} className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-xl bg-azul px-4 text-sm font-semibold text-white hover:bg-brilho disabled:cursor-not-allowed disabled:opacity-50">
@@ -390,24 +397,11 @@ export function TelaBusca({ provedores, buscaInicial }: { provedores: Provedores
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <div className="flex rounded-xl border border-fio bg-placa p-1" role="radiogroup" aria-label="Fonte">
-            {provedores.map((p) => (
-              <button
-                key={p.nome}
-                type="button"
-                role="radio"
-                aria-checked={f.provedor === p.nome}
-                onClick={() => mudar("provedor", p.nome)}
-                className={cn("relative h-8 cursor-pointer rounded-lg px-3 text-xs font-semibold transition-colors", f.provedor === p.nome ? "text-white" : "text-muted-foreground hover:text-foreground")}
-              >
-                {f.provedor === p.nome && <motion.span layoutId="provedor-ativo" className="absolute inset-0 rounded-lg bg-azul" transition={{ type: "spring", stiffness: 500, damping: 36 }} />}
-                <span className="relative flex items-center gap-1.5">
-                  {p.rotulo}
-                  {!p.disponivel && <span className="rounded bg-aviso/20 px-1 text-[0.6rem] text-aviso">sem chave</span>}
-                </span>
-              </button>
-            ))}
-          </div>
+          <span className="inline-flex h-10 items-center gap-2 rounded-xl border border-fio bg-placa px-3 text-xs font-semibold">
+            <MapPin className="size-3.5 text-ciano" aria-hidden="true" />
+            Google Maps
+            {!googleOk && <span className="rounded bg-aviso/20 px-1 text-[0.6rem] text-aviso">sem chave</span>}
+          </span>
 
           <div className="flex rounded-xl border border-fio bg-placa p-1" role="radiogroup" aria-label="Site">
             {(
@@ -470,13 +464,11 @@ export function TelaBusca({ provedores, buscaInicial }: { provedores: Provedores
                     <Alternar ativo={f.comEmail} aoMudar={(v) => mudar("comEmail", v)} rotulo="E-mail" />
                   </div>
                 </div>
-                {f.provedor === "google_places" && (
-                  <label className="space-y-1.5">
-                    <span className="rotulo">Teto de requisições ao Google: {f.maxRequisicoes}</span>
-                    <input type="range" min={1} max={60} value={f.maxRequisicoes} onChange={(e) => mudar("maxRequisicoes", Number(e.target.value))} className="h-10 w-full cursor-pointer accent-[#3366ff]" />
-                    <span className="block text-[0.7rem] text-muted-foreground">Cada requisição traz até 20 empresas e conta na cota da Places API.</span>
-                  </label>
-                )}
+                <label className="space-y-1.5">
+                  <span className="rotulo">Teto de requisições ao Google: {f.maxRequisicoes}</span>
+                  <input type="range" min={1} max={60} value={f.maxRequisicoes} onChange={(e) => mudar("maxRequisicoes", Number(e.target.value))} className="h-10 w-full cursor-pointer accent-[#3366ff]" />
+                  <span className="block text-[0.7rem] text-muted-foreground">Cada requisição traz até 20 empresas e conta na cota da Places API.</span>
+                </label>
               </div>
             </motion.div>
           )}

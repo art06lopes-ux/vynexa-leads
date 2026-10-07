@@ -22,6 +22,11 @@ export const metadata: Metadata = {
   description: "Plataforma de prospecção e vendas da Vynexa Dev.",
   // Ferramenta interna: não existe motivo para aparecer em buscador.
   robots: { index: false, follow: false },
+  // Instalado na tela de início do iPhone ("Adicionar à Tela de Início"):
+  // abre sem a barra do Safari, com o nome curto, e é o único jeito de a
+  // Apple entregar push. O ícone (app/apple-icon.png) é o "V" da Vynexa —
+  // é ele que aparece ao lado de cada notificação.
+  appleWebApp: { capable: true, title: "Vynexa", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {

@@ -26,6 +26,7 @@ export type FiltrosBusca = {
   scoreMin?: number | null;
   retangulo?: { sul: number; oeste: number; norte: number; leste: number } | null;
   maxRequisicoes?: number;
+  linkMaps?: ConsultaBusca["linkMaps"];
 };
 
 export type ResumoBusca = {
@@ -69,6 +70,7 @@ export async function processarBuscaProvedor(banco: Client, payload: PayloadBusc
     retangulo: filtros.retangulo ?? null,
     idioma: busca.pais && busca.pais !== "ZZ" ? idiomaProvavel(busca.pais).slice(0, 2) : "pt",
     maxRequisicoes: Math.min(Math.max(filtros.maxRequisicoes ?? 10, 1), 60),
+    linkMaps: filtros.linkMaps ?? null,
   };
 
   const provedor = obterProvedor(busca.provedor);

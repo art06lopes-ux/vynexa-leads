@@ -17,14 +17,14 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Prospecção e vendas da Vynexa Dev.",
     start_url: "/?fonte=pwa",
     display: "standalone",
-    background_color: "#0f0f10",
-    theme_color: "#0f0f10",
+    background_color: "#050a18",
+    theme_color: "#050a18",
     lang: "pt-BR",
     icons: [
       { src: "/icones/icone-192.png", sizes: "192x192", type: "image/png" },
       { src: "/icones/icone-512.png", sizes: "512x512", type: "image/png" },
       // "maskable": o Android recorta o ícone em círculo ou na forma do
-      // fabricante; esta variante tem margem para o "V" não sair cortado.
+      // fabricante; esta variante tem margem para o "V" da marca não sair cortado.
       {
         src: "/icones/icone-maskable-192.png",
         sizes: "192x192",

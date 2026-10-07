@@ -187,6 +187,8 @@ export class GooglePlacesProvider implements LeadProvider {
 
     await progresso?.("Consultando Google Maps…");
 
+    if (consulta.linkMaps) return this.buscarComoNoMaps(chave, consulta, consulta.linkMaps, progresso);
+
     // 1. Qual área cobrir.
     let area: Retangulo | null = consulta.retangulo;
     let rotulo: string | null = null;
@@ -277,5 +279,54 @@ export class GooglePlacesProvider implements LeadProvider {
     }
 
     return { lugares, requisicoes, area, rotulo: rotulo ?? (localTexto || null), aviso };
+  }
+
+  /**
+   * A mesma pesquisa que o operador fez no Maps: o texto como foi
+   * digitado e o centro do mapa como `locationBias` (círculo). Viés, não
+   * restrição — "hamburguerias manacapuru" já diz a cidade, e o Maps
+   * também não corta o que fica fora da tela.
+   */
+  private async buscarComoNoMaps(
+    chave: string,
+    consulta: ConsultaBusca,
+    link: NonNullable<ConsultaBusca["linkMaps"]>,
+    progresso?: Progresso,
+  ): Promise<ResultadoProvedor> {
+    const vistos = new Map<string, LugarEncontrado>();
+    let requisicoes = 0;
+    let token: string | undefined;
+    let aviso: string | null = null;
+
+    for (let pagina = 0; pagina < 3; pagina += 1) {
+      if (requisicoes >= consulta.maxRequisicoes) {
+        aviso = `A busca parou no teto de ${consulta.maxRequisicoes} requisições ao Google.`;
+        break;
+      }
+      const corpo: Record<string, unknown> = { textQuery: link.consulta, pageSize: 20, languageCode: consulta.idioma };
+      if (consulta.pais) corpo.regionCode = consulta.pais;
+      if (link.centro) {
+        corpo.locationBias = {
+          circle: {
+            center: { latitude: link.centro.lat, longitude: link.centro.lng },
+            radius: Math.min((link.raioKm ?? 10) * 1000, 50_000),
+          },
+        };
+      }
+      if (token) corpo.pageToken = token;
+
+      const dados = await consultarPagina(chave, corpo, this.buscarHttp);
+      requisicoes += 1;
+      for (const g of dados.places ?? []) {
+        const l = converterLugar(g, consulta.termo, consulta.pais);
+        if (l && l.externoId && !vistos.has(l.externoId)) vistos.set(l.externoId, l);
+      }
+      await progresso?.(`Encontrando empresas… ${vistos.size}`);
+      token = dados.nextPageToken;
+      if (!token) break;
+    }
+
+    const area = link.centro && link.raioKm ? retanguloDoCirculo(link.centro.lat, link.centro.lng, link.raioKm) : null;
+    return { lugares: [...vistos.values()], requisicoes, area, rotulo: link.consulta, aviso };
   }
 }

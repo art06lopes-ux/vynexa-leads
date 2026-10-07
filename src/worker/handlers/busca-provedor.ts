@@ -75,8 +75,16 @@ export async function processarBuscaProvedor(banco: Client, payload: PayloadBusc
   };
 
   const provedor = obterProvedor(busca.provedor);
-  const resultado = await provedor.buscar(consulta, (texto) => etapa(banco, busca.id, texto));
-  if (busca.provedor === "google_places") await registrarUsoGoogle(banco, resultado.requisicoes);
+  let resultado: Awaited<ReturnType<typeof provedor.buscar>>;
+  try {
+    resultado = await provedor.buscar(consulta, (texto) => etapa(banco, busca.id, texto));
+  } finally {
+    // Conta o que o Google respondeu mesmo se a busca caiu no meio: a
+    // trava mensal precisa ver tudo o que pode virar cobrança.
+    if ("requisicoesFeitas" in provedor && typeof provedor.requisicoesFeitas === "number") {
+      await registrarUsoGoogle(banco, provedor.requisicoesFeitas);
+    }
+  }
 
   await etapa(banco, busca.id, "Analisando presença digital…");
   const registro = await registrarLugares(banco, resultado.lugares, { buscaId: busca.id });

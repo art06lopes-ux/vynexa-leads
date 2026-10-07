@@ -233,3 +233,22 @@ describe("Google Places: área que não acha nada", () => {
     assert.deepEqual(r.lugares.map((l) => l.nome), ["em-sc"]);
   });
 });
+
+describe("Google Places: cota diária do Google Cloud", () => {
+  it("429 é definitivo (não fica tentando) e as requisições já respondidas são contadas", async () => {
+    const { GooglePlacesProvider } = await import("@/integrations/leads/google-places");
+    let n = 0;
+    const falso = (async () => {
+      n += 1;
+      return n === 1
+        ? new Response(JSON.stringify({ places: [], nextPageToken: "t1" }), { status: 200 })
+        : new Response(JSON.stringify({ error: { message: "Quota exceeded", status: "RESOURCE_EXHAUSTED" } }), { status: 429 });
+    }) as unknown as typeof fetch;
+    const p = new GooglePlacesProvider(falso);
+    await assert.rejects(
+      p.buscar({ termo: "x", pais: null, estado: null, cidade: null, bairro: null, cep: null, local: "Lisboa", centro: null, raioKm: null, retangulo: null, idioma: "pt", maxRequisicoes: 5 }),
+      (e: { temporario?: boolean; message: string }) => e.temporario === false && /Google Cloud/.test(e.message),
+    );
+    assert.equal(p.requisicoesFeitas, 1);
+  });
+});

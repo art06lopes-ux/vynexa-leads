@@ -87,7 +87,13 @@ export async function consultarPagina(
   if (resposta.ok) return dados;
 
   const motivo = dados.error?.message ?? `HTTP ${resposta.status}`;
-  if (resposta.status === 429) throw new ErroProvedor("Cota da Google Places API atingida. Tente mais tarde.", true);
+  // 429 = a cota que o próprio operador definiu no Google Cloud acabou.
+  // Não é falha passageira: insistir não adianta até a cota renovar.
+  if (resposta.status === 429) {
+    throw new ErroProvedor(
+      "O limite diário de requisições que você definiu no Google Cloud acabou por hoje (o Google recusou em vez de cobrar). Ele renova sozinho de madrugada, por volta das 3h–4h de Manaus. Para buscar mais por dia, aumente essa cota no Google Cloud — a trava mensal do Vynexa continua segurando o custo em zero.",
+    );
+  }
   if (resposta.status >= 500) throw new ErroProvedor(`O Google respondeu ${resposta.status}. Tentaremos de novo.`, true);
   if (resposta.status === 403 || resposta.status === 401 || dados.error?.status === "PERMISSION_DENIED") {
     throw new ErroProvedor(
@@ -174,6 +180,9 @@ export class GooglePlacesProvider implements LeadProvider {
   readonly fonte = "google_places" as const;
   readonly rotulo = "Google Maps";
 
+  /** Requisições respondidas pelo Google nesta instância — inclusive numa busca que falhou no meio. */
+  requisicoesFeitas = 0;
+
   constructor(private readonly buscarHttp: typeof fetch = fetch) {}
 
   async disponivel(): Promise<boolean> {
@@ -249,6 +258,7 @@ export class GooglePlacesProvider implements LeadProvider {
 
         const dados = await consultarPagina(chave, corpo, this.buscarHttp);
         requisicoes += 1;
+        this.requisicoesFeitas += 1;
         for (const g of dados.places ?? []) {
           const l = converterLugar(g, consulta.termo, consulta.pais);
           if (l && l.externoId && !vistos.has(l.externoId)) vistos.set(l.externoId, l);
@@ -339,6 +349,7 @@ export class GooglePlacesProvider implements LeadProvider {
 
       const dados = await consultarPagina(chave, corpo, this.buscarHttp);
       requisicoes += 1;
+      this.requisicoesFeitas += 1;
       for (const g of dados.places ?? []) {
         const l = converterLugar(g, consulta.termo, consulta.pais);
         if (l && l.externoId && !vistos.has(l.externoId)) vistos.set(l.externoId, l);

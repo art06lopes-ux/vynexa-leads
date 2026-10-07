@@ -2,6 +2,7 @@ import type { Client } from "@libsql/client";
 
 import { agora } from "@/db/cliente";
 import type { Job, PayloadBusca } from "@/db/tipos";
+import { ErroProvedor } from "@/integrations/leads/tipos";
 import { processarAnaliseMassa, type PayloadAnaliseMassa } from "@/worker/handlers/analise-massa";
 import { processarAvaliacaoSites, type PayloadAvaliarSite } from "@/worker/handlers/avaliar-site";
 import { processarBusca } from "@/worker/handlers/busca";
@@ -75,8 +76,10 @@ export async function executarAgora(banco: Client, jobId: string): Promise<void>
     });
   } catch (erro) {
     const mensagem = erro instanceof Error ? erro.message : String(erro);
-    const semConfiguracao = Boolean((erro as { semConfiguracao?: boolean }).semConfiguracao);
-    // Falta de configuração não melhora tentando de novo: vira erro já.
+    // Falta de configuração, ou recusa definitiva do provedor (cota diária
+    // do Google acabou), não melhora tentando de novo: vira erro já.
+    const semConfiguracao =
+      Boolean((erro as { semConfiguracao?: boolean }).semConfiguracao) || (erro instanceof ErroProvedor && !erro.temporario);
     await banco.execute({
       sql: `UPDATE jobs SET status = ?, erro = ?, lease_ate = NULL, disponivel_em = ?, atualizado_em = ? WHERE id = ?`,
       args: [semConfiguracao ? "erro" : "pendente", mensagem, semConfiguracao ? null : emMinutos(2), agora(), jobId],

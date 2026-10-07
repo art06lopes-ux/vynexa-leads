@@ -130,7 +130,10 @@ async function main() {
         // hora e devolve a tentativa.
         const cota = (erro instanceof ErroGemini || erro instanceof ErroIA || erro instanceof ErroProvedor) && erro.temporario;
         const semConfiguracao = Boolean((erro as { semConfiguracao?: boolean }).semConfiguracao);
-        const desiste = !cota && (semConfiguracao || job.tentativas >= MAX_TENTATIVAS);
+        // Recusa definitiva do provedor (ex.: a cota diária que o operador
+        // definiu no Google Cloud acabou): tentar de novo só gasta tempo.
+        const definitivo = erro instanceof ErroProvedor && !erro.temporario;
+        const desiste = !cota && (semConfiguracao || definitivo || job.tentativas >= MAX_TENTATIVAS);
 
         const espera = cota ? 30 : (ESPERA_MINUTOS[Math.min(job.tentativas - 1, ESPERA_MINUTOS.length - 1)] ?? 5);
 

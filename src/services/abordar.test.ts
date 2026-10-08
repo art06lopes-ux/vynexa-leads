@@ -65,10 +65,18 @@ describe("fila de abordagem", () => {
     );
     for (const id of ["r1", "r2", "r3"]) await registrarContato(banco, await leadDe(id), "whatsapp_aberto");
     await registrarResposta(banco, await leadDe("r2"));
-    await banco.execute(`UPDATE leads SET contatado_em = datetime('now', '-5 days') WHERE empresa_id IN (SELECT id FROM empresas WHERE place_id IN ('r1', 'r2'))`);
-    const nomes = (await paraRetomar(10)).map((r) => r.nome);
+    const antigos = `(SELECT l.id FROM leads l JOIN empresas e ON e.id = l.empresa_id WHERE e.place_id IN ('r1', 'r2'))`;
+    await banco.execute(`UPDATE leads SET contatado_em = datetime('now', '-5 days') WHERE id IN ${antigos}`);
+    await banco.execute(`UPDATE eventos SET criado_em = datetime('now', '-5 days') WHERE lead_id IN ${antigos}`);
+    const nomes = (await paraRetomar(10)).itens.map((r) => r.nome);
     assert.ok(nomes.includes("Esfriando"));
     assert.ok(!nomes.includes("Respondeu"));
     assert.ok(!nomes.includes("Recente"));
+
+    // Retomou hoje: sai da lista até passarem mais 3 dias.
+    await registrarContato(banco, await leadDe("r1"), "whatsapp_aberto");
+    assert.ok(!(await paraRetomar(10)).itens.some((r) => r.nome === "Esfriando"));
+    const { listarLeads } = await import("@/db/leads");
+    assert.equal((await listarLeads({ situacao: "retomar" })).itens.some((l) => l.nome === "Esfriando"), false);
   });
 });

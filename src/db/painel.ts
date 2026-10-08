@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getBanco, planos } from "@/db/cliente";
-import { CONDICAO_NAO_ABORDADO } from "@/db/para-abordar";
+import { CONDICAO_NAO_ABORDADO, CONDICAO_RETOMAR, ULTIMO_CONTATO } from "@/db/para-abordar";
 import type { EtapaLead } from "@/db/tipos";
 import { ETAPAS } from "@/services/crm";
 
@@ -205,17 +205,20 @@ export async function atividadeRecente(limite = 8): Promise<Array<{ id: string; 
  * Abordados há 3 dias ou mais que ainda não responderam: é quem vale uma
  * segunda mensagem antes de esfriar de vez.
  */
-export async function paraRetomar(limite = 5): Promise<Array<{ lead_id: string; nome: string; cidade: string | null; contatado_em: string }>> {
-  const { rows } = await getBanco().execute({
-    sql: `SELECT l.id AS lead_id, e.nome, e.cidade, l.contatado_em
-          FROM leads l JOIN empresas e ON e.id = l.empresa_id
-          WHERE l.etapa = 'abordado' AND l.respondeu_em IS NULL AND e.nao_contatar = 0
-            AND l.contatado_em IS NOT NULL AND l.contatado_em <= datetime('now', '-3 days')
-          ORDER BY l.contatado_em ASC
-          LIMIT ?`,
-    args: [limite],
-  });
-  return planos(rows);
+export async function paraRetomar(limite = 5): Promise<{ itens: Array<{ lead_id: string; nome: string; cidade: string | null; contatado_em: string }>; total: number }> {
+  const banco = getBanco();
+  const [{ rows }, { rows: n }] = await Promise.all([
+    banco.execute({
+      sql: `SELECT l.id AS lead_id, e.nome, e.cidade, ${ULTIMO_CONTATO} AS contatado_em
+            FROM leads l JOIN empresas e ON e.id = l.empresa_id
+            WHERE ${CONDICAO_RETOMAR}
+            ORDER BY contatado_em ASC
+            LIMIT ?`,
+      args: [limite],
+    }),
+    banco.execute(`SELECT COUNT(*) AS n FROM leads l JOIN empresas e ON e.id = l.empresa_id WHERE ${CONDICAO_RETOMAR}`),
+  ]);
+  return { itens: planos(rows), total: Number(n[0]?.n ?? 0) };
 }
 
 export async function buscasRecentes(limite = 6): Promise<Array<{ id: string; segmento: string; cidade: string | null; pais: string; provedor: string; status: string; quantidade_encontrada: number; quantidade_nova: number; criado_em: string; consulta_natural: string | null }>> {

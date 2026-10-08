@@ -295,7 +295,7 @@ export function TelaLeads({
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -4 }}
-                    className="absolute right-0 z-40 mt-1 w-60 overflow-hidden rounded-xl border border-fio bg-popover py-1 shadow-2xl"
+                    className="absolute right-0 z-40 mt-1 w-60 overflow-hidden rounded-xl border border-fio bg-[#0b1433] py-1 shadow-2xl"
                   >
                     <button
                       type="button"

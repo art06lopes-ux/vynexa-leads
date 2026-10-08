@@ -1,12 +1,13 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Download, Ellipsis, LoaderCircle, Mail, MessageCircle, Sparkles, Wand2, X } from "lucide-react";
+import { Ban, ChevronDown, Download, Ellipsis, LoaderCircle, Mail, MessageCircle, Reply, Sparkles, Wand2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
+import { ETAPAS, ROTULO_ETAPA } from "@/services/crm";
 
 /**
  * Seleção em massa e a barra de ações que aparece com ela.
@@ -130,6 +131,25 @@ export function BarraMassa({ ids, aoLimpar, origem }: { ids: Set<string>; aoLimp
   const router = useRouter();
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
+  const [confirmarBloqueio, setConfirmarBloqueio] = useState(false);
+
+  async function lote(corpo: Record<string, unknown>, feito: string) {
+    setMenu(false);
+    setConfirmarBloqueio(false);
+    setOcupado("lote");
+    try {
+      const r = await fetch("/api/leads/lote", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...corpo, leadIds: lista }) });
+      const d = (await r.json().catch(() => ({}))) as { feitos?: number; erro?: string };
+      if (!r.ok) throw new Error(d.erro);
+      toast.success(`${d.feitos ?? 0} empresa(s) ${feito}.`);
+      aoLimpar();
+      router.refresh();
+    } catch (e) {
+      toast.error(e instanceof Error && e.message ? e.message : "Não foi possível concluir.");
+    } finally {
+      setOcupado(null);
+    }
+  }
   const lista = [...ids];
 
   async function massa(analisar: boolean, gerarMensagens: boolean, rotulo: string) {
@@ -221,7 +241,7 @@ export function BarraMassa({ ids, aoLimpar, origem }: { ids: Set<string>; aoLimp
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 4 }}
-                    className="absolute bottom-full right-0 z-50 mb-2 w-60 overflow-hidden rounded-xl border border-fio bg-popover py-1 shadow-2xl"
+                    className="absolute bottom-full right-0 z-50 mb-2 w-60 overflow-hidden rounded-xl border border-fio bg-[#0b1433] py-1 shadow-2xl"
                   >
                     {(
                       [
@@ -243,6 +263,32 @@ export function BarraMassa({ ids, aoLimpar, origem }: { ids: Set<string>; aoLimp
                         <Icone className="size-4 text-ciano" /> {rotulo}
                       </button>
                     ))}
+                    <div className="my-1 border-t border-fio" />
+                    <button type="button" role="menuitem" onClick={() => void lote({ acao: "respondeu" }, "marcada(s) como respondeu")} className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/5">
+                      <Reply className="size-4 text-sucesso" /> Marcar que responderam
+                    </button>
+                    <p className="px-3 pb-1 pt-2 text-[0.7rem] font-medium text-muted-foreground">Mover no CRM para</p>
+                    <div className="flex flex-wrap gap-1 px-3 pb-2">
+                      {ETAPAS.map((e) => (
+                        <button
+                          key={e}
+                          type="button"
+                          role="menuitem"
+                          onClick={() => void lote({ acao: "etapa", etapa: e }, `movida(s) para ${ROTULO_ETAPA[e]}`)}
+                          className="cursor-pointer rounded-md border border-fio px-1.5 py-0.5 text-xs hover:border-brilho/40 hover:bg-white/5"
+                        >
+                          {ROTULO_ETAPA[e]}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => (confirmarBloqueio ? void lote({ acao: "nao_contatar" }, "marcada(s) como não contatar") : setConfirmarBloqueio(true))}
+                      className={cn("flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm", confirmarBloqueio ? "bg-perigo/15 text-perigo" : "hover:bg-white/5")}
+                    >
+                      <Ban className="size-4 text-perigo" /> {confirmarBloqueio ? "Toque de novo para confirmar" : "Não contatar mais"}
+                    </button>
                   </motion.div>
                 </>
               )}

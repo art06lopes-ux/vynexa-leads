@@ -2,7 +2,7 @@ import "server-only";
 
 import type { Client, InValue } from "@libsql/client";
 
-import { CONDICAO_PARA_ABORDAR } from "@/db/para-abordar";
+import { CONDICAO_PARA_ABORDAR, ULTIMO_CONTATO } from "@/db/para-abordar";
 import type { MotivoScore } from "@/db/tipos";
 import { normalizarTelefone } from "@/lib/leads/whatsapp";
 
@@ -27,12 +27,21 @@ export type ItemFila = {
   avaliacaoQtd: number | null;
   /** Última mensagem de WhatsApp já escrita pela IA, se houver. */
   mensagem: string | null;
+  /** Já foi abordada antes: na lista, vira uma retomada. */
+  jaAbordado: boolean;
+  ultimoContato: string | null;
 };
 
 export type CriterioFila = { buscaId?: string | null; leadIds?: string[] | null; limite?: number };
 
 export async function carregarFila(banco: Client, c: CriterioFila): Promise<ItemFila[]> {
-  const onde = [CONDICAO_PARA_ABORDAR];
+  // Empresas escolhidas à mão podem ser retomadas (já abordadas, sem
+  // resposta); numa busca, só quem nunca foi abordado.
+  const onde = [
+    c.leadIds && c.leadIds.length > 0
+      ? "(e.nao_contatar = 0 AND l.etapa IN ('novo', 'qualificado', 'abordado') AND (e.whatsapp = 1 OR (e.email IS NOT NULL AND e.email <> '')))"
+      : CONDICAO_PARA_ABORDAR,
+  ];
   const args: InValue[] = [];
   if (c.buscaId) {
     onde.push("e.id IN (SELECT empresa_id FROM busca_resultados WHERE busca_id = ?)");
@@ -45,9 +54,9 @@ export async function carregarFila(banco: Client, c: CriterioFila): Promise<Item
   }
 
   const { rows } = await banco.execute({
-    sql: `SELECT l.id AS lead_id, e.nome, COALESCE(e.categoria_rotulo, e.categoria) AS categoria, e.cidade, e.estado, e.pais,
+    sql: `SELECT l.id AS lead_id, e.nome, e.categoria AS categoria, e.cidade, e.estado, e.pais,
                  e.telefone, e.whatsapp, e.email, e.status_site, e.avaliacao_nota, e.avaliacao_qtd,
-                 l.score_oportunidade, l.score_motivos,
+                 l.score_oportunidade, l.score_motivos, l.etapa, ${ULTIMO_CONTATO} AS ultimo_contato,
                  (SELECT m.corpo FROM mensagens m WHERE m.lead_id = l.id AND m.tipo = 'whatsapp' ORDER BY m.criado_em DESC LIMIT 1) AS mensagem
           FROM leads l JOIN empresas e ON e.id = l.empresa_id
           WHERE ${onde.join(" AND ")}
@@ -79,6 +88,8 @@ export async function carregarFila(banco: Client, c: CriterioFila): Promise<Item
       avaliacaoNota: r.avaliacao_nota === null ? null : Number(r.avaliacao_nota),
       avaliacaoQtd: r.avaliacao_qtd === null ? null : Number(r.avaliacao_qtd),
       mensagem: r.mensagem ? String(r.mensagem) : null,
+      jaAbordado: String(r.etapa) === "abordado" || r.ultimo_contato !== null,
+      ultimoContato: r.ultimo_contato ? String(r.ultimo_contato) : null,
     };
   });
 }

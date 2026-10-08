@@ -231,10 +231,16 @@ export default async function Dashboard() {
           </Cartao>
         </Entrada>
         <Entrada className="space-y-5 lg:col-span-5">
-          {retomar.length > 0 && (
-            <Cartao icone={RotateCcw} titulo="Retomar contato" subtitulo="Abordados há 3 dias ou mais, sem resposta" href="/leads?etapa=abordado" corpoClassName="px-3 pb-3">
+          {retomar.total > 0 && (
+            <Cartao
+              icone={RotateCcw}
+              titulo="Retomar contato"
+              subtitulo={`${retomar.total} sem resposta há 3 dias ou mais`}
+              href="/leads?situacao=retomar"
+              corpoClassName="px-3 pb-3"
+            >
               <ul className="space-y-0.5">
-                {retomar.map((r) => (
+                {retomar.itens.map((r) => (
                   <li key={r.lead_id}>
                     <Link href={`/leads/${r.lead_id}#abordagem`} className="flex items-center gap-3 rounded-xl px-2 py-2 text-sm transition-colors hover:bg-white/[0.04]">
                       <span className="size-1.5 shrink-0 rounded-full bg-aviso" aria-hidden="true" />
@@ -242,7 +248,7 @@ export default async function Dashboard() {
                         <span className="font-semibold">{r.nome}</span>
                         {r.cidade && <span className="text-muted-foreground"> · {r.cidade}</span>}
                       </span>
-                      <span className="shrink-0 text-xs text-muted-foreground">abordado {haQuantoTempo(r.contatado_em)}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">último contato {haQuantoTempo(r.contatado_em)}</span>
                     </Link>
                   </li>
                 ))}

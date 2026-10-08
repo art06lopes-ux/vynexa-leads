@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ExternalLink, LoaderCircle, Mail, MessageCircle, Sparkles, Star, Users, X } from "lucide-react";
+import { Check, ExternalLink, LoaderCircle, Mail, MessageCircle, Reply, Sparkles, Star, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -10,7 +10,9 @@ import { toast } from "sonner";
 import { CHAVE_ABORDAR, guardarParaCampanha } from "@/components/leads/barra-massa";
 import { AnelScore } from "@/components/leads/score";
 import type { ItemFila } from "@/db/abordar";
+import { nichoDe } from "@/lib/leads/nicho";
 import { cn } from "@/lib/utils";
+import { haQuantoTempo } from "@/services/crm";
 
 /**
  * Enviar pelo WhatsApp — as empresas escolhidas em Leads, todas à vista.
@@ -26,7 +28,7 @@ type Props = {
   remetente: { responsavel: string; empresa: string };
 };
 
-type Mensagem = { texto: string; status: "pronta" | "escrevendo" | "simples" };
+type Mensagem = { texto: string; status: "pronta" | "escrevendo" | "simples" | "retomada" };
 
 async function acaoLead(leadId: string, corpo: Record<string, unknown>): Promise<Response> {
   return fetch(`/api/leads/${leadId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) });
@@ -37,11 +39,21 @@ function mensagemSimples(item: ItemFila, r: Props["remetente"]): string {
   return `Olá! Tudo bem? Sou ${r.responsavel}, da ${r.empresa}. Encontrei a ${item.nome} no Google e tenho uma ideia rápida para vocês receberem mais clientes pela internet. Posso te mostrar?`;
 }
 
+/**
+ * Segunda mensagem para quem já foi abordado e não respondeu. Curta, sem
+ * repetir a apresentação inteira e sem nenhum dado novo sobre a empresa.
+ */
+function mensagemRetomada(item: ItemFila, r: Props["remetente"]): string {
+  const quando = item.ultimoContato ? haQuantoTempo(item.ultimoContato) : null;
+  return `Oi! Tudo bem? Aqui é ${r.responsavel}, da ${r.empresa}. Te mandei uma mensagem${quando ? ` ${quando}` : ""} sobre a ${item.nome}. Conseguiu ver? Se fizer sentido, te mostro a ideia em 2 minutos.`;
+}
+
 export function ListaWhatsapp({ itensIniciais, origem, remetente }: Props) {
   const router = useRouter();
   const [itens, setItens] = useState<ItemFila[] | null>(itensIniciais);
   const [mensagens, setMensagens] = useState<Record<string, Mensagem>>({});
   const [enviadas, setEnviadas] = useState<Set<string>>(new Set());
+  const [responderam, setResponderam] = useState<Set<string>>(new Set());
   const [escrevendoTodas, setEscrevendoTodas] = useState(false);
   const escrevendo = useRef(new Set<string>());
 
@@ -79,12 +91,16 @@ export function ListaWhatsapp({ itensIniciais, origem, remetente }: Props) {
     const t = setTimeout(() => {
       setMensagens((m) => {
         const novo = { ...m };
-        for (const i of comWhats) if (!novo[i.leadId] && i.mensagem) novo[i.leadId] = { texto: i.mensagem, status: "pronta" };
+        for (const i of comWhats) {
+          if (novo[i.leadId]) continue;
+          if (i.jaAbordado) novo[i.leadId] = { texto: mensagemRetomada(i, remetente), status: "retomada" };
+          else if (i.mensagem) novo[i.leadId] = { texto: i.mensagem, status: "pronta" };
+        }
         return novo;
       });
     }, 0);
     return () => clearTimeout(t);
-  }, [comWhats]);
+  }, [comWhats, remetente]);
 
   const escrever = useCallback(
     async (item: ItemFila) => {
@@ -108,14 +124,14 @@ export function ListaWhatsapp({ itensIniciais, origem, remetente }: Props) {
   // As três primeiras sem mensagem já começam a ser escritas.
   useEffect(() => {
     const t = setTimeout(() => {
-      for (const i of comWhats.filter((x) => !x.mensagem).slice(0, 3)) void escrever(i);
+      for (const i of comWhats.filter((x) => !x.mensagem && !x.jaAbordado).slice(0, 3)) void escrever(i);
     }, 0);
     return () => clearTimeout(t);
   }, [comWhats, escrever]);
 
   async function escreverTodas() {
     setEscrevendoTodas(true);
-    const faltam = pendentes.filter((i) => mensagens[i.leadId]?.status !== "pronta");
+    const faltam = pendentes.filter((i) => !i.jaAbordado && mensagens[i.leadId]?.status !== "pronta");
     // Duas por vez: rápido sem estourar o limite da IA.
     for (let k = 0; k < faltam.length; k += 2) await Promise.all(faltam.slice(k, k + 2).map((i) => escrever(i)));
     setEscrevendoTodas(false);
@@ -128,6 +144,16 @@ export function ListaWhatsapp({ itensIniciais, origem, remetente }: Props) {
     window.open(`https://wa.me/${item.numeroWhats}?text=${encodeURIComponent(texto)}`, "_blank", "noopener,noreferrer");
     void acaoLead(item.leadId, { acao: "contato", tipo: "whatsapp_aberto" });
     setEnviadas((e) => new Set(e).add(item.leadId));
+  }
+
+  async function marcarResposta(item: ItemFila) {
+    const r = await acaoLead(item.leadId, { acao: "respondeu" });
+    if (!r.ok) {
+      toast.error("Não foi possível marcar.");
+      return;
+    }
+    setResponderam((x) => new Set(x).add(item.leadId));
+    toast.success(`${item.nome} respondeu — foi para "Respondeu" no CRM.`);
   }
 
   function remover(item: ItemFila) {
@@ -185,7 +211,7 @@ export function ListaWhatsapp({ itensIniciais, origem, remetente }: Props) {
           <button
             type="button"
             onClick={() => void escreverTodas()}
-            disabled={escrevendoTodas || pendentes.every((i) => mensagens[i.leadId]?.status === "pronta")}
+            disabled={escrevendoTodas || pendentes.every((i) => i.jaAbordado || mensagens[i.leadId]?.status === "pronta")}
             className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-fio px-3.5 text-sm hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {escrevendoTodas ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4 text-ciano" />} Escrever todas com IA
@@ -244,21 +270,35 @@ export function ListaWhatsapp({ itensIniciais, origem, remetente }: Props) {
                         )}
                       </div>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        {[item.categoria, [item.cidade, item.estado].filter(Boolean).join("/")].filter(Boolean).join(" · ")}
+                        {[nichoDe(item.categoria, item.cidade), [item.cidade, item.estado].filter(Boolean).join("/")].filter(Boolean).join(" · ")}
                         {item.avaliacaoNota !== null && (
                           <span className="ml-1.5 inline-flex items-center gap-0.5">
                             <Star className="size-3 fill-current text-aviso" /> {item.avaliacaoNota.toLocaleString("pt-BR")} ({item.avaliacaoQtd ?? 0})
                           </span>
                         )}
-                        {item.motivos[0] && <span className="ml-1.5">· {item.motivos[0]}</span>}
+                        {item.motivos[0] && !item.jaAbordado && <span className="ml-1.5">· {item.motivos[0]}</span>}
                       </p>
+                      {item.jaAbordado && (
+                        <span className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-aviso/30 bg-aviso/10 px-2 py-0.5 text-[0.7rem] font-semibold text-aviso">
+                          Retomada{item.ultimoContato ? ` · último contato ${haQuantoTempo(item.ultimoContato)}` : ""}
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  {feita ? (
+                  {responderam.has(item.leadId) ? (
                     <p className="mt-3 flex items-center gap-1.5 text-sm text-sucesso">
-                      <Check className="size-4" /> Aberta no WhatsApp — marcada como abordada no CRM.
+                      <Check className="size-4" /> Respondeu — está em “Respondeu” no CRM.
                     </p>
+                  ) : feita ? (
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                      <p className="flex items-center gap-1.5 text-sm text-sucesso">
+                        <Check className="size-4" /> Aberta no WhatsApp — marcada como abordada.
+                      </p>
+                      <button type="button" onClick={() => void marcarResposta(item)} className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-sucesso/40 px-3 text-xs font-semibold text-sucesso hover:bg-sucesso/10">
+                        <Reply className="size-3.5" /> Respondeu
+                      </button>
+                    </div>
                   ) : (
                     <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-stretch">
                       <div className="min-w-0 flex-1">
@@ -282,6 +322,14 @@ export function ListaWhatsapp({ itensIniciais, origem, remetente }: Props) {
                           >
                             <Sparkles className="size-4 text-ciano" /> Escrever mensagem com IA
                           </button>
+                        )}
+                        {m?.status === "retomada" && (
+                          <p className="mt-1 flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
+                            Mensagem de retomada — edite se quiser.
+                            <button type="button" onClick={() => void marcarResposta(item)} className="cursor-pointer font-semibold text-sucesso hover:underline">
+                              Já respondeu? Marcar
+                            </button>
+                          </p>
                         )}
                         {m?.status === "simples" && <p className="mt-1 text-xs text-aviso">A IA não respondeu agora; deixei uma mensagem simples, sem dados inventados. Edite se quiser.</p>}
                       </div>

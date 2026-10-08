@@ -7,6 +7,7 @@ import {
   Map,
   Megaphone,
   Search,
+  Send,
   Settings,
   Sparkles,
   SquareKanban,
@@ -39,6 +40,7 @@ export const GRUPOS_NAV: Array<{ titulo: string; itens: ItemNav[] }> = [
   {
     titulo: "Abordagem",
     itens: [
+      { href: "/abordar", rotulo: "Abordar", icone: Send },
       { href: "/campanhas", rotulo: "Campanhas", icone: Megaphone, contador: "campanhas" },
       { href: "/mensagens", rotulo: "Mensagens IA", icone: Sparkles },
       { href: "/emails", rotulo: "E-mails", icone: Mail, contador: "emails" },

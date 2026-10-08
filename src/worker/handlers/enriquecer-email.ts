@@ -3,8 +3,15 @@ import type { Client } from "@libsql/client";
 import { agora } from "@/db/cliente";
 import { getOsmUserAgent } from "@/lib/ambiente";
 import { ehRedeSocial, extrairDominio } from "@/lib/leads/classificacao";
+import { recalcularScores } from "@/services/registro";
 
-export type PayloadEnriquecer = { limite: number };
+/**
+ * `buscaId`: só as empresas daquela busca, logo depois dela — é o que faz
+ * o e-mail aparecer em minutos, e não quando o robô de fundo chegar lá.
+ * `orcamentoMs`: quando roda na própria requisição (`after()`), o tempo
+ * que sobra da função.
+ */
+export type PayloadEnriquecer = { limite: number; buscaId?: string; orcamentoMs?: number };
 
 /**
  * Procura e-mail no site da própria empresa.
@@ -24,7 +31,10 @@ export type PayloadEnriquecer = { limite: number };
  */
 
 const TETO_POR_JOB = 15;
+const TETO_POR_BUSCA = 60;
 const ORCAMENTO_MS = 3 * 60 * 1000;
+/** Sites diferentes visitados ao mesmo tempo. Cada site continua recebendo uma visita por vez. */
+const SIMULTANEOS = 5;
 
 /** E-mails que aparecem em todo site e não são da empresa. */
 const IGNORAR = /(example\.com|sentry\.io|wixpress|w3\.org|schema\.org|googleapis|\.png$|\.jpg$|\.svg$|\.webp$|noreply|no-reply|donotreply)/i;
@@ -44,7 +54,9 @@ const PROVEDORES_PESSOAIS = new Set([
 ]);
 
 export async function processarEnriquecimento(banco: Client, payload: PayloadEnriquecer): Promise<string> {
-  const limite = Math.min(Math.max(payload.limite, 1), TETO_POR_JOB);
+  const daBusca = typeof payload.buscaId === "string" && payload.buscaId.length > 0;
+  const limite = Math.min(Math.max(payload.limite, 1), daBusca ? TETO_POR_BUSCA : TETO_POR_JOB);
+  const orcamento = Math.min(payload.orcamentoMs ?? ORCAMENTO_MS, ORCAMENTO_MS);
   const inicio = Date.now();
 
   const { rows } = await banco.execute({
@@ -53,57 +65,71 @@ export async function processarEnriquecimento(banco: Client, payload: PayloadEnr
             AND (email IS NULL OR email = '' OR instagram IS NULL)
             AND site_verificado_em IS NULL
             AND status_site = 'tem_site'
+            ${daBusca ? "AND id IN (SELECT empresa_id FROM busca_resultados WHERE busca_id = ?)" : ""}
           ORDER BY criado_em DESC LIMIT ?`,
-    args: [limite],
+    args: daBusca ? [payload.buscaId!, limite] : [limite],
   });
 
   let achados = 0;
   let visitados = 0;
 
-  for (const r of rows) {
-    if (Date.now() - inicio > ORCAMENTO_MS) break;
-    const id = String(r.id);
-    const site = String(r.website);
-    visitados += 1;
-
-    const achado = await procurarNoSite(site).catch(() => ({ email: null, instagram: null, facebook: null }));
-
-    await banco.execute({
-      sql: `UPDATE empresas
-            SET email = COALESCE(email, ?),
-                email_origem = CASE WHEN email IS NULL AND ? IS NOT NULL THEN 'site' ELSE email_origem END,
-                instagram = COALESCE(instagram, ?),
-                facebook = COALESCE(facebook, ?),
-                site_verificado_em = ?,
-                atualizado_em = ?
-            WHERE id = ?`,
-      args: [achado.email, achado.email, achado.instagram, achado.facebook, agora(), agora(), id],
-    });
-
-    if (achado.email) achados += 1;
-  }
+  // Fila simples com SIMULTANEOS trabalhadores: cada um pega o próximo
+  // site enquanto houver tempo.
+  const pendentes = [...rows];
+  const trabalhador = async () => {
+    for (;;) {
+      if (Date.now() - inicio > orcamento) return;
+      const r = pendentes.shift();
+      if (!r) return;
+      visitados += 1;
+      if (await visitarEGravar(banco, String(r.id), String(r.website))) achados += 1;
+    }
+  };
+  await Promise.all(Array.from({ length: SIMULTANEOS }, trabalhador));
 
   // Segunda passada: empresas da Receita cujo e-mail está num domínio
-  // próprio. Se o domínio serve uma página, é o site da empresa — e só
-  // então a linha ganha `website` e muda de "sem site" para "tem site".
-  const dominios = await verificarDominiosDeEmail(banco, limite, inicio);
+  // próprio (só no modo geral; numa busca do Google não há Receita).
+  const dominios = daBusca ? { verificados: 0, comSite: 0, restantes: 0 } : await verificarDominiosDeEmail(banco, limite, inicio);
 
-  const { rows: restantes } = await banco.execute(
-    `SELECT COUNT(*) AS n FROM empresas
-     WHERE website IS NOT NULL AND website <> '' AND (email IS NULL OR email = '' OR instagram IS NULL)
-       AND site_verificado_em IS NULL AND status_site = 'tem_site'`,
-  );
+  const { rows: restantes } = await banco.execute({
+    sql: `SELECT COUNT(*) AS n FROM empresas
+          WHERE website IS NOT NULL AND website <> '' AND (email IS NULL OR email = '' OR instagram IS NULL)
+            AND site_verificado_em IS NULL AND status_site = 'tem_site'
+            ${daBusca ? "AND id IN (SELECT empresa_id FROM busca_resultados WHERE busca_id = ?)" : ""}`,
+    args: daBusca ? [payload.buscaId!] : [],
+  });
   const faltam = Number(restantes[0]?.n ?? 0);
 
   // Continua sozinho enquanto houver site por visitar.
   if ((faltam > 0 && visitados > 0) || (dominios.restantes > 0 && dominios.verificados > 0)) {
     await banco.execute({
       sql: `INSERT INTO jobs (id, tipo, payload, status) VALUES (?, 'enriquecer_email', ?, 'pendente')`,
-      args: [crypto.randomUUID(), JSON.stringify({ limite: TETO_POR_JOB })],
+      args: [crypto.randomUUID(), JSON.stringify(daBusca ? { limite: TETO_POR_BUSCA, buscaId: payload.buscaId } : { limite: TETO_POR_JOB })],
     });
   }
 
   return `${visitados} site(s) visitado(s), ${achados} e-mail(s) encontrado(s), ${dominios.verificados} domínio(s) de e-mail conferido(s) (${dominios.comSite} com site), ${faltam} restante(s)`;
+}
+
+/** Visita um site e grava o que achou. Verdadeiro se achou e-mail. */
+async function visitarEGravar(banco: Client, id: string, site: string): Promise<boolean> {
+  const achado = await procurarNoSite(site).catch(() => ({ email: null, instagram: null, facebook: null }));
+
+  await banco.execute({
+    sql: `UPDATE empresas
+          SET email = COALESCE(email, ?),
+              email_origem = CASE WHEN email IS NULL AND ? IS NOT NULL THEN 'site' ELSE email_origem END,
+              instagram = COALESCE(instagram, ?),
+              facebook = COALESCE(facebook, ?),
+              site_verificado_em = ?,
+              atualizado_em = ?
+          WHERE id = ?`,
+    args: [achado.email, achado.email, achado.instagram, achado.facebook, agora(), agora(), id],
+  });
+
+  // E-mail novo muda o score (canal a mais para abordar).
+  if (achado.email) await recalcularScores(banco, [id]);
+  return Boolean(achado.email);
 }
 
 async function verificarDominiosDeEmail(

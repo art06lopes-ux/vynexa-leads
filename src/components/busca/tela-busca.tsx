@@ -12,6 +12,7 @@ import {
   Radar,
   RefreshCw,
   Search,
+  Send,
   SlidersHorizontal,
   Sparkles,
   X,
@@ -80,6 +81,8 @@ type EstadoBusca = {
   erro: string | null;
   resumo: Resumo | null;
   rotulo: string;
+  /** Concluída, mas ainda visitando os sites atrás de e-mail. */
+  procurandoEmails?: boolean;
 };
 
 const ETAPAS_PROGRESSO = ["Consultando Google Maps…", "Encontrando empresas…", "Analisando presença digital…", "Calculando oportunidade…", "Preparando resultados…"];
@@ -294,12 +297,12 @@ export function TelaBusca({
 
   // Acompanha o andamento.
   useEffect(() => {
-    if (!estado || estado.status === "concluida" || estado.status === "erro") return;
+    if (!estado || estado.status === "erro" || (estado.status === "concluida" && !estado.procurandoEmails)) return;
     let parar = false;
     const consultar = async () => {
       try {
         const r = await fetch(`/api/buscas/${estado.id}`, { cache: "no-store" });
-        const d = (await r.json()) as { busca?: { status: EstadoBusca["status"]; etapa_atual: string | null; erro: string | null; consulta_natural: string | null; segmento: string; cidade: string | null }; resumo?: Resumo | null; erro?: string };
+        const d = (await r.json()) as { busca?: { status: EstadoBusca["status"]; etapa_atual: string | null; erro: string | null; consulta_natural: string | null; segmento: string; cidade: string | null }; resumo?: Resumo | null; procurandoEmails?: boolean; erro?: string };
         if (parar || !d.busca) return;
         setEstado((a) =>
           a && a.id === estado.id
@@ -309,6 +312,7 @@ export function TelaBusca({
                 etapa: d.busca!.etapa_atual,
                 erro: d.busca!.erro,
                 resumo: d.resumo ?? null,
+                procurandoEmails: Boolean(d.procurandoEmails),
                 rotulo: a.rotulo || d.busca!.consulta_natural || `${d.busca!.segmento}${d.busca!.cidade ? ` em ${d.busca!.cidade}` : ""}`,
               }
             : a,
@@ -318,12 +322,12 @@ export function TelaBusca({
       }
     };
     void consultar();
-    const id = setInterval(consultar, 1500);
+    const id = setInterval(consultar, estado.status === "concluida" ? 4000 : 1500);
     return () => {
       parar = true;
       clearInterval(id);
     };
-  }, [estado?.id, estado?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [estado?.id, estado?.status, estado?.procurandoEmails]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtrosAtivos = [f.site !== "todos", f.comWhatsapp, f.comEmail, Boolean(f.avaliacoesMin), Boolean(f.notaMin), f.scoreMin > 0, f.raioKm > 0, Boolean(f.bairro), Boolean(f.cep)].filter(Boolean).length;
 
@@ -653,7 +657,7 @@ function Resultados({ estado, filtros, aoLimpar }: { estado: EstadoBusca; filtro
         { v: r.total, t: "empresas" },
         { v: r.semSite, t: "sem site" },
         { v: r.comWhatsapp, t: "com WhatsApp" },
-        { v: r.comInstagram, t: "com Instagram" },
+        { v: r.comEmail, t: estado.procurandoEmails ? "com e-mail (procurando…)" : "com e-mail" },
         { v: r.score80, t: "score > 80" },
         { v: r.excelentes, t: "excelentes oportunidades" },
       ]
@@ -685,6 +689,17 @@ function Resultados({ estado, filtros, aoLimpar }: { estado: EstadoBusca; filtro
           ))}
         </div>
         {r?.aviso && <p className="mt-3 text-xs text-aviso">{r.aviso}</p>}
+        {r && (r.comWhatsapp > 0 || r.comEmail > 0) && (
+          <div className="mt-5 flex flex-col gap-3 rounded-xl border border-white/15 bg-white/[0.07] p-3 sm:flex-row sm:items-center">
+            <p className="flex-1 text-sm text-white/80">
+              Abordar todas de uma vez: <b className="text-white">{r.comWhatsapp}</b> pelo WhatsApp em sequência e <b className="text-white">{r.comEmail}</b> por e-mail
+              {estado.procurandoEmails ? " (ainda procurando e-mails nos sites)" : ""}.
+            </p>
+            <Link href={`/abordar?busca=${estado.id}`} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-[#0a1330] hover:bg-white/90">
+              <Send className="size-4" /> Abordar estas empresas
+            </Link>
+          </div>
+        )}
       </motion.div>
 
       <div className="flex flex-wrap items-center gap-2">

@@ -1,11 +1,12 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Download, LoaderCircle, Megaphone, Sparkles, Wand2, X } from "lucide-react";
+import { ChevronDown, Download, LoaderCircle, Megaphone, Send, Sparkles, Wand2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { CHAVE_ABORDAR } from "@/components/abordar/fila-abordagem";
 import { cn } from "@/lib/utils";
 
 /**
@@ -197,9 +198,24 @@ export function BarraMassa({ ids, aoLimpar, origem }: { ids: Set<string>; aoLimp
               guardarParaCampanha(lista, origem);
               router.push("/campanhas/nova");
             }}
+            className={cn(botao, "hover:bg-white/5")}
+          >
+            <Megaphone className="size-4 text-ciano" /> Campanha
+          </button>
+          <button
+            type="button"
+            disabled={ocupado !== null}
+            onClick={() => {
+              try {
+                sessionStorage.setItem(CHAVE_ABORDAR, JSON.stringify(lista));
+              } catch {
+                /* navegador sem sessionStorage: a tela abre vazia e avisa */
+              }
+              router.push("/abordar?selecao=1");
+            }}
             className={cn(botao, "bg-azul text-white hover:bg-brilho")}
           >
-            <Megaphone className="size-4" /> Criar campanha
+            <Send className="size-4" /> Abordar
           </button>
           <button type="button" disabled={ocupado !== null} onClick={() => exportar("csv")} className={cn(botao, "hover:bg-white/5")} title="Exportar CSV">
             {ocupado === "exportar" ? <LoaderCircle className="size-4 animate-spin" /> : <Download className="size-4" />}

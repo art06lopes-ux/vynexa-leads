@@ -109,7 +109,12 @@ export async function processarBuscaProvedor(banco: Client, payload: PayloadBusc
   // Trabalho de fundo: visitar os sites (qualidade + e-mail) e analisar
   // com IA os leads de prioridade alta.
   await enfileirarUmaVez(banco, "avaliar_site", { limite: 20 });
-  await enfileirarUmaVez(banco, "enriquecer_email", { limite: 15 });
+  // E-mails: visita os sites DESTA busca já (a rota roda este job logo
+  // depois da busca, na mesma requisição; o que sobrar fica para o worker).
+  await banco.execute({
+    sql: `INSERT INTO jobs (id, tipo, payload, status) VALUES (?, 'enriquecer_email', ?, 'pendente')`,
+    args: [novoId(), JSON.stringify({ limite: 60, buscaId: busca.id })],
+  });
   if (registro.novosIds.length > 0) {
     const { rows: altas } = await banco.execute({
       sql: `SELECT id FROM leads WHERE prioridade = 'alta' AND analisado_em IS NULL AND empresa_id IN (${registro.novosIds.slice(0, 90).map(() => "?").join(",")})`,

@@ -105,7 +105,21 @@ export const POST = rota(async (req) => {
     "write",
   );
 
-  after(() => executarAgora(getBanco(), jobId));
+  after(async () => {
+    const inicio = Date.now();
+    await executarAgora(getBanco(), jobId);
+    // Em seguida, os e-mails nos sites desta busca, no tempo que sobrar.
+    const { rows } = await getBanco().execute({
+      sql: `SELECT id FROM jobs WHERE tipo = 'enriquecer_email' AND status = 'pendente' AND payload LIKE ? LIMIT 1`,
+      args: [`%${buscaId}%`],
+    });
+    const restante = 52_000 - (Date.now() - inicio);
+    if (rows[0] && restante > 8_000) {
+      const id = String(rows[0].id);
+      await getBanco().execute({ sql: `UPDATE jobs SET payload = ? WHERE id = ?`, args: [JSON.stringify({ limite: 60, buscaId, orcamentoMs: restante - 4_000 }), id] });
+      await executarAgora(getBanco(), id);
+    }
+  });
   return json({ id: buscaId }, 202);
 });
 

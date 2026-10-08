@@ -28,7 +28,7 @@ export const maxDuration = 60;
 
 const Acao = z.discriminatedUnion("acao", [
   z.object({ acao: z.literal("analisar") }),
-  z.object({ acao: z.literal("abordagem") }),
+  z.object({ acao: z.literal("abordagem"), soWhatsapp: z.boolean().optional() }),
   z.object({ acao: z.literal("etapa"), etapa: z.enum(ETAPAS as [string, ...string[]]), motivo: z.string().max(300).optional() }),
   z.object({ acao: z.literal("nota"), texto: z.string().trim().min(1).max(2000) }),
   z.object({ acao: z.literal("contato"), tipo: z.enum(["whatsapp_aberto", "mensagem_copiada", "contato_registrado"]), detalhe: z.string().max(200).optional() }),
@@ -71,7 +71,7 @@ export const POST = rota(async (req, ctx: { params: Promise<{ id: string }> }) =
       return json({ analise: await analisarEGravar(banco, id) });
     case "abordagem":
       await limitar("ia", 120, 3600);
-      return json(await gerarAbordagens(banco, id));
+      return json(await gerarAbordagens(banco, id, { semEmail: corpo.soWhatsapp === true }));
     case "etapa":
       return json(await mudarEtapa(banco, id, corpo.etapa as never, corpo.motivo));
     case "nota":

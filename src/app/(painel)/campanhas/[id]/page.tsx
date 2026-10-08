@@ -70,7 +70,7 @@ export default async function PaginaCampanha({ params }: PageProps<"/campanhas/[
       {c.vendas_centavos > 0 && <p className="text-sm text-sucesso">Vendas vindas desta campanha: {formatarDinheiro(c.vendas_centavos)}</p>}
 
       <div className="grid gap-5 xl:grid-cols-12">
-        <div className="space-y-5 xl:col-span-8">
+        <div className="min-w-0 space-y-5 xl:col-span-8">
           <Cartao titulo="Primeira abordagem" subtitulo={`${principais.length} e-mail(s) — os três primeiros já abertos para revisão`}>
             <PreviewsEnvios campanhaId={c.id} envios={principais} editavel />
           </Cartao>
@@ -80,7 +80,7 @@ export default async function PaginaCampanha({ params }: PageProps<"/campanhas/[
             </Cartao>
           )}
         </div>
-        <div className="xl:col-span-4">
+        <div className="min-w-0 xl:col-span-4">
           <Cartao titulo="Fila" subtitulo="Estado de cada envio">
             <ul className="space-y-2 text-sm">
               {Object.entries(porStatus)

@@ -8,7 +8,14 @@ export const GET = rota(async (_req, ctx: { params: Promise<{ id: string }> }) =
   const { rows } = await getBanco().execute({ sql: `SELECT * FROM buscas WHERE id = ?`, args: [id] });
   if (!rows[0]) throw new ErroApi("Busca não encontrada.", 404);
   const busca = plano<Busca>(rows[0]);
-  // Buscas do OSM (job antigo) não gravam resumo: calcula na hora.
-  const resumo = busca.resumo ? JSON.parse(busca.resumo) : busca.status === "concluida" ? await resumir(getBanco(), id, null) : null;
-  return json({ busca, resumo });
+  // Concluída: o resumo é recalculado a cada consulta, porque os e-mails
+  // continuam chegando (visita aos sites) depois que a busca termina.
+  const banco = getBanco();
+  const salvo = busca.resumo ? (JSON.parse(busca.resumo) as { aviso?: string | null }) : null;
+  const resumo = busca.status === "concluida" ? await resumir(banco, id, salvo?.aviso ?? null) : salvo;
+  const { rows: pendentes } = await banco.execute({
+    sql: `SELECT 1 FROM jobs WHERE tipo = 'enriquecer_email' AND status IN ('pendente', 'em_andamento') AND payload LIKE ? LIMIT 1`,
+    args: [`%${id}%`],
+  });
+  return json({ busca, resumo, procurandoEmails: busca.status === "concluida" && pendentes.length > 0 });
 });

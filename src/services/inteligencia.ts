@@ -116,7 +116,11 @@ function argumentoSalvo(lead: Lead): { argumento: string | null; cta: string | n
 }
 
 /** MessageGenerator + EmailGenerator: todas as versões, gravadas em `mensagens`. */
-export async function gerarAbordagens(banco: Client, leadId: string): Promise<{ versoes: VersoesMensagem; email: EmailGerado | null }> {
+export async function gerarAbordagens(
+  banco: Client,
+  leadId: string,
+  opcoes: { semEmail?: boolean } = {},
+): Promise<{ versoes: VersoesMensagem; email: EmailGerado | null }> {
   const { dados, lead, empresa } = await carregarDados(banco, leadId);
   const remetente = await carregarRemetente(banco);
   const { argumento, cta } = argumentoSalvo(lead);
@@ -124,7 +128,9 @@ export async function gerarAbordagens(banco: Client, leadId: string): Promise<{ 
   const versoes = await gerarMensagens(dados, remetente, argumento);
   // O e-mail é gerado mesmo sem endereço conhecido: o operador pode ter
   // o contato por fora e só precisar do texto.
-  const email: EmailGerado | null = await gerarEmail(dados, remetente, argumento, cta);
+  // Na fila do WhatsApp só a mensagem curta importa: pular o e-mail corta
+  // o tempo de espera pela metade.
+  const email: EmailGerado | null = opcoes.semEmail ? null : await gerarEmail(dados, remetente, argumento, cta);
 
   const instante = agora();
   const idioma = empresa.idioma_abordagem;

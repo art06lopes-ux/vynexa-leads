@@ -1,8 +1,8 @@
-import { obterIA } from "@/integrations/ai";
 import type { EsquemaResposta } from "@/integrations/ai/tipos";
 import { formatarDinheiro } from "@/lib/pagamento/dinheiro";
 
 import { blocoFatos, REGRAS_ABSOLUTAS, SaidaInvalida, validarTexto, type DadosLead, type ProdutoCatalogo } from "./contexto";
+import { gerarConferido } from "./gerar";
 
 /**
  * SalesOpportunityAnalyzer — o que oferecer a este lead.
@@ -103,5 +103,5 @@ export function validarOportunidade(bruto: unknown, numeros: Set<string>, catalo
 
 export async function analisarOportunidade(d: DadosLead, catalogo: ProdutoCatalogo[]): Promise<OportunidadeVenda> {
   const { instrucao, numeros } = instrucaoOportunidade(d, catalogo);
-  return validarOportunidade(await obterIA().gerarJson(instrucao, ESQUEMA), numeros, catalogo);
+  return gerarConferido(instrucao, ESQUEMA, (b) => validarOportunidade(b, numeros, catalogo));
 }

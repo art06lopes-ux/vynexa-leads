@@ -1,7 +1,7 @@
-import { obterIA } from "@/integrations/ai";
 import type { EsquemaResposta } from "@/integrations/ai/tipos";
 
 import { blocoFatos, blocoRemetente, nomeIdioma, REGRAS_ABSOLUTAS, SaidaInvalida, validarTexto, type DadosLead, type Remetente } from "./contexto";
+import { gerarConferido } from "./gerar";
 
 /**
  * FollowUpGenerator — as retomadas depois da primeira abordagem.
@@ -86,5 +86,5 @@ export async function gerarFollowUps(
   dias: number[],
 ): Promise<FollowUp[]> {
   const { instrucao, numeros } = instrucaoFollowUp(d, r, primeira, dias);
-  return validarFollowUps(await obterIA().gerarJson(instrucao, ESQUEMA), numeros, dias, r.nome);
+  return gerarConferido(instrucao, ESQUEMA, (b) => validarFollowUps(b, numeros, dias, r.nome));
 }

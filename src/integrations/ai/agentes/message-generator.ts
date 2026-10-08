@@ -1,4 +1,3 @@
-import { obterIA } from "@/integrations/ai";
 import type { EsquemaResposta } from "@/integrations/ai/tipos";
 
 import {
@@ -10,6 +9,7 @@ import {
   type DadosLead,
   type Remetente,
 } from "./contexto";
+import { gerarConferido } from "./gerar";
 
 /**
  * MessageGenerator — as versões de abordagem para um lead.
@@ -78,5 +78,5 @@ export function validarMensagens(bruto: unknown, numeros: Set<string>, remetente
 
 export async function gerarMensagens(d: DadosLead, r: Remetente, argumento: string | null): Promise<VersoesMensagem> {
   const { instrucao, numeros } = instrucaoMensagens(d, r, argumento);
-  return validarMensagens(await obterIA().gerarJson(instrucao, ESQUEMA), numeros, r.nome);
+  return gerarConferido(instrucao, ESQUEMA, (b) => validarMensagens(b, numeros, r.nome));
 }

@@ -1,8 +1,8 @@
-import { obterIA } from "@/integrations/ai";
 import type { EsquemaResposta } from "@/integrations/ai/tipos";
 import type { Prioridade } from "@/db/tipos";
 
 import { blocoFatos, REGRAS_ABSOLUTAS, SaidaInvalida, validarTexto, type DadosLead } from "./contexto";
+import { gerarConferido } from "./gerar";
 
 /**
  * LeadAnalyzer — lê os fatos e escreve o diagnóstico para o operador.
@@ -74,5 +74,5 @@ export function validarAnaliseLead(bruto: unknown, numeros: Set<string>): Analis
 
 export async function analisarLead(d: DadosLead): Promise<AnaliseLead> {
   const { instrucao, numeros } = instrucaoLeadAnalyzer(d);
-  return validarAnaliseLead(await obterIA().gerarJson(instrucao, ESQUEMA), numeros);
+  return gerarConferido(instrucao, ESQUEMA, (b) => validarAnaliseLead(b, numeros));
 }

@@ -1,7 +1,7 @@
-import { obterIA } from "@/integrations/ai";
 import type { EsquemaResposta } from "@/integrations/ai/tipos";
 
 import { blocoFatos, blocoRemetente, REGRAS_ABSOLUTAS, SaidaInvalida, validarTexto, type DadosLead, type ProdutoCatalogo, type Remetente } from "./contexto";
+import { gerarConferido } from "./gerar";
 
 /**
  * ProposalGenerator — o texto da proposta comercial.
@@ -96,5 +96,5 @@ export function validarProposta(bruto: unknown, numeros: Set<string>): ConteudoP
 
 export async function gerarProposta(d: DadosLead, r: Remetente, produto: ProdutoCatalogo | null, entregaveisProduto: string[]): Promise<ConteudoProposta> {
   const { instrucao, numeros } = instrucaoProposta(d, r, produto, entregaveisProduto);
-  return validarProposta(await obterIA().gerarJson(instrucao, ESQUEMA), numeros);
+  return gerarConferido(instrucao, ESQUEMA, (b) => validarProposta(b, numeros));
 }

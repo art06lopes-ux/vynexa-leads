@@ -129,6 +129,18 @@ export function blocoRemetente(r: Remetente): string {
 export class SaidaInvalida extends Error {}
 
 /**
+ * Um número na forma que se compara: "1.793" e "1793" (milhar com ponto,
+ * como se escreve em português) são o mesmo; "4,8" e "4.8" também.
+ */
+export function canonico(n: string): string {
+  const t = n.trim();
+  // Grupos de três dígitos depois de ponto ou vírgula: separador de milhar.
+  if (/^\d{1,3}([.,]\d{3})+$/.test(t)) return t.replace(/[.,]/g, "");
+  // O resto com vírgula é decimal brasileiro.
+  return t.replace(",", ".");
+}
+
+/**
  * Confere um texto gerado antes de ele chegar ao operador.
  *
  * A checagem de números é o que pega a invenção mais comum: o modelo
@@ -155,11 +167,12 @@ export function validarTexto(
   }
 
   const extras = opcoes.extrasPermitidos ?? "";
-  for (const m of t.matchAll(/\d+(?:[.,]\d+)?/g)) {
-    const n = m[0];
+  const permitidos = new Set([...opcoes.numeros].map(canonico));
+  for (const m of t.matchAll(/\d+(?:[.,]\d+)*/g)) {
+    const n = m[0].replace(/[.,]$/, "");
     const decimal = /[.,]/.test(n);
     if (!decimal && n.length < 2) continue;
-    if (opcoes.numeros.has(n) || opcoes.numeros.has(n.replace(",", ".")) || extras.includes(n)) continue;
+    if (opcoes.numeros.has(n) || permitidos.has(canonico(n)) || extras.includes(n)) continue;
     throw new SaidaInvalida(`${campo}: cita "${n}", que não está nos dados da empresa.`);
   }
   return t;

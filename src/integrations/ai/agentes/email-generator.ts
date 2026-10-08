@@ -1,4 +1,3 @@
-import { obterIA } from "@/integrations/ai";
 import type { EsquemaResposta } from "@/integrations/ai/tipos";
 
 import {
@@ -11,6 +10,7 @@ import {
   type DadosLead,
   type Remetente,
 } from "./contexto";
+import { gerarConferido } from "./gerar";
 
 /**
  * EmailGenerator — o e-mail de primeira abordagem: assunto, saudação,
@@ -66,5 +66,5 @@ export function validarEmailGerado(bruto: unknown, numeros: Set<string>, remeten
 
 export async function gerarEmail(d: DadosLead, r: Remetente, argumento: string | null, cta: string | null): Promise<EmailGerado> {
   const { instrucao, numeros } = instrucaoEmail(d, r, argumento, cta);
-  return validarEmailGerado(await obterIA().gerarJson(instrucao, ESQUEMA), numeros, r.nome);
+  return gerarConferido(instrucao, ESQUEMA, (b) => validarEmailGerado(b, numeros, r.nome));
 }

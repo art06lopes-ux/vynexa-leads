@@ -263,3 +263,36 @@ describe("nicho de uma busca colada do Maps", () => {
     assert.equal(nichoSemLugar("pet shop", em), "pet shop", "sem lugar no texto, fica igual");
   });
 });
+
+describe("conferência da IA: números e nova tentativa", () => {
+  it("1.793 é o mesmo número que 1793; 4,8 o mesmo que 4.8", async () => {
+    const { validarTexto, canonico } = await import("@/integrations/ai/agentes/contexto");
+    assert.equal(canonico("1.793"), "1793");
+    assert.equal(canonico("12.500.000"), "12500000");
+    assert.equal(canonico("4,8"), "4.8");
+    const numeros = new Set(["1793", "4.8", "4,8"]);
+    assert.ok(validarTexto("Vi as 1.793 avaliações, nota 4,8 no Google.", { numeros, campo: "t" }));
+    assert.throws(() => validarTexto("Mais de 2.000 clientes atendidos por vocês.", { numeros, campo: "t" }), /2\.000/);
+  });
+
+  it("resposta barrada é pedida de novo, dizendo o motivo; três falhas viram mensagem clara", async () => {
+    const { definirIA } = await import("@/integrations/ai");
+    const { gerarConferido } = await import("@/integrations/ai/agentes/gerar");
+    const { validarTexto } = await import("@/integrations/ai/agentes/contexto");
+    const pedidos: string[] = [];
+    const respostas = ["Atendemos mais de 2.000 clientes como vocês.", "Vi a nota 4,8 de vocês no Google e tenho uma ideia."];
+    definirIA({ nome: "falsa", disponivel: async () => true, gerarJson: async <T,>(instrucao: string) => { pedidos.push(instrucao); return { texto: respostas[pedidos.length - 1] ?? respostas[0] } as T; } });
+    try {
+      const conferir = (b: unknown) => validarTexto((b as { texto: string }).texto, { numeros: new Set(["4,8", "4.8"]), campo: "texto" });
+      assert.match(await gerarConferido("escreva", { type: "object" } as never, conferir), /nota 4,8/);
+      assert.equal(pedidos.length, 2);
+      assert.match(pedidos[1], /descartada porque texto: cita "2\.000"/);
+
+      respostas.splice(0, 2, "2.000 clientes", "3.000 clientes");
+      pedidos.length = 0;
+      await assert.rejects(gerarConferido("escreva", { type: "object" } as never, conferir), /A IA tentou 3 vezes/);
+    } finally {
+      definirIA(null);
+    }
+  });
+});

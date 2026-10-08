@@ -26,7 +26,7 @@ export function NovaCampanha({ provedores, provedorPadrao, categorias, cidades }
   const [ids, setIds] = useState<string[]>([]);
   const [origem, setOrigem] = useState<string | null>(null);
   const [resumo, setResumo] = useState<Resumo | null>(null);
-  const [filtro, setFiltro] = useState({ categoria: "", cidade: "", site: "sem", scoreMin: "70", limite: "50" });
+  const [filtro, setFiltro] = useState({ categoria: "", cidade: "", site: "", scoreMin: "", limite: "50" });
   const [buscando, setBuscando] = useState(false);
   const [porFiltro, setPorFiltro] = useState(false);
   const [cfg, setCfg] = useState({ nome: "", descricao: "", provedor: provedorPadrao, ritmo: 20, limite: 80, followup: true, dias: "3, 7" });

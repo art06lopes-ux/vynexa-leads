@@ -50,6 +50,8 @@ export type Kpis = {
   conversao: number | null;
   semSite: number;
   oportunidadesAltas: number;
+  /** Ainda não contatados, com WhatsApp ou e-mail (aba "Para abordar"). */
+  paraAbordar: number;
   campanhasAtivas: number;
   emailsEnviados: number;
 };
@@ -69,6 +71,7 @@ export async function obterKpis(): Promise<Kpis> {
       (SELECT COUNT(*) FROM vendas WHERE status = 'pago') AS vendas,
       (SELECT COUNT(*) FROM empresas WHERE status_site IN ('sem_site','rede_social')) AS sem_site,
       (SELECT COUNT(*) FROM leads WHERE prioridade = 'alta' AND etapa IN ('novo','qualificado')) AS altas,
+      (SELECT COUNT(*) FROM leads l JOIN empresas e ON e.id = l.empresa_id WHERE ${CONDICAO_PARA_ABORDAR}) AS para_abordar,
       (SELECT COUNT(*) FROM campanhas WHERE status IN ('agendada','enviando')) AS camp,
       (SELECT COUNT(*) FROM envios WHERE enviado_em IS NOT NULL) AS enviados
   `);
@@ -89,6 +92,7 @@ export async function obterKpis(): Promise<Kpis> {
     conversao: contatados > 0 ? Math.round((n("vendas") / contatados) * 1000) / 10 : null,
     semSite: n("sem_site"),
     oportunidadesAltas: n("altas"),
+    paraAbordar: n("para_abordar"),
     campanhasAtivas: n("camp"),
     emailsEnviados: n("enviados"),
   };
@@ -179,7 +183,7 @@ export async function melhoresOportunidades(limite = 6): Promise<LeadTop[]> {
     sql: `SELECT l.id lead_id, e.nome, e.cidade, COALESCE(e.categoria_rotulo, e.categoria) categoria, l.score_oportunidade score, l.prioridade,
                  e.status_site, e.site_qualidade, e.avaliacao_qtd, e.avaliacao_nota, e.whatsapp
           FROM leads l JOIN empresas e ON e.id = l.empresa_id
-          WHERE l.etapa IN ('novo','qualificado') AND e.nao_contatar = 0 AND l.score_oportunidade IS NOT NULL
+          WHERE ${CONDICAO_PARA_ABORDAR} AND l.score_oportunidade IS NOT NULL
           ORDER BY l.score_oportunidade DESC, e.avaliacao_qtd DESC NULLS LAST LIMIT ?`,
     args: [limite],
   });
@@ -192,6 +196,23 @@ export async function atividadeRecente(limite = 8): Promise<Array<{ id: string; 
           FROM eventos ev JOIN leads l ON l.id = ev.lead_id JOIN empresas e ON e.id = l.empresa_id
           WHERE ev.tipo <> 'lead_encontrado'
           ORDER BY ev.criado_em DESC LIMIT ?`,
+    args: [limite],
+  });
+  return planos(rows);
+}
+
+/**
+ * Abordados há 3 dias ou mais que ainda não responderam: é quem vale uma
+ * segunda mensagem antes de esfriar de vez.
+ */
+export async function paraRetomar(limite = 5): Promise<Array<{ lead_id: string; nome: string; cidade: string | null; contatado_em: string }>> {
+  const { rows } = await getBanco().execute({
+    sql: `SELECT l.id AS lead_id, e.nome, e.cidade, l.contatado_em
+          FROM leads l JOIN empresas e ON e.id = l.empresa_id
+          WHERE l.etapa = 'abordado' AND l.respondeu_em IS NULL AND e.nao_contatar = 0
+            AND l.contatado_em IS NOT NULL AND l.contatado_em <= datetime('now', '-3 days')
+          ORDER BY l.contatado_em ASC
+          LIMIT ?`,
     args: [limite],
   });
   return planos(rows);

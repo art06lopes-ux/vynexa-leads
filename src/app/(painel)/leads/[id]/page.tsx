@@ -124,7 +124,7 @@ export default async function PaginaLead({ params }: PageProps<"/leads/[id]">) {
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-xs text-white/60">Opportunity Score</p>
+              <p className="text-xs text-white/60">Score de oportunidade</p>
               <p className="font-display text-3xl font-semibold text-white num">
                 {lead.score_oportunidade ?? "–"}
                 <span className="text-base text-white/50">/100</span>
@@ -135,9 +135,11 @@ export default async function PaginaLead({ params }: PageProps<"/leads/[id]">) {
         </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-white/10 pt-4">
+          {/* Um caminho só para o WhatsApp: a caixa "Abordagem", que escreve a
+              mensagem e registra o contato. Este botão leva até ela. */}
           {numeroWhats && (
-            <a href={`https://wa.me/${numeroWhats}`} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#1fa855] px-3 text-sm font-semibold text-white hover:bg-[#25c062]">
-              <MessageCircle className="size-4" /> WhatsApp
+            <a href="#abordagem" className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#1fa855] px-3 text-sm font-semibold text-white hover:bg-[#25c062]">
+              <MessageCircle className="size-4" /> Mandar WhatsApp
             </a>
           )}
           {e.email && (
@@ -152,7 +154,7 @@ export default async function PaginaLead({ params }: PageProps<"/leads/[id]">) {
           )}
           {e.website && (
             <a href={/^https?:/.test(e.website) ? e.website : `https://${e.website}`} target="_blank" rel="noopener noreferrer" className={botaoLink}>
-              <Globe className="size-4" /> Website
+              <Globe className="size-4" /> {e.status_site === "rede_social" ? "Rede social" : "Site"}
             </a>
           )}
           {instagram && (
@@ -230,18 +232,20 @@ export default async function PaginaLead({ params }: PageProps<"/leads/[id]">) {
             )}
           </Cartao>
 
-          <EstudioAbordagem
-            leadId={id}
-            mensagens={det.mensagens}
-            whatsappNumero={numeroWhats}
-            email={e.email}
-            instagramUrl={instagram}
-            naoContatar={e.nao_contatar === 1}
-            remetente={identidade.responsavel}
-            assinatura={assinaturaTexto(ident.identidade)}
-            provedorEmailPronto={provedor.ok}
-            iaConfigurada={iaOk}
-          />
+          <div id="abordagem" className="scroll-mt-24">
+            <EstudioAbordagem
+              leadId={id}
+              mensagens={det.mensagens}
+              whatsappNumero={numeroWhats}
+              email={e.email}
+              instagramUrl={instagram}
+              naoContatar={e.nao_contatar === 1}
+              remetente={identidade.responsavel}
+              assinatura={assinaturaTexto(ident.identidade)}
+              provedorEmailPronto={provedor.ok}
+              iaConfigurada={iaOk}
+            />
+          </div>
 
           {det.envios.length > 0 && (
             <Cartao icone={Mail} titulo="E-mails" subtitulo="Envios para este lead">

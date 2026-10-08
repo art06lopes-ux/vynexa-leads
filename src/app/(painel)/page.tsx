@@ -1,4 +1,4 @@
-import { Activity, Flame, Mail, MapPin, Megaphone, Radar, Search, Sparkles, TrendingUp, Wallet } from "lucide-react";
+import { Activity, Flame, Mail, MapPin, Megaphone, Radar, RotateCcw, Search, Sparkles, TrendingUp, Wallet } from "lucide-react";
 import Link from "next/link";
 
 import { Cartao, Vazio } from "@/components/base/cartao";
@@ -10,15 +10,15 @@ import { Contador } from "@/components/motion/contador";
 import { Entrada, Escalonado, ItemEscalonado } from "@/components/motion/entrada";
 import type { QualidadeSite, StatusSite } from "@/db/tipos";
 import { LimparBuscas } from "@/components/dashboard/limpar-buscas";
-import { atividadeRecente, buscasRecentes, lerIdentidade, melhoresOportunidades, obterKpis, porEtapa, serieDiaria, serieMensal } from "@/db/painel";
+import { atividadeRecente, buscasRecentes, lerIdentidade, melhoresOportunidades, obterKpis, paraRetomar, porEtapa, serieDiaria, serieMensal } from "@/db/painel";
 import { hojePorExtenso, rotuloDia, rotuloMes, saudacao } from "@/lib/datas";
 import { haQuantoTempo } from "@/services/crm";
 import { ROTULO_EVENTO } from "@/services/eventos";
 
-export const metadata = { title: "Dashboard" };
+export const metadata = { title: "Início" };
 
 export default async function Dashboard() {
-  const [identidade, kpis, mensal, receita30, etapas, top, atividade, buscas] = await Promise.all([
+  const [identidade, kpis, mensal, receita30, etapas, top, atividade, buscas, retomar] = await Promise.all([
     lerIdentidade(),
     obterKpis(),
     serieMensal(6),
@@ -27,6 +27,7 @@ export default async function Dashboard() {
     melhoresOportunidades(6),
     atividadeRecente(7),
     buscasRecentes(4),
+    paraRetomar(5),
   ]);
   const fuso = identidade.config.fuso || "America/Manaus";
   const primeiroNome = identidade.responsavel.split(" ")[0];
@@ -36,9 +37,9 @@ export default async function Dashboard() {
       : null;
 
   const estatisticas = [
-    { rotulo: "Leads encontrados", valor: kpis.leads, href: "/leads" },
+    { rotulo: "Encontrados", valor: kpis.leads, href: "/leads" },
     { rotulo: "Qualificados", valor: kpis.qualificados, href: "/leads?etapa=qualificado" },
-    { rotulo: "Contatados", valor: kpis.contatados, href: "/crm" },
+    { rotulo: "Abordados", valor: kpis.contatados, href: "/crm" },
     { rotulo: "Respostas", valor: kpis.respostas, href: "/crm" },
     { rotulo: "Propostas", valor: kpis.propostas, href: "/crm" },
     { rotulo: "Vendas", valor: kpis.vendas, href: "/pagamentos" },
@@ -53,14 +54,14 @@ export default async function Dashboard() {
         </h1>
         <p className="mt-1.5 text-[0.95rem] text-muted-foreground">
           Vamos encontrar sua próxima venda.
-          {kpis.oportunidadesAltas > 0 && (
+          {kpis.paraAbordar > 0 && (
             <>
               {" "}
               Você tem{" "}
               <Link href="/leads?aba=abordar" className="font-semibold text-foreground underline decoration-brilho/50 underline-offset-4 hover:decoration-brilho">
-                {kpis.oportunidadesAltas} {kpis.oportunidadesAltas === 1 ? "oportunidade de alta prioridade" : "oportunidades de alta prioridade"}
-              </Link>{" "}
-              esperando abordagem.
+                {kpis.paraAbordar} {kpis.paraAbordar === 1 ? "empresa para abordar" : "empresas para abordar"}
+              </Link>
+              {kpis.oportunidadesAltas > 0 ? `, ${kpis.oportunidadesAltas} de alta prioridade.` : "."}
             </>
           )}
         </p>
@@ -108,7 +109,7 @@ export default async function Dashboard() {
             <GraficoArea pontos={receita30.map((p) => ({ rotulo: rotuloDia(p.dia), valor: p.valor }))} formato="moeda" altura={110} cor="#6fd3ff" titulo="Receita por dia (30 dias)" />
           </div>
 
-          <Escalonado className="mt-6 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+          <Escalonado className="mt-6 grid grid-cols-2 gap-2.5 sm:grid-cols-3 2xl:grid-cols-6">
             {estatisticas.map((e) => (
               <ItemEscalonado key={e.rotulo}>
                 <Link href={e.href} className="block rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2.5 transition-colors hover:border-white/25 hover:bg-white/10">
@@ -125,9 +126,9 @@ export default async function Dashboard() {
         </Entrada>
 
         <Entrada atraso={0.14} className="xl:col-span-4">
-          <Cartao icone={Flame} titulo="Oportunidades" subtitulo="Os leads com maior score, ainda não abordados" href="/leads?aba=abordar" className="h-full" corpoClassName="px-3 pb-3">
+          <Cartao icone={Flame} titulo="Para abordar" subtitulo="Melhor score primeiro, ainda não contatados" href="/leads?aba=abordar" className="h-full" corpoClassName="px-3 pb-3">
             {top.length === 0 ? (
-              <Vazio icone={Radar} titulo="Nenhuma oportunidade ainda" descricao="Faça uma busca por categoria e localização para começar." acao={<BotaoBuscar />} className="py-8" />
+              <Vazio icone={Radar} titulo="Ninguém para abordar agora" descricao="Faça uma busca: as empresas com WhatsApp ou e-mail aparecem aqui." acao={<BotaoBuscar />} className="py-8" />
             ) : (
               <ul className="space-y-1">
                 {top.map((l) => (
@@ -148,14 +149,13 @@ export default async function Dashboard() {
                 ))}
               </ul>
             )}
-            {buscas.length > 0 && <LimparBuscas />}
           </Cartao>
         </Entrada>
       </div>
 
       <Escalonado className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
-          { icone: Flame, rotulo: "Oportunidades", valor: kpis.oportunidadesAltas, detalhe: "alta prioridade", href: "/leads?aba=abordar" },
+          { icone: Flame, rotulo: "Para abordar", valor: kpis.paraAbordar, detalhe: `${kpis.oportunidadesAltas} de alta prioridade`, href: "/leads?aba=abordar" },
           { icone: MapPin, rotulo: "Leads encontrados", valor: kpis.leadsMes, detalhe: "neste mês", href: "/leads?ordem=recentes" },
           { icone: Megaphone, rotulo: "Campanhas", valor: kpis.campanhasAtivas, detalhe: `ativas · ${kpis.emailsEnviados.toLocaleString("pt-BR")} e-mails enviados`, href: "/campanhas" },
           { icone: Wallet, rotulo: "Receita", valor: kpis.receitaMesCentavos, detalhe: "no mês", href: "/pagamentos", moeda: true },
@@ -230,7 +230,25 @@ export default async function Dashboard() {
             )}
           </Cartao>
         </Entrada>
-        <Entrada className="lg:col-span-5">
+        <Entrada className="space-y-5 lg:col-span-5">
+          {retomar.length > 0 && (
+            <Cartao icone={RotateCcw} titulo="Retomar contato" subtitulo="Abordados há 3 dias ou mais, sem resposta" href="/leads?etapa=abordado" corpoClassName="px-3 pb-3">
+              <ul className="space-y-0.5">
+                {retomar.map((r) => (
+                  <li key={r.lead_id}>
+                    <Link href={`/leads/${r.lead_id}#abordagem`} className="flex items-center gap-3 rounded-xl px-2 py-2 text-sm transition-colors hover:bg-white/[0.04]">
+                      <span className="size-1.5 shrink-0 rounded-full bg-aviso" aria-hidden="true" />
+                      <span className="min-w-0 flex-1 truncate">
+                        <span className="font-semibold">{r.nome}</span>
+                        {r.cidade && <span className="text-muted-foreground"> · {r.cidade}</span>}
+                      </span>
+                      <span className="shrink-0 text-xs text-muted-foreground">abordado {haQuantoTempo(r.contatado_em)}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </Cartao>
+          )}
           <Cartao icone={Search} titulo="Buscas recentes" href="/buscar" corpoClassName="px-3 pb-3">
             {buscas.length === 0 ? (
               <Vazio icone={Mail} titulo="Nenhuma busca ainda" descricao="Sua primeira busca aparece aqui, com quantas empresas trouxe." acao={<BotaoBuscar />} className="py-8" />

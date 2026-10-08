@@ -49,4 +49,26 @@ describe("fila de abordagem", () => {
     const sel = await carregarFila(banco, { leadIds: [await leadDe("a1")] });
     assert.deepEqual(sel.map((i) => i.nome), ["Whats Bom"]);
   });
+
+  it("retomar contato: abordados há 3+ dias sem resposta, nunca quem respondeu ou pediu para sair", async () => {
+    const { registrarLugares } = await import("@/services/registro");
+    const { registrarContato, registrarResposta } = await import("@/services/acoes-lead");
+    const { paraRetomar } = await import("@/db/painel");
+    await registrarLugares(
+      banco,
+      [
+        lugar({ externoId: "r1", nome: "Esfriando", telefone: "+55 92 99222-0001" }),
+        lugar({ externoId: "r2", nome: "Respondeu", telefone: "+55 92 99222-0002" }),
+        lugar({ externoId: "r3", nome: "Recente", telefone: "+55 92 99222-0003" }),
+      ],
+      { buscaId: null },
+    );
+    for (const id of ["r1", "r2", "r3"]) await registrarContato(banco, await leadDe(id), "whatsapp_aberto");
+    await registrarResposta(banco, await leadDe("r2"));
+    await banco.execute(`UPDATE leads SET contatado_em = datetime('now', '-5 days') WHERE empresa_id IN (SELECT id FROM empresas WHERE place_id IN ('r1', 'r2'))`);
+    const nomes = (await paraRetomar(10)).map((r) => r.nome);
+    assert.ok(nomes.includes("Esfriando"));
+    assert.ok(!nomes.includes("Respondeu"));
+    assert.ok(!nomes.includes("Recente"));
+  });
 });

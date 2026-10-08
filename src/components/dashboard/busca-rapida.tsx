@@ -15,7 +15,7 @@ import { interpretarConsulta } from "@/services/consulta-natural";
  * chips. Ao enviar, a tela de busca abre já com os filtros e começa.
  */
 
-const EXEMPLOS = ["Barbearias sem site em Manacapuru", "Auto detailing em California", "Imobiliárias em Portugal", "Dentistas sem site em Manaus com WhatsApp"];
+const EXEMPLOS = ["Barbearias sem site em Manacapuru", "Energia solar em Santa Catarina", "Dentistas em Manaus com WhatsApp", "Hamburguerias em Manacapuru"];
 
 export function BuscaRapida({ grande = true }: { grande?: boolean }) {
   const router = useRouter();
@@ -110,6 +110,7 @@ export function BuscaRapida({ grande = true }: { grande?: boolean }) {
                 </motion.button>
               ))}
         </AnimatePresence>
+        {!texto.trim() && <span className="px-1 text-xs text-muted-foreground">ou cole um link do Google Maps</span>}
       </div>
     </div>
   );

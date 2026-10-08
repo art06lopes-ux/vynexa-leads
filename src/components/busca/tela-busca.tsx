@@ -692,11 +692,11 @@ function Resultados({ estado, filtros, aoLimpar }: { estado: EstadoBusca; filtro
         {r && (r.comWhatsapp > 0 || r.comEmail > 0) && (
           <div className="mt-5 flex flex-col gap-3 rounded-xl border border-white/15 bg-white/[0.07] p-3 sm:flex-row sm:items-center">
             <p className="flex-1 text-sm text-white/80">
-              Abordar todas de uma vez: <b className="text-white">{r.comWhatsapp}</b> pelo WhatsApp em sequência e <b className="text-white">{r.comEmail}</b> por e-mail
+              <b className="text-white">{r.comWhatsapp}</b> com WhatsApp e <b className="text-white">{r.comEmail}</b> com e-mail. Escolha quem abordar e envie de uma vez
               {estado.procurandoEmails ? " (ainda procurando e-mails nos sites)" : ""}.
             </p>
-            <Link href={`/abordar?busca=${estado.id}`} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-[#0a1330] hover:bg-white/90">
-              <Send className="size-4" /> Abordar estas empresas
+            <Link href={`/leads?aba=abordar&busca=${estado.id}`} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-[#0a1330] hover:bg-white/90">
+              <Send className="size-4" /> Escolher quem abordar
             </Link>
           </div>
         )}

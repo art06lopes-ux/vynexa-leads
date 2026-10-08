@@ -42,12 +42,15 @@ export function IconeInstagram({ className }: { className?: string }) {
   );
 }
 
-function Canal({ ativo, rotulo, children }: { ativo: boolean; rotulo: string; children: React.ReactNode }) {
+function Canal({ ativo, rotulo, children, verde = false }: { ativo: boolean; rotulo: string; children: React.ReactNode; verde?: boolean }) {
   return (
     <span
       title={`${rotulo}: ${ativo ? "encontrado" : "não encontrado"}`}
       aria-label={`${rotulo}: ${ativo ? "encontrado" : "não encontrado"}`}
-      className={cn("flex size-7 items-center justify-center rounded-lg border", ativo ? "border-brilho/30 bg-azul/12 text-ciano" : "border-fio text-muted-foreground/35")}
+      className={cn(
+        "flex size-7 items-center justify-center rounded-lg border",
+        ativo ? (verde ? "border-[#1fa855]/40 bg-[#1fa855]/15 text-[#3ddc84]" : "border-brilho/30 bg-azul/12 text-ciano") : "border-fio text-muted-foreground/35",
+      )}
     >
       {children}
     </span>
@@ -129,7 +132,7 @@ export function CartaoLead({
           <Canal ativo={Boolean(lead.website) && lead.status_site === "tem_site"} rotulo="Site">
             <Globe className="size-3.5" />
           </Canal>
-          <Canal ativo={lead.whatsapp === 1} rotulo="WhatsApp">
+          <Canal ativo={lead.whatsapp === 1} rotulo="WhatsApp" verde>
             <MessageCircle className="size-3.5" />
           </Canal>
           <Canal ativo={Boolean(lead.email)} rotulo="E-mail">

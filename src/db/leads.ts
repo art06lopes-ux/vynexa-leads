@@ -3,6 +3,7 @@ import "server-only";
 import type { InValue } from "@libsql/client";
 
 import { getBanco, plano, planos } from "@/db/cliente";
+import { CONDICAO_PARA_ABORDAR } from "@/db/para-abordar";
 import type { Empresa, EtapaLead, Lead, MotivoScore, Prioridade } from "@/db/tipos";
 
 /**
@@ -33,6 +34,8 @@ export type FiltrosLeads = {
   campanha?: string;
   naoContatar?: boolean;
   analisado?: boolean;
+  /** Aba "Para abordar": ver `CONDICAO_PARA_ABORDAR`. */
+  paraAbordar?: boolean;
   ordem?: "score" | "recentes" | "avaliacoes" | "nome";
 };
 
@@ -139,6 +142,7 @@ export function montarWhere(f: FiltrosLeads): { clausula: string; args: InValue[
   if (f.naoContatar === false) p.push("e.nao_contatar = 0");
   if (f.analisado === true) p.push("l.analisado_em IS NOT NULL");
   if (f.analisado === false) p.push("l.analisado_em IS NULL");
+  if (f.paraAbordar) p.push(CONDICAO_PARA_ABORDAR);
   if (f.busca) {
     juncao += " JOIN busca_resultados br ON br.empresa_id = e.id AND br.busca_id = ?";
     a.unshift(f.busca);
@@ -164,6 +168,12 @@ export async function listarLeads(f: FiltrosLeads, pagina = 1, porPagina = 30): 
     }),
   ]);
   return { itens: planos<LeadListado>(rows), total: Number(c[0]?.n ?? 0) };
+}
+
+export async function contarLeads(f: FiltrosLeads): Promise<number> {
+  const { clausula, args, juncao } = montarWhere(f);
+  const { rows } = await getBanco().execute({ sql: `SELECT COUNT(*) AS n FROM empresas e JOIN leads l ON l.empresa_id = e.id ${juncao} ${clausula}`, args });
+  return Number(rows[0]?.n ?? 0);
 }
 
 /** Só os ids (para "selecionar todos os N que casam com o filtro"). */

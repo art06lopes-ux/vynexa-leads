@@ -57,7 +57,7 @@ export default async function Dashboard() {
             <>
               {" "}
               Você tem{" "}
-              <Link href="/oportunidades" className="font-semibold text-foreground underline decoration-brilho/50 underline-offset-4 hover:decoration-brilho">
+              <Link href="/leads?aba=abordar" className="font-semibold text-foreground underline decoration-brilho/50 underline-offset-4 hover:decoration-brilho">
                 {kpis.oportunidadesAltas} {kpis.oportunidadesAltas === 1 ? "oportunidade de alta prioridade" : "oportunidades de alta prioridade"}
               </Link>{" "}
               esperando abordagem.
@@ -125,7 +125,7 @@ export default async function Dashboard() {
         </Entrada>
 
         <Entrada atraso={0.14} className="xl:col-span-4">
-          <Cartao icone={Flame} titulo="Oportunidades" subtitulo="Os leads com maior score, ainda não abordados" href="/oportunidades" className="h-full" corpoClassName="px-3 pb-3">
+          <Cartao icone={Flame} titulo="Oportunidades" subtitulo="Os leads com maior score, ainda não abordados" href="/leads?aba=abordar" className="h-full" corpoClassName="px-3 pb-3">
             {top.length === 0 ? (
               <Vazio icone={Radar} titulo="Nenhuma oportunidade ainda" descricao="Faça uma busca por categoria e localização para começar." acao={<BotaoBuscar />} className="py-8" />
             ) : (
@@ -155,7 +155,7 @@ export default async function Dashboard() {
 
       <Escalonado className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
-          { icone: Flame, rotulo: "Oportunidades", valor: kpis.oportunidadesAltas, detalhe: "alta prioridade", href: "/oportunidades" },
+          { icone: Flame, rotulo: "Oportunidades", valor: kpis.oportunidadesAltas, detalhe: "alta prioridade", href: "/leads?aba=abordar" },
           { icone: MapPin, rotulo: "Leads encontrados", valor: kpis.leadsMes, detalhe: "neste mês", href: "/leads?ordem=recentes" },
           { icone: Megaphone, rotulo: "Campanhas", valor: kpis.campanhasAtivas, detalhe: `ativas · ${kpis.emailsEnviados.toLocaleString("pt-BR")} e-mails enviados`, href: "/campanhas" },
           { icone: Wallet, rotulo: "Receita", valor: kpis.receitaMesCentavos, detalhe: "no mês", href: "/pagamentos", moeda: true },

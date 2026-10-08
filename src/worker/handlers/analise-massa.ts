@@ -69,7 +69,7 @@ export async function processarAnaliseMassa(banco: Client, p: PayloadAnaliseMass
       tipo: "oportunidade",
       titulo: p.gerarMensagens && !p.analisar ? "Mensagens geradas" : "Análise concluída",
       corpo: `${total - falhas} de ${total} lead(s) processado(s)${falhas > 0 ? `, ${falhas} com falha` : ""}.`,
-      link: "/oportunidades",
+      link: "/leads?aba=abordar",
     });
   }
 

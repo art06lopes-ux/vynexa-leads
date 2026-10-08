@@ -15,7 +15,7 @@ export type Contadores = Partial<Record<ChaveContador, number>>;
 
 function ItemLink({ item, contadores, aoNavegar, id }: { item: ItemNav; contadores: Contadores; aoNavegar?: () => void; id: string }) {
   const pathname = usePathname();
-  const eAtivo = ativo(pathname, item.href);
+  const eAtivo = ativo(pathname, item);
   const n = item.contador ? (contadores[item.contador] ?? 0) : 0;
   const Icone = item.icone;
 

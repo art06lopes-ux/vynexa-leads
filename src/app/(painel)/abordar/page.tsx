@@ -1,60 +1,45 @@
-import { Send } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 
-import { FilaAbordagem } from "@/components/abordar/fila-abordagem";
+import { ListaWhatsapp } from "@/components/abordar/lista-whatsapp";
 import { Cabecalho } from "@/components/base/cartao";
 import { carregarFila } from "@/db/abordar";
 import { getBanco } from "@/db/cliente";
 import { lerIdentidade } from "@/db/painel";
-import { estadoProvedoresEmail } from "@/integrations/email";
 
-export const metadata = { title: "Abordar" };
+export const metadata = { title: "Enviar pelo WhatsApp" };
 
 /**
- * Abordar em massa: a fila de quem ainda não foi contatado.
- * `?busca=<id>` → as empresas de uma busca; `?selecao=1` → os leads
- * selecionados na lista (vêm pelo navegador); sem nada → todos.
+ * Enviar pelo WhatsApp: as empresas escolhidas em Leads (`?selecao=1`,
+ * pelo navegador) ou as de uma busca (`?busca=<id>`). Sem nenhum dos dois,
+ * a tela explica como escolher.
  */
-export default async function PaginaAbordar({ searchParams }: PageProps<"/abordar">) {
-  const { busca, selecao } = await searchParams;
+export default async function PaginaWhatsapp({ searchParams }: PageProps<"/abordar">) {
+  const { busca } = await searchParams;
   const buscaId = typeof busca === "string" && busca ? busca : null;
-  const deSelecao = selecao === "1";
   const banco = getBanco();
 
-  const [identidade, provedores, itens, rotuloBusca] = await Promise.all([
+  const [identidade, itens, rotuloBusca] = await Promise.all([
     lerIdentidade(),
-    estadoProvedoresEmail(),
-    deSelecao ? Promise.resolve(null) : carregarFila(banco, { buscaId }),
+    buscaId ? carregarFila(banco, { buscaId }) : Promise.resolve(null),
     buscaId
       ? banco
-          .execute({ sql: `SELECT consulta_natural, segmento, cidade, estado FROM buscas WHERE id = ?`, args: [buscaId] })
-          .then(({ rows }) => {
-            const b = rows[0];
-            if (!b) return "Busca";
-            return b.consulta_natural ? String(b.consulta_natural) : `${String(b.segmento)}${b.cidade ? ` em ${String(b.cidade)}` : b.estado ? ` em ${String(b.estado)}` : ""}`;
-          })
+          .execute({ sql: `SELECT consulta_natural, segmento, cidade FROM buscas WHERE id = ?`, args: [buscaId] })
+          .then(({ rows }) => (rows[0] ? String(rows[0].consulta_natural ?? `${String(rows[0].segmento)}${rows[0].cidade ? ` em ${String(rows[0].cidade)}` : ""}`) : "Busca"))
       : Promise.resolve(null),
   ]);
-
-  const padrao = identidade.config.email_provedor || "gmail";
-  const prov = provedores.find((p) => p.nome === padrao);
-  const origem = buscaId
-    ? { tipo: "busca" as const, rotulo: rotuloBusca ?? "Busca", buscaId }
-    : deSelecao
-      ? { tipo: "selecao" as const, rotulo: "Leads selecionados", buscaId: null }
-      : { tipo: "todos" as const, rotulo: "Leads ainda não abordados", buscaId: null };
 
   return (
     <div>
       <Cabecalho
-        icone={Send}
-        titulo="Abordar"
-        descricao={`${origem.rotulo}. E-mail para todos num clique; WhatsApp em sequência, com a mensagem pronta — sem abrir lead por lead.`}
+        icone={MessageCircle}
+        titulo="Enviar pelo WhatsApp"
+        trilha={[{ href: "/leads?aba=abordar", rotulo: "Leads" }]}
+        descricao="Todas as empresas escolhidas, cada uma com a mensagem pronta. Abra no WhatsApp as que quiser, na ordem que quiser."
       />
-      <FilaAbordagem
+      <ListaWhatsapp
         itensIniciais={itens}
-        origem={origem}
+        origem={buscaId ? { tipo: "busca", rotulo: rotuloBusca ?? "Busca", buscaId } : { tipo: "selecao", rotulo: "Empresas escolhidas em Leads", buscaId: null }}
         remetente={{ responsavel: identidade.responsavel || "Artur", empresa: identidade.empresa || "Vynexa Dev" }}
-        email={{ provedor: padrao, pronto: Boolean(prov?.ok), motivo: prov?.motivo ?? null }}
       />
     </div>
   );

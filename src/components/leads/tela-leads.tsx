@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Download, FileUp, Filter, LoaderCircle, Plus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Ellipsis, FileUp, Filter, Globe, LoaderCircle, Mail, MessageCircle, Plus, Search, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -22,13 +22,29 @@ import { ETAPAS, ROTULO_ETAPA } from "@/services/crm";
 
 const campo = "h-9 rounded-lg border border-fio bg-placa px-2.5 text-sm outline-none focus:border-brilho/60";
 
-export function TelaLeads({ itens, total, pagina, porPagina, opcoes }: { itens: LeadListado[]; total: number; pagina: number; porPagina: number; opcoes: { categorias: string[]; paises: string[]; cidades: string[] } }) {
+export function TelaLeads({
+  itens,
+  total,
+  pagina,
+  porPagina,
+  opcoes,
+  aba,
+}: {
+  itens: LeadListado[];
+  total: number;
+  pagina: number;
+  porPagina: number;
+  opcoes: { categorias: string[]; paises: string[]; cidades: string[] };
+  aba: "abordar" | "todos";
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
   const selecao = useSelecao();
-  const [filtrosMobile, setFiltrosMobile] = useState(false);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const [menuMais, setMenuMais] = useState(false);
   const [modal, setModal] = useState<null | "csv" | "manual">(null);
+  const [texto, setTexto] = useState(params.get("q") ?? "");
 
   const valor = (k: string) => params.get(k) ?? "";
   function definir(k: string, v: string) {
@@ -49,126 +65,199 @@ export function TelaLeads({ itens, total, pagina, porPagina, opcoes }: { itens: 
     p.set("pagina", String(n));
     router.push(`${pathname}?${p.toString()}`);
   };
-  const ativos = ["categoria", "pais", "cidade", "site", "etapa", "prioridade", "fonte", "whatsapp", "email", "scoreMin", "q", "busca"].filter((k) => params.get(k)).length;
+  // Filtros do painel "Filtros"; os três atalhos ficam sempre à vista.
+  const avancados =
+    ["categoria", "cidade", "etapa", "prioridade", "fonte", "scoreMin"].filter((k) => params.get(k)).length +
+    (params.get("site") && params.get("site") !== "sem" ? 1 : 0);
+  const algumFiltro = ["categoria", "cidade", "site", "etapa", "prioridade", "fonte", "whatsapp", "email", "scoreMin", "q"].some((k) => params.get(k));
+  const limparFiltros = () => {
+    const p = new URLSearchParams();
+    const manter = ["aba", "busca"];
+    for (const k of manter) if (params.get(k)) p.set(k, params.get(k)!);
+    setTexto("");
+    router.push(`${pathname}${p.toString() ? `?${p.toString()}` : ""}`);
+  };
 
-  const filtros = (
-    <div className="flex flex-wrap items-center gap-2">
-      <select value={valor("site")} onChange={(e) => definir("site", e.target.value)} className={campo} aria-label="Site">
-        <option value="">Site: todos</option>
-        <option value="sem">Sem site</option>
-        <option value="social">Só redes sociais</option>
-        <option value="ruim">Site fraco</option>
-        <option value="com">Com site</option>
-      </select>
-      <select value={valor("etapa")} onChange={(e) => definir("etapa", e.target.value)} className={campo} aria-label="Etapa">
-        <option value="">Etapa: todas</option>
-        {ETAPAS.map((e) => (
-          <option key={e} value={e}>
-            {ROTULO_ETAPA[e]}
-          </option>
-        ))}
-      </select>
-      <select value={valor("prioridade")} onChange={(e) => definir("prioridade", e.target.value)} className={campo} aria-label="Prioridade">
-        <option value="">Prioridade</option>
-        <option value="alta">Alta</option>
-        <option value="media">Média</option>
-        <option value="baixa">Baixa</option>
-      </select>
-      <select value={valor("categoria")} onChange={(e) => definir("categoria", e.target.value)} className={cn(campo, "max-w-48")} aria-label="Categoria">
-        <option value="">Categoria</option>
-        {opcoes.categorias.map((c) => (
-          <option key={c} value={c}>
-            {c}
-          </option>
-        ))}
-      </select>
-      <select value={valor("cidade")} onChange={(e) => definir("cidade", e.target.value)} className={cn(campo, "max-w-44")} aria-label="Cidade">
-        <option value="">Cidade</option>
-        {opcoes.cidades.map((c) => (
-          <option key={c} value={c}>
-            {c}
-          </option>
-        ))}
-      </select>
-      <select value={valor("fonte")} onChange={(e) => definir("fonte", e.target.value)} className={campo} aria-label="Fonte">
-        <option value="">Fonte</option>
-        <option value="google_places">Google Maps</option>
-        <option value="osm">OpenStreetMap</option>
-        <option value="receita">Receita Federal</option>
-        <option value="csv">CSV</option>
-        <option value="manual">Manual</option>
-      </select>
-      <select value={valor("scoreMin")} onChange={(e) => definir("scoreMin", e.target.value)} className={campo} aria-label="Score mínimo">
-        <option value="">Score</option>
-        {[50, 60, 70, 80, 90].map((s) => (
-          <option key={s} value={s}>
-            {s}+
-          </option>
-        ))}
-      </select>
-      {(["whatsapp", "email"] as const).map((k) => (
-        <button key={k} type="button" onClick={() => definir(k, valor(k) ? "" : "1")} aria-pressed={Boolean(valor(k))} className={cn(campo, "cursor-pointer", valor(k) && "border-brilho/60 bg-azul/15 text-ciano")}>
-          {k === "whatsapp" ? "Com WhatsApp" : "Com e-mail"}
-        </button>
-      ))}
-      <select value={valor("ordem")} onChange={(e) => definir("ordem", e.target.value)} className={campo} aria-label="Ordenar">
-        <option value="">Ordenar: score</option>
-        <option value="recentes">Mais recentes</option>
-        <option value="avaliacoes">Mais avaliações</option>
-        <option value="nome">Nome</option>
-      </select>
-      {ativos > 0 && (
-        <button type="button" onClick={() => router.push(pathname)} className="inline-flex h-9 cursor-pointer items-center gap-1 px-2 text-xs text-muted-foreground hover:text-foreground">
-          <X className="size-3.5" /> Limpar filtros
-        </button>
-      )}
-    </div>
-  );
+  const atalho = (ligado: boolean) =>
+    cn(campo, "inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap", ligado ? "border-brilho/60 bg-azul/15 text-ciano" : "hover:border-brilho/40");
 
   return (
     <div className="space-y-4">
+      {/* Ferramentas: seleção, procura, atalhos, filtros e "Mais" */}
       <div className="flex flex-wrap items-center gap-2">
         <SeletorQuantidade consulta={consulta} total={total} aoSelecionar={selecao.definir} />
-        <button type="button" onClick={() => setFiltrosMobile((a) => !a)} className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-fio bg-placa px-3 text-sm lg:hidden">
-          <Filter className="size-4" /> Filtros {ativos > 0 && <span className="rounded-full bg-azul px-1.5 text-[0.7rem] font-bold text-white">{ativos}</span>}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            definir("q", texto.trim());
+          }}
+          className="relative min-w-44 flex-1 sm:max-w-64"
+        >
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Nome ou telefone" aria-label="Procurar por nome ou telefone" className={cn(campo, "w-full pl-8")} />
+        </form>
+        <button type="button" onClick={() => definir("site", valor("site") === "sem" ? "" : "sem")} aria-pressed={valor("site") === "sem"} className={atalho(valor("site") === "sem")}>
+          <Globe className="size-3.5" /> Sem site
         </button>
-        <div className="ml-auto flex flex-wrap gap-2">
-          <button type="button" onClick={() => setModal("manual")} className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-fio bg-placa px-3 text-sm hover:border-brilho/40">
-            <Plus className="size-4" /> Adicionar
-          </button>
-          <button type="button" onClick={() => setModal("csv")} className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-fio bg-placa px-3 text-sm hover:border-brilho/40">
-            <FileUp className="size-4" /> Importar CSV
-          </button>
-          {(["csv", "xlsx", "json"] as const).map((f) => (
-            <a key={f} href={`/api/exportar?formato=${f}&${consulta}`} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-fio bg-placa px-3 text-sm hover:border-brilho/40">
-              <Download className="size-4" /> {f === "xlsx" ? "Excel" : f.toUpperCase()}
-            </a>
-          ))}
+        <button type="button" onClick={() => definir("whatsapp", valor("whatsapp") ? "" : "1")} aria-pressed={Boolean(valor("whatsapp"))} className={atalho(Boolean(valor("whatsapp")))}>
+          <MessageCircle className="size-3.5" /> Com WhatsApp
+        </button>
+        <button type="button" onClick={() => definir("email", valor("email") ? "" : "1")} aria-pressed={Boolean(valor("email"))} className={atalho(Boolean(valor("email")))}>
+          <Mail className="size-3.5" /> Com e-mail
+        </button>
+        <button type="button" onClick={() => setFiltrosAbertos((a) => !a)} aria-expanded={filtrosAbertos} className={atalho(filtrosAbertos || avancados > 0)}>
+          <Filter className="size-3.5" /> Filtros
+          {avancados > 0 && <span className="rounded-full bg-azul px-1.5 text-[0.7rem] font-bold text-white">{avancados}</span>}
+        </button>
+
+        <div className="ml-auto flex items-center gap-2">
+          <select value={valor("ordem")} onChange={(e) => definir("ordem", e.target.value)} className={campo} aria-label="Ordenar">
+            <option value="">Melhor score</option>
+            <option value="recentes">Mais recentes</option>
+            <option value="avaliacoes">Mais avaliações</option>
+            <option value="nome">Nome</option>
+          </select>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setMenuMais((m) => !m)}
+              aria-expanded={menuMais}
+              aria-haspopup="menu"
+              className={cn(campo, "inline-flex cursor-pointer items-center gap-1.5 hover:border-brilho/40")}
+            >
+              <Ellipsis className="size-4" /> Mais
+            </button>
+            <AnimatePresence>
+              {menuMais && (
+                <>
+                  <button type="button" aria-label="Fechar menu" className="fixed inset-0 z-30 cursor-default" onClick={() => setMenuMais(false)} />
+                  <motion.div
+                    role="menu"
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    className="absolute right-0 z-40 mt-1 w-56 overflow-hidden rounded-xl border border-fio bg-popover py-1 shadow-2xl"
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setModal("manual");
+                        setMenuMais(false);
+                      }}
+                      className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/5"
+                    >
+                      <Plus className="size-4" /> Adicionar empresa
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setModal("csv");
+                        setMenuMais(false);
+                      }}
+                      className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/5"
+                    >
+                      <FileUp className="size-4" /> Importar planilha CSV
+                    </button>
+                    <div className="my-1 border-t border-fio" />
+                    {(["xlsx", "csv", "json"] as const).map((f) => (
+                      <a key={f} role="menuitem" href={`/api/exportar?formato=${f}&${consulta}`} onClick={() => setMenuMais(false)} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/5">
+                        <Download className="size-4" /> Exportar esta lista ({f === "xlsx" ? "Excel" : f.toUpperCase()})
+                      </a>
+                    ))}
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
-      <div className="hidden lg:block">{filtros}</div>
-      <AnimatePresence>
-        {filtrosMobile && (
-          <motion.div className="fixed inset-0 z-50 flex items-end bg-black/60 lg:hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setFiltrosMobile(false)}>
-            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", stiffness: 380, damping: 36 }} onClick={(e) => e.stopPropagation()} className="w-full rounded-t-2xl border-t border-fio bg-popover p-4 pb-8">
-              <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/20" />
-              <p className="mb-3 font-display font-semibold">Filtros</p>
-              {filtros}
-            </motion.div>
+      <AnimatePresence initial={false}>
+        {filtrosAbertos && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+            <div className="placa flex flex-wrap items-center gap-2 p-3">
+              <select value={valor("site")} onChange={(e) => definir("site", e.target.value)} className={campo} aria-label="Site">
+                <option value="">Site: todos</option>
+                <option value="sem">Sem site</option>
+                <option value="social">Só redes sociais</option>
+                <option value="ruim">Site fraco</option>
+                <option value="com">Com site</option>
+              </select>
+              <select value={valor("categoria")} onChange={(e) => definir("categoria", e.target.value)} className={cn(campo, "max-w-48")} aria-label="Categoria">
+                <option value="">Categoria: todas</option>
+                {opcoes.categorias.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <select value={valor("cidade")} onChange={(e) => definir("cidade", e.target.value)} className={cn(campo, "max-w-44")} aria-label="Cidade">
+                <option value="">Cidade: todas</option>
+                {opcoes.cidades.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <select value={valor("scoreMin")} onChange={(e) => definir("scoreMin", e.target.value)} className={campo} aria-label="Score mínimo">
+                <option value="">Score: qualquer</option>
+                {[50, 60, 70, 80, 90].map((n) => (
+                  <option key={n} value={n}>
+                    {n} ou mais
+                  </option>
+                ))}
+              </select>
+              <select value={valor("etapa")} onChange={(e) => definir("etapa", e.target.value)} className={campo} aria-label="Etapa">
+                <option value="">Etapa: todas</option>
+                {ETAPAS.map((e) => (
+                  <option key={e} value={e}>
+                    {ROTULO_ETAPA[e]}
+                  </option>
+                ))}
+              </select>
+              <select value={valor("prioridade")} onChange={(e) => definir("prioridade", e.target.value)} className={campo} aria-label="Prioridade">
+                <option value="">Prioridade: todas</option>
+                <option value="alta">Alta</option>
+                <option value="media">Média</option>
+                <option value="baixa">Baixa</option>
+              </select>
+              <select value={valor("fonte")} onChange={(e) => definir("fonte", e.target.value)} className={campo} aria-label="Fonte">
+                <option value="">Fonte: todas</option>
+                <option value="google_places">Google Maps</option>
+                <option value="osm">OpenStreetMap</option>
+                <option value="receita">Receita Federal</option>
+                <option value="csv">Planilha</option>
+                <option value="manual">Manual</option>
+              </select>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <p className="text-sm text-muted-foreground">
-        <span className="font-semibold text-foreground num">{total.toLocaleString("pt-BR")}</span> lead(s)
-        {params.get("q") && (
-          <>
-            {" "}
-            para &quot;<span className="text-foreground">{params.get("q")}</span>&quot;
-          </>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+        <p>
+          <span className="font-semibold text-foreground num">{total.toLocaleString("pt-BR")}</span>{" "}
+          {aba === "abordar" ? "empresa(s) ainda não contatada(s), com WhatsApp ou e-mail" : "empresa(s)"}
+          {params.get("q") && (
+            <>
+              {" "}
+              para &quot;<span className="text-foreground">{params.get("q")}</span>&quot;
+            </>
+          )}
+        </p>
+        {params.get("busca") && (
+          <button type="button" onClick={() => definir("busca", "")} className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-brilho/40 bg-azul/10 px-2 py-0.5 text-xs text-ciano hover:bg-azul/20">
+            Só desta busca <X className="size-3" />
+          </button>
         )}
-      </p>
+        {algumFiltro && (
+          <button type="button" onClick={limparFiltros} className="inline-flex cursor-pointer items-center gap-1 text-xs hover:text-foreground">
+            <X className="size-3.5" /> Limpar filtros
+          </button>
+        )}
+      </div>
 
       {itens.length === 0 ? (
         <div className="placa px-6 py-14 text-center">
@@ -195,8 +284,9 @@ export function TelaLeads({ itens, total, pagina, porPagina, opcoes }: { itens: 
                     />
                   </th>
                   <th className="py-3 font-medium">Empresa</th>
-                  <th className="py-3 font-medium">Local</th>
-                  <th className="py-3 font-medium">Avaliações</th>
+                  <th className="hidden py-3 font-medium xl:table-cell">Local</th>
+                  <th className="py-3 font-medium">Contato</th>
+                  <th className="hidden py-3 font-medium xl:table-cell">Avaliações</th>
                   <th className="py-3 font-medium">Presença</th>
                   <th className="py-3 font-medium">Etapa</th>
                   <th className="py-3 pr-4 text-right font-medium">Score</th>
@@ -219,12 +309,25 @@ export function TelaLeads({ itens, total, pagina, porPagina, opcoes }: { itens: 
                         <Avatar nome={l.nome} tamanho={34} />
                         <span className="min-w-0">
                           <span className="block truncate font-semibold hover:text-ciano">{l.nome}</span>
-                          <span className="block truncate text-xs text-muted-foreground">{l.categoria_rotulo ?? l.categoria}</span>
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {l.categoria_rotulo ?? l.categoria}
+                            <span className="xl:hidden">{l.cidade ? ` · ${l.cidade}` : ""}</span>
+                          </span>
                         </span>
                       </Link>
                     </td>
-                    <td className="max-w-44 truncate py-2.5 text-muted-foreground">{[l.cidade, l.estado].filter(Boolean).join(", ") || l.pais}</td>
-                    <td className="py-2.5 text-muted-foreground num">{l.avaliacao_nota !== null ? `${l.avaliacao_nota.toFixed(1).replace(".", ",")}★ (${l.avaliacao_qtd})` : "—"}</td>
+                    <td className="hidden max-w-44 truncate py-2.5 text-muted-foreground xl:table-cell">{[l.cidade, l.estado].filter(Boolean).join(", ") || l.pais}</td>
+                    <td className="py-2.5">
+                      <span className="flex items-center gap-1.5">
+                        <span title={l.whatsapp === 1 ? "Tem WhatsApp" : "Sem WhatsApp"} className={cn("flex size-7 items-center justify-center rounded-lg", l.whatsapp === 1 ? "bg-[#1fa855]/15 text-[#3ddc84]" : "text-white/15")}>
+                          <MessageCircle className="size-4" aria-label={l.whatsapp === 1 ? "Tem WhatsApp" : "Sem WhatsApp"} />
+                        </span>
+                        <span title={l.email ? l.email : "Sem e-mail"} className={cn("flex size-7 items-center justify-center rounded-lg", l.email ? "bg-azul/15 text-ciano" : "text-white/15")}>
+                          <Mail className="size-4" aria-label={l.email ? "Tem e-mail" : "Sem e-mail"} />
+                        </span>
+                      </span>
+                    </td>
+                    <td className="hidden py-2.5 text-muted-foreground num xl:table-cell">{l.avaliacao_nota !== null ? `${l.avaliacao_nota.toFixed(1).replace(".", ",")}★ (${l.avaliacao_qtd})` : "—"}</td>
                     <td className="py-2.5">
                       <SeloPresenca statusSite={l.status_site} qualidade={l.site_qualidade} />
                     </td>

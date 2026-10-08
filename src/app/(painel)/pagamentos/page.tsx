@@ -1,5 +1,6 @@
 import { CreditCard, TrendingUp } from "lucide-react";
 
+import { AbasPagina } from "@/components/base/abas-pagina";
 import { AvisoConfiguracao, Cabecalho, Cartao } from "@/components/base/cartao";
 import { GraficoBarras } from "@/components/graficos/graficos";
 import { Contador } from "@/components/motion/contador";
@@ -11,7 +12,12 @@ import { listarVendas, resumoFinanceiro } from "@/db/vendas";
 import { obterPagamentos } from "@/integrations/pagamentos/asaas";
 import { rotuloMes } from "@/lib/datas";
 
-export const metadata = { title: "Pagamentos" };
+export const metadata = { title: "Vendas" };
+
+const ABAS_VENDAS = [
+  { chave: "vendas", rotulo: "Vendas e cobranças", href: "/pagamentos" },
+  { chave: "relatorios", rotulo: "Relatórios", href: "/analytics" },
+];
 
 export default async function PaginaPagamentos() {
   const [resumo, vendas, mensal, asaas, prods] = await Promise.all([
@@ -35,7 +41,8 @@ export default async function PaginaPagamentos() {
 
   return (
     <div className="space-y-5">
-      <Cabecalho icone={CreditCard} titulo="Pagamentos" descricao="Vendas, cobranças pelo Asaas (Pix, boleto, cartão) e a receita que entra." />
+      <Cabecalho icone={CreditCard} titulo="Vendas" descricao="Vendas, cobranças pelo Asaas (Pix, boleto, cartão) e a receita que entra." />
+      <AbasPagina abas={ABAS_VENDAS} ativa="vendas" />
       {!asaas.ok && (
         <AvisoConfiguracao titulo="Asaas ainda não configurado">
           Sem a chave, as vendas podem ser registradas e marcadas como pagas à mão, mas a cobrança automática e a confirmação por webhook ficam desligadas.

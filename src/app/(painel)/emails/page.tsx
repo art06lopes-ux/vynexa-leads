@@ -1,6 +1,7 @@
 import { Mail } from "lucide-react";
 import Link from "next/link";
 
+import { AbasPagina } from "@/components/base/abas-pagina";
 import { AvisoConfiguracao, Cabecalho, Vazio } from "@/components/base/cartao";
 import { COR_ENVIO, ROTULO_ENVIO } from "@/components/campanhas/rotulos";
 import { Contador } from "@/components/motion/contador";
@@ -11,11 +12,16 @@ import { estadoProvedoresEmail } from "@/integrations/email";
 import { dataHora } from "@/lib/datas";
 import { cn } from "@/lib/utils";
 
-export const metadata = { title: "E-mails" };
+export const metadata = { title: "E-mails enviados" };
 
 type Envio = { id: string; lead_id: string; campanha_id: string | null; campanha: string | null; passo: number; destinatario: string | null; assunto: string | null; status: StatusEnvio; provedor: string | null; erro: string | null; enviado_em: string | null; agendado_para: string | null; aberto_em: string | null; nome: string };
 
 /** A caixa de saída: todos os envios, de campanha ou avulsos, com o estado. */
+const ABAS = [
+  { chave: "campanhas", rotulo: "Campanhas", href: "/campanhas" },
+  { chave: "emails", rotulo: "E-mails enviados", href: "/emails" },
+];
+
 export default async function PaginaEmails({ searchParams }: PageProps<"/emails">) {
   const { status } = await searchParams;
   const filtro = typeof status === "string" && status in ROTULO_ENVIO ? status : null;
@@ -49,7 +55,8 @@ export default async function PaginaEmails({ searchParams }: PageProps<"/emails"
 
   return (
     <div className="space-y-5">
-      <Cabecalho icone={Mail} titulo="E-mails" descricao={`Tudo o que saiu, está agendado ou falhou. Provedor ativo: ${provAtivo?.rotulo ?? ativo}.`} />
+      <Cabecalho icone={Mail} titulo="Campanhas" descricao={`Cada e-mail que saiu, está agendado ou falhou. Provedor ativo: ${provAtivo?.rotulo ?? ativo}.`} />
+      <AbasPagina abas={ABAS} ativa="emails" />
       {provAtivo && !provAtivo.ok && (
         <AvisoConfiguracao titulo={`${provAtivo.rotulo} não está pronto`} href="/configuracoes?aba=email">
           {provAtivo.motivo} Sem um provedor pronto, campanhas podem ser preparadas mas não enviadas.

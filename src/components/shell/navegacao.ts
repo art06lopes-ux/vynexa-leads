@@ -1,68 +1,44 @@
-import {
-  ChartColumn,
-  CreditCard,
-  Flame,
-  LayoutDashboard,
-  Mail,
-  Map,
-  Megaphone,
-  Search,
-  Send,
-  Settings,
-  Sparkles,
-  SquareKanban,
-  Users,
-  Bell,
-  type LucideIcon,
-} from "lucide-react";
+import { CreditCard, LayoutDashboard, Megaphone, Search, Settings, SquareKanban, Users, type LucideIcon } from "lucide-react";
+
+/**
+ * O menu segue o trabalho do dia, na ordem: buscar empresas → escolher e
+ * abordar (Leads) → acompanhar os envios (Campanhas) → negociar (CRM) →
+ * receber (Vendas). Telas que eram variações umas das outras viraram
+ * abas dentro do item certo — `tambem` diz quais rotas acendem cada um.
+ */
 
 export type ChaveContador = "leads" | "oportunidades" | "campanhas" | "emails" | "crm" | "pagamentos" | "notificacoes";
 
-export type ItemNav = { href: string; rotulo: string; icone: LucideIcon; contador?: ChaveContador };
+export type ItemNav = { href: string; rotulo: string; icone: LucideIcon; contador?: ChaveContador; tambem?: string[] };
 
 export const GRUPOS_NAV: Array<{ titulo: string; itens: ItemNav[] }> = [
   {
-    titulo: "Principal",
-    itens: [
-      { href: "/", rotulo: "Dashboard", icone: LayoutDashboard },
-      { href: "/buscar", rotulo: "Buscar leads", icone: Search },
-      { href: "/oportunidades", rotulo: "Oportunidades", icone: Flame, contador: "oportunidades" },
-    ],
-  },
-  {
     titulo: "Prospecção",
     itens: [
-      { href: "/leads", rotulo: "Leads", icone: Users, contador: "leads" },
-      { href: "/mapa", rotulo: "Mapa", icone: Map },
+      { href: "/", rotulo: "Início", icone: LayoutDashboard },
+      { href: "/buscar", rotulo: "Buscar empresas", icone: Search },
+      { href: "/leads", rotulo: "Leads", icone: Users, contador: "leads", tambem: ["/mapa", "/oportunidades", "/abordar"] },
+      { href: "/campanhas", rotulo: "Campanhas", icone: Megaphone, contador: "campanhas", tambem: ["/emails", "/mensagens"] },
+    ],
+  },
+  {
+    titulo: "Vendas",
+    itens: [
       { href: "/crm", rotulo: "CRM", icone: SquareKanban, contador: "crm" },
-    ],
-  },
-  {
-    titulo: "Abordagem",
-    itens: [
-      { href: "/abordar", rotulo: "Abordar", icone: Send },
-      { href: "/campanhas", rotulo: "Campanhas", icone: Megaphone, contador: "campanhas" },
-      { href: "/mensagens", rotulo: "Mensagens IA", icone: Sparkles },
-      { href: "/emails", rotulo: "E-mails", icone: Mail, contador: "emails" },
-    ],
-  },
-  {
-    titulo: "Receita",
-    itens: [
-      { href: "/pagamentos", rotulo: "Pagamentos", icone: CreditCard, contador: "pagamentos" },
-      { href: "/analytics", rotulo: "Analytics", icone: ChartColumn },
+      { href: "/pagamentos", rotulo: "Vendas", icone: CreditCard, contador: "pagamentos", tambem: ["/analytics"] },
     ],
   },
 ];
 
-export const NAV_RODAPE: ItemNav[] = [
-  { href: "/notificacoes", rotulo: "Notificações", icone: Bell, contador: "notificacoes" },
-  { href: "/configuracoes", rotulo: "Configurações", icone: Settings },
-];
+export const NAV_RODAPE: ItemNav[] = [{ href: "/configuracoes", rotulo: "Configurações", icone: Settings }];
 
-export function ativo(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/";
+function sob(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+export function ativo(pathname: string, item: Pick<ItemNav, "href" | "tambem">): boolean {
+  if (item.href === "/") return pathname === "/";
+  return sob(pathname, item.href) || (item.tambem ?? []).some((h) => sob(pathname, h));
 }
 
 export const TODOS_ITENS: ItemNav[] = [...GRUPOS_NAV.flatMap((g) => g.itens), ...NAV_RODAPE];

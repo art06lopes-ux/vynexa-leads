@@ -28,6 +28,7 @@ export function NovaCampanha({ provedores, provedorPadrao, categorias, cidades }
   const [resumo, setResumo] = useState<Resumo | null>(null);
   const [filtro, setFiltro] = useState({ categoria: "", cidade: "", site: "sem", scoreMin: "70", limite: "50" });
   const [buscando, setBuscando] = useState(false);
+  const [porFiltro, setPorFiltro] = useState(false);
   const [cfg, setCfg] = useState({ nome: "", descricao: "", provedor: provedorPadrao, ritmo: 20, limite: 80, followup: true, dias: "3, 7" });
   const [criando, setCriando] = useState(false);
 
@@ -149,10 +150,15 @@ export function NovaCampanha({ provedores, provedorPadrao, categorias, cidades }
             <div className="space-y-5">
               {origem && origem !== "filtro" && ids.length > 0 && (
                 <div className="rounded-xl border border-brilho/40 bg-azul/10 p-4 text-sm">
-                  <p className="font-semibold">{ids.length} lead(s) vindos da sua seleção.</p>
-                  <p className="text-muted-foreground">Ou monte a lista por filtro abaixo.</p>
+                  <p className="font-semibold">{ids.length} empresa(s) escolhida(s) em Leads.</p>
+                  {!porFiltro && (
+                    <button type="button" onClick={() => setPorFiltro(true)} className="mt-1 cursor-pointer text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground">
+                      Montar a lista por filtro em vez disso
+                    </button>
+                  )}
                 </div>
               )}
+              {(porFiltro || !origem || origem === "filtro" || ids.length === 0) && (
               <div>
                 <p className="mb-3 font-display font-semibold">Escolher leads por filtro</p>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -195,6 +201,7 @@ export function NovaCampanha({ provedores, provedorPadrao, categorias, cidades }
                   {buscando ? <LoaderCircle className="size-4 animate-spin" /> : <Users className="size-4" />} Montar lista
                 </button>
               </div>
+              )}
               {resumo && (
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {[

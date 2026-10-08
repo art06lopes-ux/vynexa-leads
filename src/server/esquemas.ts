@@ -80,7 +80,10 @@ export function filtrosDaUrl(params: URLSearchParams | Record<string, string | s
   if (params instanceof URLSearchParams) params.forEach((v, k) => (obj[k] = v));
   else for (const [k, v] of Object.entries(params)) if (typeof v === "string" && v !== "") obj[k] = v;
   const r = FiltrosLeadsEsquema.safeParse(obj);
-  return (r.success ? r.data : {}) as FiltrosLeads;
+  const f = (r.success ? r.data : {}) as FiltrosLeads;
+  // A aba "Para abordar" de Leads é um filtro como os outros.
+  if (obj.aba === "abordar") f.paraAbordar = true;
+  return f;
 }
 
 export const ListaIds = z.array(z.string().min(8).max(64)).min(1).max(1000);

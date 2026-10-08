@@ -1,5 +1,6 @@
 import { ChartColumn, Globe2, Layers, Megaphone, TrendingUp } from "lucide-react";
 
+import { AbasPagina } from "@/components/base/abas-pagina";
 import { Cabecalho, Cartao } from "@/components/base/cartao";
 import { BarrasHorizontais, Funil, GraficoArea, GraficoBarras } from "@/components/graficos/graficos";
 import { Contador } from "@/components/motion/contador";
@@ -11,9 +12,14 @@ import { rotuloDia, rotuloMes } from "@/lib/datas";
 import { formatarDinheiro } from "@/lib/pagamento/dinheiro";
 import { taxa } from "@/services/crm";
 
-export const metadata = { title: "Analytics" };
+export const metadata = { title: "Relatórios" };
 
 type Roi = { id: string; nome: string; enviados: number; abertos: number; respostas: number; vendas: number; receita: number };
+
+const ABAS_VENDAS = [
+  { chave: "vendas", rotulo: "Vendas e cobranças", href: "/pagamentos" },
+  { chave: "relatorios", rotulo: "Relatórios", href: "/analytics" },
+];
 
 export default async function PaginaAnalytics() {
   const banco = getBanco();
@@ -67,7 +73,8 @@ export default async function PaginaAnalytics() {
 
   return (
     <div className="space-y-5">
-      <Cabecalho icone={ChartColumn} titulo="Analytics" descricao="Da busca à venda, com os números reais do banco. Período padrão: últimos 30 dias nos gráficos diários." />
+      <Cabecalho icone={ChartColumn} titulo="Vendas" descricao="Relatórios da busca à venda, com os números reais do banco. Gráficos diários: últimos 30 dias." />
+      <AbasPagina abas={ABAS_VENDAS} ativa="relatorios" />
 
       <Escalonado className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8">
         {metricas.map(([r, v, f]) => (

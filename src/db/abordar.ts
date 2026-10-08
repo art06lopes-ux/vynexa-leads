@@ -2,6 +2,7 @@ import "server-only";
 
 import type { Client, InValue } from "@libsql/client";
 
+import { CONDICAO_PARA_ABORDAR } from "@/db/para-abordar";
 import type { MotivoScore } from "@/db/tipos";
 import { normalizarTelefone } from "@/lib/leads/whatsapp";
 
@@ -31,12 +32,7 @@ export type ItemFila = {
 export type CriterioFila = { buscaId?: string | null; leadIds?: string[] | null; limite?: number };
 
 export async function carregarFila(banco: Client, c: CriterioFila): Promise<ItemFila[]> {
-  const onde = [
-    "e.nao_contatar = 0",
-    "l.contatado_em IS NULL",
-    "l.etapa IN ('novo', 'qualificado')",
-    "(e.whatsapp = 1 OR (e.email IS NOT NULL AND e.email <> ''))",
-  ];
+  const onde = [CONDICAO_PARA_ABORDAR];
   const args: InValue[] = [];
   if (c.buscaId) {
     onde.push("e.id IN (SELECT empresa_id FROM busca_resultados WHERE busca_id = ?)");

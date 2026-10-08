@@ -1,12 +1,11 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Download, LoaderCircle, Megaphone, Send, Sparkles, Wand2, X } from "lucide-react";
+import { ChevronDown, Download, Ellipsis, LoaderCircle, Mail, MessageCircle, Sparkles, Wand2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { CHAVE_ABORDAR } from "@/components/abordar/fila-abordagem";
 import { cn } from "@/lib/utils";
 
 /**
@@ -18,6 +17,9 @@ import { cn } from "@/lib/utils";
  */
 
 export const TAMANHOS = [10, 25, 50, 100, 500, 1000];
+
+/** Onde a seleção viaja até a tela de envio pelo WhatsApp. */
+export const CHAVE_ABORDAR = "vynexa:leads-para-abordar";
 
 export function useSelecao() {
   const [ids, setIds] = useState<Set<string>>(new Set());
@@ -127,6 +129,7 @@ export function lerParaCampanha(): { ids: string[]; origem: string } | null {
 export function BarraMassa({ ids, aoLimpar, origem }: { ids: Set<string>; aoLimpar: () => void; origem: string }) {
   const router = useRouter();
   const [ocupado, setOcupado] = useState<string | null>(null);
+  const [menu, setMenu] = useState(false);
   const lista = [...ids];
 
   async function massa(analisar: boolean, gerarMensagens: boolean, rotulo: string) {
@@ -168,7 +171,21 @@ export function BarraMassa({ ids, aoLimpar, origem }: { ids: Set<string>; aoLimp
     }
   }
 
-  const botao = "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50";
+  const botao = "inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-xl px-3.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50";
+
+  function enviarWhatsapp() {
+    try {
+      sessionStorage.setItem(CHAVE_ABORDAR, JSON.stringify(lista));
+    } catch {
+      /* sem sessionStorage: a tela de envio abre vazia e explica */
+    }
+    router.push("/abordar?selecao=1");
+  }
+
+  function enviarEmail() {
+    guardarParaCampanha(lista, origem);
+    router.push("/campanhas/nova");
+  }
 
   return (
     <AnimatePresence>
@@ -178,50 +195,60 @@ export function BarraMassa({ ids, aoLimpar, origem }: { ids: Set<string>; aoLimp
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 80, opacity: 0 }}
           transition={{ type: "spring", stiffness: 420, damping: 34 }}
-          className="fixed inset-x-3 bottom-3 z-40 mx-auto flex max-w-4xl flex-wrap items-center gap-2 rounded-2xl border border-brilho/40 bg-popover/95 p-2 pl-4 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9),0_0_30px_-10px_rgba(51,102,255,0.5)] backdrop-blur-xl lg:left-[15.5rem]"
+          className="fixed inset-x-3 bottom-3 z-40 mx-auto flex max-w-3xl flex-wrap items-center gap-2 rounded-2xl border border-brilho/40 bg-popover/95 p-2 pl-4 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9),0_0_30px_-10px_rgba(51,102,255,0.5)] backdrop-blur-xl lg:left-[15.5rem]"
           role="region"
-          aria-label="Ações em massa"
+          aria-label="Ações para as empresas selecionadas"
         >
           <p className="mr-auto text-sm">
-            <span className="font-display font-semibold num">{ids.size.toLocaleString("pt-BR")}</span> <span className="text-muted-foreground">selecionado(s)</span>
+            <span className="font-display font-semibold num">{ids.size.toLocaleString("pt-BR")}</span> <span className="text-muted-foreground">selecionada(s)</span>
           </p>
-          <button type="button" disabled={ocupado !== null} onClick={() => massa(true, false, "Análise")} className={cn(botao, "hover:bg-white/5")}>
-            {ocupado === "Análise" ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4 text-ciano" />} Analisar
+          <button type="button" disabled={ocupado !== null} onClick={enviarWhatsapp} className={cn(botao, "bg-[#1fa855] text-white hover:bg-[#25c062]")}>
+            <MessageCircle className="size-4" /> WhatsApp
           </button>
-          <button type="button" disabled={ocupado !== null} onClick={() => massa(false, true, "Mensagens")} className={cn(botao, "hover:bg-white/5")}>
-            {ocupado === "Mensagens" ? <LoaderCircle className="size-4 animate-spin" /> : <Wand2 className="size-4 text-ciano" />} Gerar mensagens
+          <button type="button" disabled={ocupado !== null} onClick={enviarEmail} className={cn(botao, "bg-azul text-white hover:bg-brilho")}>
+            <Mail className="size-4" /> E-mail
           </button>
-          <button
-            type="button"
-            disabled={ocupado !== null}
-            onClick={() => {
-              guardarParaCampanha(lista, origem);
-              router.push("/campanhas/nova");
-            }}
-            className={cn(botao, "hover:bg-white/5")}
-          >
-            <Megaphone className="size-4 text-ciano" /> Campanha
-          </button>
-          <button
-            type="button"
-            disabled={ocupado !== null}
-            onClick={() => {
-              try {
-                sessionStorage.setItem(CHAVE_ABORDAR, JSON.stringify(lista));
-              } catch {
-                /* navegador sem sessionStorage: a tela abre vazia e avisa */
-              }
-              router.push("/abordar?selecao=1");
-            }}
-            className={cn(botao, "bg-azul text-white hover:bg-brilho")}
-          >
-            <Send className="size-4" /> Abordar
-          </button>
-          <button type="button" disabled={ocupado !== null} onClick={() => exportar("csv")} className={cn(botao, "hover:bg-white/5")} title="Exportar CSV">
-            {ocupado === "exportar" ? <LoaderCircle className="size-4 animate-spin" /> : <Download className="size-4" />}
-            <span className="hidden sm:inline">CSV</span>
-          </button>
-          <button type="button" onClick={aoLimpar} aria-label="Limpar seleção" className={cn(botao, "px-2 text-muted-foreground hover:bg-white/5")}>
+          <div className="relative">
+            <button type="button" onClick={() => setMenu((m) => !m)} aria-expanded={menu} aria-haspopup="menu" disabled={ocupado !== null} className={cn(botao, "border border-fio font-medium hover:bg-white/5")}>
+              {ocupado ? <LoaderCircle className="size-4 animate-spin" /> : <Ellipsis className="size-4" />} <span className="hidden sm:inline">Mais</span>
+            </button>
+            <AnimatePresence>
+              {menu && (
+                <>
+                  <button type="button" aria-label="Fechar menu" className="fixed inset-0 z-40 cursor-default" onClick={() => setMenu(false)} />
+                  <motion.div
+                    role="menu"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 4 }}
+                    className="absolute bottom-full right-0 z-50 mb-2 w-60 overflow-hidden rounded-xl border border-fio bg-popover py-1 shadow-2xl"
+                  >
+                    {(
+                      [
+                        [Sparkles, "Analisar com IA", () => massa(true, false, "Análise")],
+                        [Wand2, "Escrever mensagens com IA", () => massa(false, true, "Mensagens")],
+                        [Download, "Exportar planilha (CSV)", () => exportar("csv")],
+                      ] as const
+                    ).map(([Icone, rotulo, fazer]) => (
+                      <button
+                        key={rotulo}
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setMenu(false);
+                          void fazer();
+                        }}
+                        className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/5"
+                      >
+                        <Icone className="size-4 text-ciano" /> {rotulo}
+                      </button>
+                    ))}
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
+          <button type="button" onClick={aoLimpar} aria-label="Limpar seleção" className={cn(botao, "px-2 font-normal text-muted-foreground hover:bg-white/5")}>
             <X className="size-4" />
           </button>
         </motion.div>

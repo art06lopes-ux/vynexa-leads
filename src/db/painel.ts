@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getBanco, planos } from "@/db/cliente";
+import { CONDICAO_PARA_ABORDAR } from "@/db/para-abordar";
 import type { EtapaLead } from "@/db/tipos";
 import { ETAPAS } from "@/services/crm";
 
@@ -14,7 +15,7 @@ export async function contadoresNav(): Promise<Record<string, number>> {
   const [{ rows }, { rows: n }] = await Promise.all([
     banco.execute(`
       SELECT
-        (SELECT COUNT(*) FROM leads WHERE etapa = 'novo') AS leads,
+        (SELECT COUNT(*) FROM leads l JOIN empresas e ON e.id = l.empresa_id WHERE ${CONDICAO_PARA_ABORDAR}) AS leads,
         (SELECT COUNT(*) FROM leads WHERE prioridade = 'alta' AND etapa IN ('novo','qualificado')) AS oportunidades,
         (SELECT COUNT(*) FROM campanhas WHERE status IN ('preparando','pronta','agendada','enviando')) AS campanhas,
         (SELECT COUNT(*) FROM envios WHERE status = 'erro') AS emails,

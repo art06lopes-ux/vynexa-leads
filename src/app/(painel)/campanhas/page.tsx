@@ -1,6 +1,7 @@
 import { Megaphone, Plus } from "lucide-react";
 import Link from "next/link";
 
+import { AbasPagina } from "@/components/base/abas-pagina";
 import { Cabecalho, Vazio } from "@/components/base/cartao";
 import { COR_CAMPANHA, ROTULO_CAMPANHA } from "@/components/campanhas/rotulos";
 import { Escalonado, ItemEscalonado } from "@/components/motion/entrada";
@@ -10,6 +11,11 @@ import { cn } from "@/lib/utils";
 import { haQuantoTempo, taxa } from "@/services/crm";
 
 export const metadata = { title: "Campanhas" };
+
+const ABAS_CAMPANHAS = [
+  { chave: "campanhas", rotulo: "Campanhas", href: "/campanhas" },
+  { chave: "emails", rotulo: "E-mails enviados", href: "/emails" },
+];
 
 export default async function PaginaCampanhas() {
   const campanhas = await listarCampanhas();
@@ -21,7 +27,8 @@ export default async function PaginaCampanhas() {
 
   return (
     <div>
-      <Cabecalho icone={Megaphone} titulo="Campanhas" descricao="E-mails personalizados em fila, no ritmo que protege seu domínio, com follow-up e acompanhamento." acoes={novo} />
+      <Cabecalho icone={Megaphone} titulo="Campanhas" descricao="E-mails em massa: a IA escreve um para cada empresa, você revisa e autoriza, e eles saem aos poucos, com follow-up." acoes={novo} />
+      <AbasPagina abas={ABAS_CAMPANHAS} ativa="campanhas" />
       {campanhas.length === 0 ? (
         <div className="placa">
           <Vazio icone={Megaphone} titulo="Nenhuma campanha ainda" descricao="Selecione leads na busca ou na lista e clique em “Criar campanha” — ou monte por filtro." acao={novo} />

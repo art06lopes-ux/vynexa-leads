@@ -252,3 +252,14 @@ describe("Google Places: cota diária do Google Cloud", () => {
     assert.equal(p.requisicoesFeitas, 1);
   });
 });
+
+describe("nicho de uma busca colada do Maps", () => {
+  it("tira cidade e estado do texto, sem adivinhar", async () => {
+    const { nichoSemLugar } = await import("@/integrations/leads/google-places");
+    const em = [{ cidade: "Manacapuru", estado: "AM" }];
+    assert.equal(nichoSemLugar("barbearia manacapuru", em), "barbearia");
+    assert.equal(nichoSemLugar("Hamburguerias em Manacapuru AM", em), "hamburguerias");
+    assert.equal(nichoSemLugar("energia solar santa catarina", [{ cidade: "Florianópolis", estado: "SC" }]), "energia solar");
+    assert.equal(nichoSemLugar("pet shop", em), "pet shop", "sem lugar no texto, fica igual");
+  });
+});

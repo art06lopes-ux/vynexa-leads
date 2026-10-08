@@ -160,7 +160,7 @@ export function ListaWhatsapp({ itensIniciais, origem, remetente }: Props) {
         <p className="mt-1 max-w-md text-sm text-muted-foreground">
           Em Leads, marque as empresas que quer abordar e toque em <b className="text-foreground">WhatsApp</b> na barra de baixo. Empresas já contatadas ou marcadas como “não contatar” ficam de fora.
         </p>
-        <Link href="/leads?aba=abordar" className="mt-5 inline-flex h-10 items-center rounded-xl bg-azul px-4 text-sm font-semibold text-white hover:bg-brilho">
+        <Link href="/leads?situacao=nao_abordados" className="mt-5 inline-flex h-10 items-center rounded-xl bg-azul px-4 text-sm font-semibold text-white hover:bg-brilho">
           Ir para Leads
         </Link>
       </div>

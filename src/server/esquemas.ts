@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { SITUACOES } from "@/db/para-abordar";
 import { ETAPAS } from "@/services/crm";
 import type { FiltrosLeads } from "@/db/leads";
 
@@ -57,6 +58,8 @@ export const FiltrosLeadsEsquema = z.object({
   categoria: opcional(120),
   pais: opcional(4),
   cidade: opcional(120),
+  estado: opcional(80),
+  situacao: z.enum(SITUACOES).optional(),
   site: z.enum(["todos", "sem", "com", "ruim", "social"]).optional(),
   whatsapp: bool,
   email: bool,
@@ -81,8 +84,8 @@ export function filtrosDaUrl(params: URLSearchParams | Record<string, string | s
   else for (const [k, v] of Object.entries(params)) if (typeof v === "string" && v !== "") obj[k] = v;
   const r = FiltrosLeadsEsquema.safeParse(obj);
   const f = (r.success ? r.data : {}) as FiltrosLeads;
-  // A aba "Para abordar" de Leads é um filtro como os outros.
-  if (obj.aba === "abordar") f.paraAbordar = true;
+  // Endereço antigo da aba "Para abordar" (links salvos, notificações).
+  if (obj.aba === "abordar" && !f.situacao) f.situacao = "nao_abordados";
   return f;
 }
 

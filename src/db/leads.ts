@@ -3,7 +3,9 @@ import "server-only";
 import type { InValue } from "@libsql/client";
 
 import { getBanco, plano, planos } from "@/db/cliente";
-import { CONDICAO_PARA_ABORDAR } from "@/db/para-abordar";
+import { CONDICAO_SITUACAO, type Situacao } from "@/db/para-abordar";
+import { ESTADOS_BR } from "@/lib/geo/estados-br";
+import { nomePaisPt } from "@/lib/geo/mundo";
 import type { Empresa, EtapaLead, Lead, MotivoScore, Prioridade } from "@/db/tipos";
 
 /**
@@ -13,6 +15,13 @@ import type { Empresa, EtapaLead, Lead, MotivoScore, Prioridade } from "@/db/tip
  * filtros montam a cláusula e os valores vão por `args`. Ordenação vem
  * de lista fechada.
  */
+
+/**
+ * O nicho como o operador o vê: o termo pesquisado, em minúsculas, sem o
+ * nome da cidade da própria empresa. Buscas antigas coladas do Maps
+ * gravaram "barbearia manacapuru"; aqui isso já aparece como "barbearia".
+ */
+const NICHO_SQL = `TRIM(REPLACE(LOWER(e.categoria), LOWER(COALESCE(e.cidade, '')), ''))`;
 
 export type FiltrosLeads = {
   q?: string;
@@ -34,8 +43,10 @@ export type FiltrosLeads = {
   campanha?: string;
   naoContatar?: boolean;
   analisado?: boolean;
-  /** Aba "Para abordar": ver `CONDICAO_PARA_ABORDAR`. */
-  paraAbordar?: boolean;
+  /** Estado/região (sigla no Brasil e EUA, nome nos demais). */
+  estado?: string;
+  /** Não abordados, já abordados, responderam, não contatar. */
+  situacao?: Situacao;
   ordem?: "score" | "recentes" | "avaliacoes" | "nome";
 };
 
@@ -86,8 +97,14 @@ export function montarWhere(f: FiltrosLeads): { clausula: string; args: InValue[
     }
   }
   if (f.categoria) {
-    p.push("(e.categoria = ? OR e.categoria_rotulo = ?)");
-    a.push(f.categoria, f.categoria);
+    // O nicho é o que foi pesquisado ("energia solar"); o rótulo do Google
+    // ("Serviços") vale também, para quem filtrar por ele.
+    p.push(`(${NICHO_SQL} = LOWER(?) OR LOWER(e.categoria) = LOWER(?) OR e.categoria_rotulo = ?)`);
+    a.push(f.categoria, f.categoria, f.categoria);
+  }
+  if (f.estado) {
+    p.push("UPPER(e.estado) = UPPER(?)");
+    a.push(f.estado);
   }
   if (f.pais) {
     p.push("e.pais = ?");
@@ -142,7 +159,7 @@ export function montarWhere(f: FiltrosLeads): { clausula: string; args: InValue[
   if (f.naoContatar === false) p.push("e.nao_contatar = 0");
   if (f.analisado === true) p.push("l.analisado_em IS NOT NULL");
   if (f.analisado === false) p.push("l.analisado_em IS NULL");
-  if (f.paraAbordar) p.push(CONDICAO_PARA_ABORDAR);
+  if (f.situacao && CONDICAO_SITUACAO[f.situacao]) p.push(CONDICAO_SITUACAO[f.situacao]);
   if (f.busca) {
     juncao += " JOIN busca_resultados br ON br.empresa_id = e.id AND br.busca_id = ?";
     a.unshift(f.busca);
@@ -261,13 +278,51 @@ export async function detalhesDoLead(leadId: string): Promise<{
   };
 }
 
-export async function opcoesDeFiltro(): Promise<{ categorias: string[]; paises: string[]; cidades: string[] }> {
+export type OpcaoFiltro = { valor: string; rotulo: string };
+
+/**
+ * As opções dos filtros, a partir do que existe na carteira. Em cascata:
+ * com um país escolhido, só os estados dele; com um estado, só as
+ * cidades dele — a lista nunca oferece combinação que dá zero.
+ */
+export async function opcoesDeFiltro(sel: { pais?: string; estado?: string } = {}): Promise<{
+  paises: OpcaoFiltro[];
+  estados: OpcaoFiltro[];
+  cidades: string[];
+  nichos: string[];
+  /** Mesmo que `nichos` (nome antigo, usado pela nova campanha). */
+  categorias: string[];
+}> {
   const banco = getBanco();
-  const [cat, pais, cid] = await Promise.all([
-    banco.execute(`SELECT COALESCE(categoria_rotulo, categoria) AS v, COUNT(*) n FROM empresas GROUP BY v ORDER BY n DESC LIMIT 60`),
-    banco.execute(`SELECT pais AS v FROM empresas GROUP BY pais ORDER BY COUNT(*) DESC`),
-    banco.execute(`SELECT cidade AS v FROM empresas WHERE cidade IS NOT NULL GROUP BY cidade ORDER BY COUNT(*) DESC LIMIT 200`),
+  const ondePais = sel.pais ? "AND pais = ?" : "";
+  const argsPais = sel.pais ? [sel.pais] : [];
+  const ondeEstado = sel.estado ? "AND UPPER(estado) = UPPER(?)" : "";
+  const argsEstado = sel.estado ? [sel.estado] : [];
+  const [nic, pais, est, cid] = await Promise.all([
+    banco.execute(`SELECT ${NICHO_SQL} AS v, COUNT(*) n FROM empresas e WHERE e.categoria IS NOT NULL AND e.categoria <> '' GROUP BY v HAVING v <> '' ORDER BY n DESC LIMIT 80`),
+    banco.execute(`SELECT pais AS v, COUNT(*) n FROM empresas WHERE pais IS NOT NULL AND pais <> 'ZZ' GROUP BY pais ORDER BY n DESC`),
+    banco.execute({
+      sql: `SELECT UPPER(estado) AS v, MAX(pais) AS pais, COUNT(*) n FROM empresas WHERE estado IS NOT NULL AND estado <> '' ${ondePais} GROUP BY v ORDER BY n DESC LIMIT 100`,
+      args: argsPais,
+    }),
+    banco.execute({
+      sql: `SELECT cidade AS v, COUNT(*) n FROM empresas WHERE cidade IS NOT NULL AND cidade <> '' ${ondePais} ${ondeEstado} GROUP BY cidade ORDER BY n DESC LIMIT 300`,
+      args: [...argsPais, ...argsEstado],
+    }),
   ]);
-  const v = (r: { rows: unknown[] }) => (r.rows as Array<{ v: string }>).map((x) => x.v).filter(Boolean);
-  return { categorias: v(cat), paises: v(pais), cidades: v(cid) };
+  const lista = (r: { rows: unknown[] }) => (r.rows as Array<{ v: string }>).map((x) => String(x.v)).filter(Boolean);
+  const nichos = lista(nic);
+  return {
+    paises: lista(pais).map((c) => ({ valor: c, rotulo: nomePaisPt(c) })).sort((a, b) => (a.valor === "BR" ? -1 : b.valor === "BR" ? 1 : a.rotulo.localeCompare(b.rotulo, "pt-BR"))),
+    estados: (est.rows as unknown as Array<{ v: string; pais: string }>)
+      .map((r) => {
+        const uf = String(r.v);
+        const nome = String(r.pais) === "BR" ? ESTADOS_BR[uf] : undefined;
+        return { valor: uf, rotulo: nome ? `${nome} (${uf})` : uf.charAt(0) + uf.slice(1).toLowerCase() };
+      })
+      .sort((a, b) => a.rotulo.localeCompare(b.rotulo, "pt-BR")),
+    cidades: lista(cid).sort((a, b) => a.localeCompare(b, "pt-BR")),
+    nichos,
+    categorias: nichos,
+  };
 }

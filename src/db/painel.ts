@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getBanco, planos } from "@/db/cliente";
-import { CONDICAO_PARA_ABORDAR } from "@/db/para-abordar";
+import { CONDICAO_NAO_ABORDADO } from "@/db/para-abordar";
 import type { EtapaLead } from "@/db/tipos";
 import { ETAPAS } from "@/services/crm";
 
@@ -15,7 +15,7 @@ export async function contadoresNav(): Promise<Record<string, number>> {
   const [{ rows }, { rows: n }] = await Promise.all([
     banco.execute(`
       SELECT
-        (SELECT COUNT(*) FROM leads l JOIN empresas e ON e.id = l.empresa_id WHERE ${CONDICAO_PARA_ABORDAR}) AS leads,
+        (SELECT COUNT(*) FROM leads l JOIN empresas e ON e.id = l.empresa_id WHERE ${CONDICAO_NAO_ABORDADO}) AS leads,
         (SELECT COUNT(*) FROM leads WHERE prioridade = 'alta' AND etapa IN ('novo','qualificado')) AS oportunidades,
         (SELECT COUNT(*) FROM campanhas WHERE status IN ('preparando','pronta','agendada','enviando')) AS campanhas,
         (SELECT COUNT(*) FROM envios WHERE status = 'erro') AS emails,
@@ -50,7 +50,7 @@ export type Kpis = {
   conversao: number | null;
   semSite: number;
   oportunidadesAltas: number;
-  /** Ainda não contatados, com WhatsApp ou e-mail (aba "Para abordar"). */
+  /** Ainda não abordados (filtro "Situação: não abordados" de Leads). */
   paraAbordar: number;
   campanhasAtivas: number;
   emailsEnviados: number;
@@ -71,7 +71,7 @@ export async function obterKpis(): Promise<Kpis> {
       (SELECT COUNT(*) FROM vendas WHERE status = 'pago') AS vendas,
       (SELECT COUNT(*) FROM empresas WHERE status_site IN ('sem_site','rede_social')) AS sem_site,
       (SELECT COUNT(*) FROM leads WHERE prioridade = 'alta' AND etapa IN ('novo','qualificado')) AS altas,
-      (SELECT COUNT(*) FROM leads l JOIN empresas e ON e.id = l.empresa_id WHERE ${CONDICAO_PARA_ABORDAR}) AS para_abordar,
+      (SELECT COUNT(*) FROM leads l JOIN empresas e ON e.id = l.empresa_id WHERE ${CONDICAO_NAO_ABORDADO}) AS para_abordar,
       (SELECT COUNT(*) FROM campanhas WHERE status IN ('agendada','enviando')) AS camp,
       (SELECT COUNT(*) FROM envios WHERE enviado_em IS NOT NULL) AS enviados
   `);
@@ -183,7 +183,7 @@ export async function melhoresOportunidades(limite = 6): Promise<LeadTop[]> {
     sql: `SELECT l.id lead_id, e.nome, e.cidade, COALESCE(e.categoria_rotulo, e.categoria) categoria, l.score_oportunidade score, l.prioridade,
                  e.status_site, e.site_qualidade, e.avaliacao_qtd, e.avaliacao_nota, e.whatsapp
           FROM leads l JOIN empresas e ON e.id = l.empresa_id
-          WHERE ${CONDICAO_PARA_ABORDAR} AND l.score_oportunidade IS NOT NULL
+          WHERE ${CONDICAO_NAO_ABORDADO} AND l.score_oportunidade IS NOT NULL
           ORDER BY l.score_oportunidade DESC, e.avaliacao_qtd DESC NULLS LAST LIMIT ?`,
     args: [limite],
   });

@@ -62,6 +62,37 @@ describe("filtros de leads", () => {
     assert.ok(altos.itens.every((l) => (l.score_oportunidade ?? 0) >= 80));
   });
 
+  it("estado, nicho (sem diferenciar maiúsculas) e situação", async () => {
+    const { registrarLugares } = await import("@/services/registro");
+    const { registrarContato } = await import("@/services/acoes-lead");
+    const { listarLeads, opcoesDeFiltro } = await import("@/db/leads");
+    await registrarLugares(
+      banco,
+      [
+        lugar({ externoId: "sc1", nome: "Solar Floripa", categoria: "energia solar", estado: "SC", cidade: "Florianópolis", telefone: "+55 48 99111-0001" }),
+        lugar({ externoId: "sc2", nome: "Solar Joinville", categoria: "Energia Solar", estado: "SC", cidade: "Joinville", telefone: "+55 47 99111-0002" }),
+      ],
+      { buscaId: null },
+    );
+    await registrarContato(banco, await leadDe("sc2"), "whatsapp_aberto");
+    const nomes = async (f: Parameters<typeof listarLeads>[0]) => (await listarLeads(f)).itens.map((l) => l.nome).sort();
+    assert.deepEqual(await nomes({ estado: "sc" }), ["Solar Floripa", "Solar Joinville"]);
+    assert.deepEqual(await nomes({ categoria: "ENERGIA SOLAR" }), ["Solar Floripa", "Solar Joinville"]);
+    assert.deepEqual(await nomes({ estado: "SC", situacao: "nao_abordados" }), ["Solar Floripa"]);
+    assert.deepEqual(await nomes({ estado: "SC", situacao: "abordados" }), ["Solar Joinville"]);
+
+    const op = await opcoesDeFiltro({ pais: "BR", estado: "SC" });
+    assert.ok(op.estados.some((e) => e.valor === "SC" && e.rotulo === "Santa Catarina (SC)"));
+    assert.deepEqual(op.cidades, ["Florianópolis", "Joinville"], "com estado escolhido, só as cidades dele");
+    assert.ok(op.nichos.includes("energia solar"));
+    assert.ok(!op.nichos.includes("Energia Solar"), "nicho sem duplicar por maiúscula");
+
+    // Busca antiga colada do Maps: nicho gravado com a cidade junto.
+    await registrarLugares(banco, [lugar({ externoId: "bm1", nome: "Barbearia Antiga", categoria: "barbearia manacapuru", cidade: "Manacapuru" })], { buscaId: null });
+    assert.ok((await nomes({ categoria: "barbearia" })).includes("Barbearia Antiga"));
+    assert.ok((await opcoesDeFiltro()).nichos.includes("barbearia"));
+  });
+
   it("valores maliciosos nos filtros não viram SQL", async () => {
     const { listarLeads } = await import("@/db/leads");
     const r = await listarLeads({ q: "'; DROP TABLE empresas; --" });

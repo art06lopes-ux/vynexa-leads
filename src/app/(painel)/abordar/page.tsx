@@ -33,7 +33,7 @@ export default async function PaginaWhatsapp({ searchParams }: PageProps<"/abord
       <Cabecalho
         icone={MessageCircle}
         titulo="Enviar pelo WhatsApp"
-        trilha={[{ href: "/leads?aba=abordar", rotulo: "Leads" }]}
+        trilha={[{ href: "/leads?situacao=nao_abordados", rotulo: "Leads" }]}
         descricao="Todas as empresas escolhidas, cada uma com a mensagem pronta. Abra no WhatsApp as que quiser, na ordem que quiser."
       />
       <ListaWhatsapp

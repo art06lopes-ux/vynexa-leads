@@ -5,6 +5,7 @@ import { Check, ExternalLink, Globe, Mail, MapPin, MessageCircle, Star } from "l
 import Link from "next/link";
 
 import type { LeadListado } from "@/db/leads";
+import { nichoDe } from "@/lib/leads/nicho";
 import { cn } from "@/lib/utils";
 
 import { SeloEtapa, SeloPresenca } from "./presenca";
@@ -98,7 +99,7 @@ export function CartaoLead({
           <Link href={`/leads/${lead.lead_id}`} className="line-clamp-1 font-semibold leading-snug hover:text-ciano">
             {lead.nome}
           </Link>
-          <p className="truncate text-xs text-muted-foreground">{lead.categoria_rotulo ?? lead.categoria}</p>
+          <p className="truncate text-xs text-muted-foreground">{nichoDe(lead.categoria, lead.cidade) || lead.categoria_rotulo}</p>
         </div>
         <AnelScore score={lead.score_oportunidade} tamanho={42} />
       </div>

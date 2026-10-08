@@ -695,7 +695,7 @@ function Resultados({ estado, filtros, aoLimpar }: { estado: EstadoBusca; filtro
               <b className="text-white">{r.comWhatsapp}</b> com WhatsApp e <b className="text-white">{r.comEmail}</b> com e-mail. Escolha quem abordar e envie de uma vez
               {estado.procurandoEmails ? " (ainda procurando e-mails nos sites)" : ""}.
             </p>
-            <Link href={`/leads?aba=abordar&busca=${estado.id}`} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-[#0a1330] hover:bg-white/90">
+            <Link href={`/leads?situacao=nao_abordados&busca=${estado.id}`} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-[#0a1330] hover:bg-white/90">
               <Send className="size-4" /> Escolher quem abordar
             </Link>
           </div>

@@ -58,8 +58,8 @@ export default async function Dashboard() {
             <>
               {" "}
               Você tem{" "}
-              <Link href="/leads?aba=abordar" className="font-semibold text-foreground underline decoration-brilho/50 underline-offset-4 hover:decoration-brilho">
-                {kpis.paraAbordar} {kpis.paraAbordar === 1 ? "empresa para abordar" : "empresas para abordar"}
+              <Link href="/leads?situacao=nao_abordados" className="font-semibold text-foreground underline decoration-brilho/50 underline-offset-4 hover:decoration-brilho">
+                {kpis.paraAbordar} {kpis.paraAbordar === 1 ? "empresa ainda não abordada" : "empresas ainda não abordadas"}
               </Link>
               {kpis.oportunidadesAltas > 0 ? `, ${kpis.oportunidadesAltas} de alta prioridade.` : "."}
             </>
@@ -126,7 +126,7 @@ export default async function Dashboard() {
         </Entrada>
 
         <Entrada atraso={0.14} className="xl:col-span-4">
-          <Cartao icone={Flame} titulo="Para abordar" subtitulo="Melhor score primeiro, ainda não contatados" href="/leads?aba=abordar" className="h-full" corpoClassName="px-3 pb-3">
+          <Cartao icone={Flame} titulo="Não abordados" subtitulo="Melhor score primeiro" href="/leads?situacao=nao_abordados" className="h-full" corpoClassName="px-3 pb-3">
             {top.length === 0 ? (
               <Vazio icone={Radar} titulo="Ninguém para abordar agora" descricao="Faça uma busca: as empresas com WhatsApp ou e-mail aparecem aqui." acao={<BotaoBuscar />} className="py-8" />
             ) : (
@@ -155,7 +155,7 @@ export default async function Dashboard() {
 
       <Escalonado className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
-          { icone: Flame, rotulo: "Para abordar", valor: kpis.paraAbordar, detalhe: `${kpis.oportunidadesAltas} de alta prioridade`, href: "/leads?aba=abordar" },
+          { icone: Flame, rotulo: "Não abordados", valor: kpis.paraAbordar, detalhe: `${kpis.oportunidadesAltas} de alta prioridade`, href: "/leads?situacao=nao_abordados" },
           { icone: MapPin, rotulo: "Leads encontrados", valor: kpis.leadsMes, detalhe: "neste mês", href: "/leads?ordem=recentes" },
           { icone: Megaphone, rotulo: "Campanhas", valor: kpis.campanhasAtivas, detalhe: `ativas · ${kpis.emailsEnviados.toLocaleString("pt-BR")} e-mails enviados`, href: "/campanhas" },
           { icone: Wallet, rotulo: "Receita", valor: kpis.receitaMesCentavos, detalhe: "no mês", href: "/pagamentos", moeda: true },

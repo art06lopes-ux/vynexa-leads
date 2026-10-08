@@ -149,6 +149,40 @@ function requisicoesTexto(n: number): string {
   return n === 1 ? "1 requisição" : `${n} requisições`;
 }
 
+const simplificar = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+
+/**
+ * Tira do texto pesquisado os nomes de cidade e estado ("hamburguerias em
+ * Manacapuru AM" → "hamburguerias"). Só remove o que bate com o endereço
+ * das empresas achadas (ou com um estado do Brasil) — nunca adivinha.
+ */
+export function nichoSemLugar(consulta: string, lugares: Array<Pick<LugarEncontrado, "cidade" | "estado">>): string {
+  const nomes = new Set<string>();
+  for (const l of lugares) {
+    if (l.cidade) nomes.add(simplificar(l.cidade));
+    if (l.estado) nomes.add(simplificar(l.estado));
+  }
+  for (const [uf, nome] of Object.entries(ESTADOS_BR)) {
+    nomes.add(simplificar(nome));
+    nomes.add(uf.toLowerCase());
+  }
+  const palavras = consulta.split(/\s+/).filter(Boolean);
+  const normal = palavras.map(simplificar);
+  const remover = new Set<number>();
+  for (const nome of nomes) {
+    const partes = nome.split(/\s+/);
+    for (let i = 0; i + partes.length <= normal.length; i += 1) {
+      if (partes.every((p, k) => normal[i + k] === p)) for (let k = 0; k < partes.length; k += 1) remover.add(i + k);
+    }
+  }
+  const resto = palavras.filter((_, i) => !remover.has(i)).join(" ");
+  const limpo = resto
+    .replace(/\s+(em|no|na|nos|nas|de|do|da|perto de|in|near)\s*$/i, "")
+    .replace(/[,\-/]+\s*$/, "")
+    .trim();
+  return (limpo || consulta).toLowerCase();
+}
+
 /** Divide um retângulo em quatro. */
 export function quadrantes(r: Retangulo): Retangulo[] {
   const latMeio = (r.sul + r.norte) / 2;
@@ -360,6 +394,10 @@ export class GooglePlacesProvider implements LeadProvider {
     }
 
     const area = link.centro && link.raioKm ? retanguloDoCirculo(link.centro.lat, link.centro.lng, link.raioKm) : null;
-    return { lugares: [...vistos.values()], requisicoes, area, rotulo: link.consulta, aviso };
+    // "barbearia manacapuru" → nicho "barbearia": o lugar sai do texto,
+    // usando as cidades/estados das próprias empresas encontradas.
+    const nicho = nichoSemLugar(link.consulta, [...vistos.values()]);
+    const lugares = [...vistos.values()].map((l) => ({ ...l, categoria: nicho }));
+    return { lugares, requisicoes, area, rotulo: link.consulta, aviso };
   }
 }

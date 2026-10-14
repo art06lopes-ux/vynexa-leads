@@ -116,7 +116,7 @@ export function EstudioAbordagem(p: Props) {
           onClick={gerar}
           disabled={gerando || !p.iaConfigurada}
           title={p.iaConfigurada ? undefined : "Configure a IA em Configurações → Integrações"}
-          className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-azul px-3 text-sm font-semibold text-white hover:bg-brilho disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-azul px-3 text-sm font-semibold text-sobre-brasa hover:bg-brilho disabled:cursor-not-allowed disabled:opacity-50"
         >
           {gerando ? <LoaderCircle className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
           {temAlguma ? "Gerar de novo" : "Gerar abordagem"}
@@ -171,7 +171,7 @@ export function EstudioAbordagem(p: Props) {
                     </p>
                   </div>
                   <div className="whitespace-pre-wrap px-4 py-4 text-[0.92rem] leading-relaxed">{texto}</div>
-                  <div className="border-t-2 border-[#3366ff] mx-4 pb-4 pt-3 text-xs whitespace-pre-wrap text-[#374151]">{p.assinatura}</div>
+                  <div className="border-t-2 border-[#ff5a1f] mx-4 pb-4 pt-3 text-xs whitespace-pre-wrap text-[#374151]">{p.assinatura}</div>
                   <p className="px-4 pb-3 text-[0.7rem] text-[#9ca3af]">Rodapé automático: link para não receber mais mensagens.</p>
                 </div>
               ) : (
@@ -225,7 +225,7 @@ export function EstudioAbordagem(p: Props) {
                       <button type="button" onClick={() => setRevisando(false)} className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-fio px-3 text-sm hover:bg-white/5">
                         <Pencil className="size-4" /> Editar
                       </button>
-                      <button type="button" onClick={enviarEmail} disabled={enviando} className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-azul px-3 text-sm font-semibold text-white hover:bg-brilho disabled:opacity-60">
+                      <button type="button" onClick={enviarEmail} disabled={enviando} className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-azul px-3 text-sm font-semibold text-sobre-brasa hover:bg-brilho disabled:opacity-60">
                         {enviando ? <LoaderCircle className="size-4 animate-spin" /> : <Send className="size-4" />} Enviar
                       </button>
                     </>
@@ -235,7 +235,7 @@ export function EstudioAbordagem(p: Props) {
                       onClick={() => setRevisando(true)}
                       disabled={!texto || !assunto || !para || p.naoContatar || !p.provedorEmailPronto}
                       title={!p.provedorEmailPronto ? "Configure um provedor de e-mail em Configurações" : undefined}
-                      className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-azul px-3 text-sm font-semibold text-white hover:bg-brilho disabled:cursor-not-allowed disabled:opacity-40"
+                      className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-azul px-3 text-sm font-semibold text-sobre-brasa hover:bg-brilho disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <Mail className="size-4" /> Revisar e enviar
                     </button>

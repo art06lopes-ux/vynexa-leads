@@ -295,7 +295,7 @@ export function TelaLeads({
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -4 }}
-                    className="absolute right-0 z-40 mt-1 w-60 overflow-hidden rounded-xl border border-fio bg-[#0b1433] py-1 shadow-2xl"
+                    className="absolute right-0 z-40 mt-1 w-60 overflow-hidden rounded-xl border border-fio bg-[#1a1612] py-1 shadow-2xl"
                   >
                     <button
                       type="button"
@@ -337,7 +337,7 @@ export function TelaLeads({
         <div className="placa px-6 py-14 text-center">
           <p className="font-display text-base font-semibold">Nenhum lead encontrado</p>
           <p className="mt-1 text-sm text-muted-foreground">Faça uma busca por categoria e localização para começar, ou ajuste os filtros.</p>
-          <Link href="/buscar" className="mt-5 inline-flex h-10 items-center rounded-xl bg-azul px-4 text-sm font-semibold text-white hover:bg-brilho">
+          <Link href="/buscar" className="mt-5 inline-flex h-10 items-center rounded-xl bg-azul px-4 text-sm font-semibold text-sobre-brasa hover:bg-brilho">
             Buscar leads
           </Link>
         </div>
@@ -354,7 +354,7 @@ export function TelaLeads({
                       aria-label="Selecionar a página"
                       checked={itens.every((l) => selecao.tem(l.lead_id))}
                       onChange={(e) => selecao.definir(e.target.checked ? [...new Set([...selecao.ids, ...itens.map((l) => l.lead_id)])] : [...selecao.ids].filter((id) => !itens.some((l) => l.lead_id === id)))}
-                      className="size-4 cursor-pointer accent-[#3366ff]"
+                      className="size-4 cursor-pointer accent-[#ff5a1f]"
                     />
                   </th>
                   <th className="py-3 font-medium">Empresa</th>
@@ -376,7 +376,7 @@ export function TelaLeads({
                     className={cn("border-b border-fio/60 transition-colors last:border-0 hover:bg-white/[0.025]", selecao.tem(l.lead_id) && "bg-azul/[0.07]")}
                   >
                     <td className="px-4 py-2.5">
-                      <input type="checkbox" aria-label={`Selecionar ${l.nome}`} checked={selecao.tem(l.lead_id)} onChange={() => selecao.alternar(l.lead_id)} className="size-4 cursor-pointer accent-[#3366ff]" />
+                      <input type="checkbox" aria-label={`Selecionar ${l.nome}`} checked={selecao.tem(l.lead_id)} onChange={() => selecao.alternar(l.lead_id)} className="size-4 cursor-pointer accent-[#ff5a1f]" />
                     </td>
                     <td className="max-w-72 py-2.5">
                       <Link href={`/leads/${l.lead_id}`} className="flex items-center gap-3">
@@ -515,7 +515,7 @@ function ModalImportar({ tipo, aoFechar }: { tipo: "csv" | "manual"; aoFechar: (
                 const arq = e.target.files?.[0];
                 if (arq) set("conteudo", await arq.text());
               }}
-              className="block w-full text-sm file:mr-3 file:h-9 file:cursor-pointer file:rounded-lg file:border-0 file:bg-azul file:px-3 file:text-white"
+              className="block w-full text-sm file:mr-3 file:h-9 file:cursor-pointer file:rounded-lg file:border-0 file:bg-azul file:px-3 file:text-sobre-brasa"
             />
             <div className="grid grid-cols-2 gap-2">
               <label className="space-y-1">
@@ -552,7 +552,7 @@ function ModalImportar({ tipo, aoFechar }: { tipo: "csv" | "manual"; aoFechar: (
             ))}
           </div>
         )}
-        <button type="submit" disabled={enviando || (tipo === "csv" && !f.conteudo)} className="mt-5 inline-flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-azul text-sm font-semibold text-white hover:bg-brilho disabled:opacity-50">
+        <button type="submit" disabled={enviando || (tipo === "csv" && !f.conteudo)} className="mt-5 inline-flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-azul text-sm font-semibold text-sobre-brasa hover:bg-brilho disabled:opacity-50">
           {enviando && <LoaderCircle className="size-4 animate-spin" />} {tipo === "csv" ? "Importar" : "Adicionar lead"}
         </button>
       </motion.form>

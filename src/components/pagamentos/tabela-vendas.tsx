@@ -83,7 +83,7 @@ function FormCobranca({ v, aoFechar, asaasPronto }: { v: VendaListada; aoFechar:
         <input value={f.telefone} onChange={(e) => setF((a) => ({ ...a, telefone: e.target.value }))} className={campo} />
       </label>
       <div className="flex gap-2 sm:col-span-3">
-        <button type="submit" disabled={enviando} className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-azul px-3 text-sm font-semibold text-white hover:bg-brilho disabled:opacity-60">
+        <button type="submit" disabled={enviando} className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-azul px-3 text-sm font-semibold text-sobre-brasa hover:bg-brilho disabled:opacity-60">
           {enviando ? <LoaderCircle className="size-4 animate-spin" /> : <QrCode className="size-4" />} Criar cobrança no Asaas
         </button>
         <button type="button" onClick={aoFechar} className="h-9 cursor-pointer rounded-lg border border-fio px-3 text-sm">
@@ -112,7 +112,7 @@ export function TabelaVendas({ vendas, asaasPronto, produtos }: { vendas: VendaL
           <h2 className="font-display text-[0.95rem] font-semibold">Vendas e cobranças</h2>
           <p className="text-xs text-muted-foreground">O status muda sozinho quando o Asaas avisa o pagamento.</p>
         </div>
-        <button type="button" onClick={() => setNova((n) => !n)} className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-azul px-3 text-sm font-semibold text-white hover:bg-brilho">
+        <button type="button" onClick={() => setNova((n) => !n)} className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-azul px-3 text-sm font-semibold text-sobre-brasa hover:bg-brilho">
           <Plus className="size-4" /> Registrar venda
         </button>
       </header>
@@ -180,7 +180,7 @@ export function TabelaVendas({ vendas, asaasPronto, produtos }: { vendas: VendaL
                   </select>
                 )}
               </label>
-              <button type="submit" className="h-9 cursor-pointer rounded-lg bg-azul text-sm font-semibold text-white hover:bg-brilho">
+              <button type="submit" className="h-9 cursor-pointer rounded-lg bg-azul text-sm font-semibold text-sobre-brasa hover:bg-brilho">
                 Salvar
               </button>
             </div>
@@ -224,7 +224,7 @@ export function TabelaVendas({ vendas, asaasPronto, produtos }: { vendas: VendaL
                     {(v.status === "pendente" || v.status === "vencido") && (
                       <>
                         {!v.cobranca_link && (
-                          <button type="button" onClick={() => setCobrando((c) => (c === v.id ? null : v.id))} className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-brilho/40 px-2.5 text-xs text-[#c4d3ff] hover:bg-azul/15">
+                          <button type="button" onClick={() => setCobrando((c) => (c === v.id ? null : v.id))} className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-brilho/40 px-2.5 text-xs text-[#ffd2b8] hover:bg-azul/15">
                             <QrCode className="size-3.5" /> Cobrar
                           </button>
                         )}

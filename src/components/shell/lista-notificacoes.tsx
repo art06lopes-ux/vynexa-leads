@@ -37,7 +37,7 @@ export function ListaNotificacoes() {
           </button>
         ))}
         <label className="ml-2 flex cursor-pointer items-center gap-1.5 text-sm text-muted-foreground">
-          <input type="checkbox" checked={soNaoLidas} onChange={(e) => setSoNaoLidas(e.target.checked)} className="accent-[#3366ff]" /> Só não lidas
+          <input type="checkbox" checked={soNaoLidas} onChange={(e) => setSoNaoLidas(e.target.checked)} className="accent-[#ff5a1f]" /> Só não lidas
         </label>
         {naoLidas > 0 && (
           <button type="button" onClick={() => marcarLidas()} className="ml-auto flex cursor-pointer items-center gap-1 text-sm font-medium text-ciano hover:underline">

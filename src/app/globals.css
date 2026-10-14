@@ -5,28 +5,20 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Identidade Vynexa Leads v2: azul-noite com azul elétrico.
+ * Identidade Vynexa v3: grafite com laranja brasa.
  *
- * Tirada da referência que o operador escolheu (painel escuro, cartões
- * de vidro, um bloco-herói com brilho azul) e transformada em sistema:
+ *   tinta   #0B0A09  o chão — grafite quente, quase preto
+ *   placa   #15120F  cartões; placa+ #1D1915 elevação
+ *   texto   #F4EDE6  / mudo #A89C90 (6,9:1 sobre a placa)
+ *   brasa   #FF5A1F  ação e marca — com TEXTO GRAFITE #1A0802 (6,2:1);
+ *                    branco sobre brasa dá 3,1:1, só em título grande
+ *   âmbar   #FFB347  números e destaques sobre o escuro (11:1)
  *
- *   tinta   #050A18  o chão — azul-marinho quase preto, não cinza
- *   placa   #0A1330  cartões
- *   placa+  #0F1B42  elevação (popover, hover)
- *   texto   #EAF0FF  / mudo #8E9BC2 (6,9:1 sobre a placa)
- *   azul    #3366FF  botão e ação; brilho #4D7CFF; ciano #6FD3FF para "ao vivo"
- *
- * Uma ousadia só: o bloco-herói com o gradiente azul (`.heroi`). O resto
- * é placa, fio de 1px e texto — o brilho só funciona se for raro.
- *
- * Contraste medido: texto #EAF0FF sobre #0A1330 = 15,9:1; mudo #8E9BC2
- * sobre #0A1330 = 6,9:1; branco sobre o botão #3366FF = 4,9:1.
- * Status (verde, âmbar, vermelho) são significado, não marca — sempre
- * com ícone e texto ao lado.
- *
- * A ferramenta é escura por definição (painel de trabalho usado por
- * horas): `:root` já carrega o tema escuro, e `.dark` repete os valores
- * para os componentes do shadcn que consultam a variante.
+ * Os nomes antigos dos tokens (azul, brilho, ciano) foram mantidos para
+ * não reescrever cada tela: hoje "azul" é a brasa, "brilho" a brasa clara
+ * e "ciano" o âmbar. Uma ousadia: o bloco-herói em brasa (.heroi) com o
+ * V da Vynexa esculpido em linhas — o resto é placa, fio e texto.
+ * Status (verde, âmbar-aviso, vermelho) são significado, não marca.
  */
 
 @theme inline {
@@ -72,6 +64,7 @@
   --color-azul: var(--azul);
   --color-brilho: var(--brilho);
   --color-ciano: var(--ciano);
+  --color-sobre-brasa: var(--sobre-brasa);
   --color-sucesso: var(--sucesso);
   --color-aviso: var(--aviso);
   --color-perigo: var(--perigo);
@@ -87,51 +80,52 @@
 
 :root,
 .dark {
-  --tinta: #050a18;
-  --placa: #0a1330;
-  --placa-2: #0f1b42;
-  --fio: rgba(122, 150, 255, 0.12);
-  --azul: #3366ff;
-  --brilho: #4d7cff;
-  --ciano: #6fd3ff;
-  --sucesso: #2bd47d;
-  --aviso: #f5b83d;
-  --perigo: #ff5c6c;
+  --tinta: #0b0a09;
+  --placa: #15120f;
+  --placa-2: #1d1915;
+  --fio: rgba(255, 214, 186, 0.09);
+  --azul: #ff5a1f;
+  --brilho: #ff7a45;
+  --ciano: #ffb347;
+  --sobre-brasa: #1a0802;
+  --sucesso: #34d399;
+  --aviso: #fbbf24;
+  --perigo: #ff4d5e;
 
   --background: var(--tinta);
-  --foreground: #eaf0ff;
+  --foreground: #f4ede6;
   --card: var(--placa);
-  --card-foreground: #eaf0ff;
-  --popover: #0d1838;
-  --popover-foreground: #eaf0ff;
+  --card-foreground: #f4ede6;
+  --popover: #1a1612;
+  --popover-foreground: #f4ede6;
   --primary: var(--azul);
-  --primary-foreground: #ffffff;
-  --secondary: #121f4a;
-  --secondary-foreground: #dfe7ff;
-  --muted: #0d1736;
-  --muted-foreground: #8e9bc2;
-  --accent: #14224f;
-  --accent-foreground: #eaf0ff;
+  --primary-foreground: var(--sobre-brasa);
+  --secondary: #221d18;
+  --secondary-foreground: #efe4d9;
+  --muted: #1a1612;
+  --muted-foreground: #a89c90;
+  --accent: #241e19;
+  --accent-foreground: #f4ede6;
   --destructive: var(--perigo);
   --border: var(--fio);
-  --input: rgba(122, 150, 255, 0.2);
+  --input: rgba(255, 214, 186, 0.14);
   --ring: var(--brilho);
 
-  /* Séries de gráfico, passo escuro da paleta validada (skill dataviz). */
-  --chart-1: #3987e5;
-  --chart-2: #d95926;
-  --chart-3: #199e70;
-  --chart-4: #c98500;
-  --chart-5: #9085e9;
+  /* Séries de gráfico: brasa, âmbar, verde, areia, rosa. */
+  --chart-1: #ff6a2e;
+  --chart-2: #ffb347;
+  --chart-3: #34d399;
+  --chart-4: #c9b8a6;
+  --chart-5: #f472b6;
 
   --radius: 0.875rem;
 
-  --sidebar: #070e24;
-  --sidebar-foreground: #c9d3f2;
+  --sidebar: #0e0c0a;
+  --sidebar-foreground: #d9cdc1;
   --sidebar-primary: var(--azul);
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #101c45;
-  --sidebar-accent-foreground: #eaf0ff;
+  --sidebar-primary-foreground: var(--sobre-brasa);
+  --sidebar-accent: #1d1915;
+  --sidebar-accent-foreground: #f4ede6;
   --sidebar-border: var(--fio);
   --sidebar-ring: var(--brilho);
 
@@ -151,8 +145,8 @@
   body {
     @apply bg-background text-foreground antialiased;
     background-image:
-      radial-gradient(60rem 28rem at 78% -10%, rgba(51, 102, 255, 0.16), transparent 62%),
-      radial-gradient(40rem 30rem at -10% 110%, rgba(111, 211, 255, 0.05), transparent 60%);
+      radial-gradient(60rem 28rem at 82% -12%, rgba(255, 90, 31, 0.13), transparent 62%),
+      radial-gradient(40rem 30rem at -10% 110%, rgba(255, 179, 71, 0.04), transparent 60%);
     background-attachment: fixed;
   }
 
@@ -173,12 +167,12 @@
   }
 
   ::selection {
-    background: rgba(77, 124, 255, 0.4);
+    background: rgba(255, 90, 31, 0.4);
   }
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(122, 150, 255, 0.25) transparent;
+    scrollbar-color: rgba(255, 214, 186, 0.18) transparent;
   }
 }
 
@@ -191,19 +185,57 @@
     border-radius: var(--radius-xl);
   }
 
-  /* O bloco-herói: a única superfície com brilho. */
+  /* O bloco-herói: brasa viva. Texto branco só em tamanho grande. */
   .heroi {
     position: relative;
     overflow: hidden;
-    border: 1px solid rgba(77, 124, 255, 0.45);
+    isolation: isolate;
+    border: 1px solid rgba(255, 150, 100, 0.45);
     border-radius: var(--radius-2xl);
     background:
-      radial-gradient(90% 120% at 100% 0%, rgba(51, 102, 255, 0.55), transparent 55%),
-      radial-gradient(60% 80% at 0% 100%, rgba(25, 45, 140, 0.55), transparent 60%),
-      linear-gradient(160deg, #0e1c55, #0a1440 60%, #08102f);
+      radial-gradient(55% 120% at 92% 0%, rgba(255, 179, 71, 0.55), transparent 60%),
+      radial-gradient(60% 100% at 0% 100%, rgba(70, 12, 2, 0.6), transparent 65%),
+      linear-gradient(105deg, #8a2306 0%, #c4360a 42%, #f04d14 75%, #ff6a2e 100%);
     box-shadow:
-      0 0 0 1px rgba(77, 124, 255, 0.12),
-      0 20px 60px -20px rgba(51, 102, 255, 0.45);
+      0 0 0 1px rgba(255, 90, 31, 0.15),
+      0 24px 70px -24px rgba(255, 90, 31, 0.55);
+  }
+
+  /* Botão de ação dentro do herói: a brasa sumiria na brasa — vira creme. */
+  .heroi .bg-azul {
+    background-color: #fff4ea;
+    color: var(--sobre-brasa);
+  }
+
+  .heroi .bg-azul:hover {
+    background-color: #ffffff;
+  }
+
+  /* As linhas da escultura do V respiram, uma depois da outra. */
+  .escultura-linha {
+    animation: respira-linha 4.8s ease-in-out infinite;
+  }
+
+  @keyframes respira-linha {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+
+  /* Variante escura do herói: grafite com brasa no canto. */
+  .heroi-escuro {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    border: 1px solid rgba(255, 140, 90, 0.22);
+    border-radius: var(--radius-2xl);
+    background:
+      radial-gradient(70% 120% at 100% 0%, rgba(255, 90, 31, 0.3), transparent 55%),
+      linear-gradient(160deg, #1d1612, #120f0d 70%);
   }
 
   /* Ícone em pastilha azul, como na referência. */
@@ -212,11 +244,11 @@
     align-items: center;
     justify-content: center;
     border-radius: 0.6rem;
-    background: linear-gradient(180deg, #3d73ff, #2453e6);
-    color: #fff;
+    background: linear-gradient(180deg, #ff7a45, #e8470f);
+    color: var(--sobre-brasa);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.25),
-      0 4px 14px -4px rgba(51, 102, 255, 0.7);
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      0 4px 14px -4px rgba(255, 90, 31, 0.7);
   }
 
   .pastilha-muda {
@@ -224,9 +256,9 @@
     align-items: center;
     justify-content: center;
     border-radius: 0.6rem;
-    background: rgba(77, 124, 255, 0.12);
+    background: rgba(255, 90, 31, 0.1);
     color: var(--ciano);
-    border: 1px solid rgba(77, 124, 255, 0.2);
+    border: 1px solid rgba(255, 122, 69, 0.2);
   }
 
   .ao-vivo::before {
@@ -266,7 +298,7 @@
   .esqueleto {
     position: relative;
     overflow: hidden;
-    background: rgba(122, 150, 255, 0.08);
+    background: rgba(255, 214, 186, 0.06);
     border-radius: 0.5rem;
   }
 
@@ -275,7 +307,7 @@
     position: absolute;
     inset: 0;
     transform: translateX(-100%);
-    background: linear-gradient(90deg, transparent, rgba(122, 150, 255, 0.12), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 214, 186, 0.08), transparent);
     animation: brilho-esqueleto 1.4s ease-in-out infinite;
   }
 
@@ -287,19 +319,19 @@
 
   /* Mapa (Leaflet) no tema escuro. */
   .leaflet-container {
-    background: #050a18 !important;
+    background: #0b0a09 !important;
     font-family: var(--font-manrope), system-ui, sans-serif !important;
   }
 
-  /* Tiles claros do OSM, invertidos para o tema azul-noite. */
+  /* Tiles claros do OSM, invertidos para grafite quente. */
   .mapa-escuro {
-    filter: invert(1) hue-rotate(195deg) brightness(0.78) contrast(0.92) saturate(0.55);
+    filter: invert(1) grayscale(1) sepia(0.28) brightness(0.62) contrast(1.18);
   }
 
   .leaflet-popup-content-wrapper,
   .leaflet-popup-tip {
-    background: #0d1838 !important;
-    color: #eaf0ff !important;
+    background: #1a1612 !important;
+    color: #f4ede6 !important;
     border: 1px solid var(--fio);
     box-shadow: 0 12px 40px -10px rgba(0, 0, 0, 0.6) !important;
   }
@@ -309,18 +341,18 @@
   }
 
   .leaflet-control-zoom a {
-    background: #0d1838 !important;
-    color: #eaf0ff !important;
+    background: #1a1612 !important;
+    color: #f4ede6 !important;
     border-color: var(--fio) !important;
   }
 
   .leaflet-control-attribution {
-    background: rgba(5, 10, 24, 0.75) !important;
-    color: #8e9bc2 !important;
+    background: rgba(11, 10, 9, 0.75) !important;
+    color: #a89c90 !important;
   }
 
   .leaflet-control-attribution a {
-    color: #6fd3ff !important;
+    color: #ffb347 !important;
   }
 }
 

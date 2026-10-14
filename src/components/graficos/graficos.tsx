@@ -131,7 +131,7 @@ export function GraficoBarras({
               const y = 8 + area * (1 - f);
               return (
                 <g key={f}>
-                  <line x1={margemEsq} x2={largura} y1={y} y2={y} stroke="rgba(122,150,255,0.1)" />
+                  <line x1={margemEsq} x2={largura} y1={y} y2={y} stroke="rgba(255,214,186,0.1)" />
                   {/* Sem dados, a escala seria de centavos ("R$ 0,01") e não diria nada. */}
                   {!vazio && (
                     <text x={margemEsq - 8} y={y + 4} textAnchor="end" className="fill-muted-foreground text-[10px] num">
@@ -146,7 +146,7 @@ export function GraficoBarras({
               const ultimo = destacarUltimo && i === dados.length - 1;
               return (
                 <g key={d.rotulo} onMouseEnter={() => setFoco(i)}>
-                  <rect x={margemEsq + i * banda} y={0} width={banda} height={altura} fill={foco === i ? "rgba(122,150,255,0.05)" : "transparent"} />
+                  <rect x={margemEsq + i * banda} y={0} width={banda} height={altura} fill={foco === i ? "rgba(255,214,186,0.05)" : "transparent"} />
                   {series.map((s, j) => {
                     const v = d.valores[s.chave] ?? 0;
                     const h = (v / max) * area;
@@ -159,7 +159,7 @@ export function GraficoBarras({
                         key={s.chave}
                         d={caminho}
                         fill={s.cor}
-                        style={{ transformOrigin: `${x}px ${8 + area}px`, filter: ultimo && j === 0 ? "drop-shadow(0 0 8px rgba(77,124,255,0.65))" : undefined }}
+                        style={{ transformOrigin: `${x}px ${8 + area}px`, filter: ultimo && j === 0 ? "drop-shadow(0 0 8px rgba(255,122,69,0.65))" : undefined }}
                         initial={reduzir ? false : { scaleY: 0 }}
                         animate={{ scaleY: 1 }}
                         transition={{ duration: 0.6, delay: 0.05 * i, ease: [0.16, 1, 0.3, 1] }}
@@ -222,7 +222,7 @@ export function GraficoArea({
   formato = "inteiro",
   moeda,
   altura = 120,
-  cor = "#4d7cff",
+  cor = "#ff7a45",
   eixo = false,
   className,
   titulo,
@@ -284,11 +284,11 @@ export function GraficoArea({
               transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
               style={{ filter: `drop-shadow(0 0 6px ${cor}aa)` }}
             />
-            {xy.length > 0 && <circle cx={xy[xy.length - 1][0]} cy={xy[xy.length - 1][1]} r={4} fill={cor} stroke="#0a1330" strokeWidth={2} />}
+            {xy.length > 0 && <circle cx={xy[xy.length - 1][0]} cy={xy[xy.length - 1][1]} r={4} fill={cor} stroke="#15120f" strokeWidth={2} />}
             {foco !== null && xy[foco] && (
               <g>
                 <line x1={xy[foco][0]} x2={xy[foco][0]} y1={topo} y2={topo + h} stroke="rgba(234,240,255,0.25)" />
-                <circle cx={xy[foco][0]} cy={xy[foco][1]} r={4.5} fill={cor} stroke="#0a1330" strokeWidth={2} />
+                <circle cx={xy[foco][0]} cy={xy[foco][1]} r={4.5} fill={cor} stroke="#15120f" strokeWidth={2} />
               </g>
             )}
             {eixo &&
@@ -334,7 +334,7 @@ export function Rosca({ fatias, tamanho = 76, espessura = 9, titulo }: { fatias:
   let acumulado = 0;
   return (
     <svg width={tamanho} height={tamanho} className="-rotate-90 shrink-0" role="img" aria-label={`${titulo}: ${fatias.map((f) => `${f.rotulo} ${f.valor}`).join(", ")}`}>
-      <circle cx={tamanho / 2} cy={tamanho / 2} r={r} fill="none" stroke="rgba(122,150,255,0.12)" strokeWidth={espessura} />
+      <circle cx={tamanho / 2} cy={tamanho / 2} r={r} fill="none" stroke="rgba(255,214,186,0.12)" strokeWidth={espessura} />
       {total > 0 &&
         fatias.map((f) => {
           // 2 px de vão entre fatias (no comprimento do arco).
@@ -380,7 +380,7 @@ export function Funil({ etapas, titulo }: { etapas: Array<{ rotulo: string; valo
             <span className="relative h-6 overflow-hidden rounded-md bg-white/[0.04]">
               <motion.span
                 className="absolute inset-y-0 left-0 rounded-md"
-                style={{ background: `linear-gradient(90deg, #2453e6, ${i === etapas.length - 1 ? "#2bd47d" : "#6fd3ff"})`, opacity: 1 - i * 0.07 }}
+                style={{ background: `linear-gradient(90deg, #2453e6, ${i === etapas.length - 1 ? "#2bd47d" : "#ffb347"})`, opacity: 1 - i * 0.07 }}
                 initial={reduzir ? false : { width: 0 }}
                 animate={{ width: `${Math.max(e.valor > 0 ? 2 : 0, (e.valor / max) * 100)}%` }}
                 transition={{ duration: 0.8, delay: i * 0.07, ease: [0.16, 1, 0.3, 1] }}

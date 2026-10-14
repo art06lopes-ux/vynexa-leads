@@ -48,15 +48,15 @@ function popup(p: Ponto): string {
   const nota = p.nota !== null ? `${p.nota.toFixed(1).replace(".", ",")}★ · ${p.avaliacoes ?? 0} avaliações` : "Sem avaliações na fonte";
   return `<div style="min-width:220px;font-size:13px;line-height:1.45">
     <div style="display:flex;justify-content:space-between;gap:10px;align-items:start">
-      <div><b style="font-size:14px">${escapar(p.nome)}</b><div style="color:#8e9bc2">${escapar(p.categoria)}${p.cidade ? ` · ${escapar(p.cidade)}` : ""}</div></div>
+      <div><b style="font-size:14px">${escapar(p.nome)}</b><div style="color:#a89c90">${escapar(p.categoria)}${p.cidade ? ` · ${escapar(p.cidade)}` : ""}</div></div>
       <div style="font-family:var(--font-sora);font-size:18px;font-weight:600;color:${corDoScore(p.score)}">${p.score ?? "–"}</div>
     </div>
     <div style="margin-top:8px;color:#c9d3f2">${nota}</div>
-    <div style="color:#c9d3f2">Telefone: ${p.telefone ? escapar(p.telefone) : "<span style='color:#8e9bc2'>não encontrado</span>"}</div>
-    <div style="color:#c9d3f2">Site: ${p.website ? escapar(p.website.replace(/^https?:\/\//, "").slice(0, 40)) : "<span style='color:#8e9bc2'>não encontrado</span>"}</div>
-    <div style="margin-top:6px"><span style="border:1px solid rgba(122,150,255,.3);border-radius:999px;padding:1px 8px;font-size:11px">${presenca}</span>
+    <div style="color:#c9d3f2">Telefone: ${p.telefone ? escapar(p.telefone) : "<span style='color:#a89c90'>não encontrado</span>"}</div>
+    <div style="color:#c9d3f2">Site: ${p.website ? escapar(p.website.replace(/^https?:\/\//, "").slice(0, 40)) : "<span style='color:#a89c90'>não encontrado</span>"}</div>
+    <div style="margin-top:6px"><span style="border:1px solid rgba(255,214,186,.3);border-radius:999px;padding:1px 8px;font-size:11px">${presenca}</span>
     ${p.prioridade ? `<span style="margin-left:4px;font-size:11px;color:#f5b83d">${p.prioridade === "alta" ? "Alta" : p.prioridade === "media" ? "Média" : "Baixa"} prioridade</span>` : ""}</div>
-    <a href="/leads/${p.id}" style="display:block;margin-top:10px;text-align:center;background:#3366ff;color:#fff;border-radius:8px;padding:7px 0;font-weight:600;text-decoration:none">Abrir lead</a>
+    <a href="/leads/${p.id}" style="display:block;margin-top:10px;text-align:center;background:#ff5a1f;color:#fff;border-radius:8px;padding:7px 0;font-weight:600;text-decoration:none">Abrir lead</a>
   </div>`;
 }
 
@@ -135,7 +135,7 @@ export default function MapaLeads() {
       const cor = corDoScore(p.score);
       L.circleMarker([p.lat, p.lng], {
         radius: p.score !== null && p.score >= 70 ? 8 : 6,
-        color: "#050a18",
+        color: "#0b0a09",
         weight: 2,
         fillColor: cor,
         fillOpacity: 0.95,
@@ -161,7 +161,7 @@ export default function MapaLeads() {
     const baixo = (e: L.LeafletMouseEvent) => {
       inicio = e.latlng;
       retangulo.current?.remove();
-      retangulo.current = L.rectangle(L.latLngBounds(inicio, inicio), { color: "#6fd3ff", weight: 1.5, fillOpacity: 0.08, dashArray: "4 4" }).addTo(m);
+      retangulo.current = L.rectangle(L.latLngBounds(inicio, inicio), { color: "#ffb347", weight: 1.5, fillOpacity: 0.08, dashArray: "4 4" }).addTo(m);
     };
     const mover = (e: L.LeafletMouseEvent) => {
       if (inicio && retangulo.current) retangulo.current.setBounds(L.latLngBounds(inicio, e.latlng));
@@ -252,7 +252,7 @@ export default function MapaLeads() {
         <div ref={elemento} className={cn("h-[calc(100dvh-15rem)] min-h-[26rem] w-full", modoArea && "cursor-crosshair")} role="application" aria-label="Mapa de leads" />
         <div className="pointer-events-none absolute bottom-3 left-3 z-[400] flex gap-3 rounded-lg border border-fio bg-background/80 px-3 py-2 text-xs backdrop-blur">
           {[
-            ["#6fd3ff", "Score 70+"],
+            ["#ffb347", "Score 70+"],
             ["#f5b83d", "45–69"],
             ["#7b88b3", "Abaixo de 45"],
           ].map(([c, r]) => (
@@ -292,7 +292,7 @@ export default function MapaLeads() {
                 <span className="rotulo">Buscar novas empresas nesta área</span>
                 <div className="flex gap-1.5">
                   <input value={termo} onChange={(e) => setTermo(e.target.value)} placeholder="Ex.: dentista" className="h-9 min-w-0 flex-1 rounded-lg border border-fio bg-white/[0.04] px-2.5 text-sm outline-none focus:border-brilho/60" />
-                  <button type="button" onClick={buscarNaArea} disabled={termo.trim().length < 2} className="flex size-9 cursor-pointer items-center justify-center rounded-lg bg-azul text-white disabled:opacity-50" aria-label="Buscar nesta área">
+                  <button type="button" onClick={buscarNaArea} disabled={termo.trim().length < 2} className="flex size-9 cursor-pointer items-center justify-center rounded-lg bg-azul text-sobre-brasa disabled:opacity-50" aria-label="Buscar nesta área">
                     <Search className="size-4" />
                   </button>
                 </div>

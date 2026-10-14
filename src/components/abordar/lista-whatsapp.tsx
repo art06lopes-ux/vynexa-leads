@@ -186,7 +186,7 @@ export function ListaWhatsapp({ itensIniciais, origem, remetente }: Props) {
         <p className="mt-1 max-w-md text-sm text-muted-foreground">
           Em Leads, marque as empresas que quer abordar e toque em <b className="text-foreground">WhatsApp</b> na barra de baixo. Empresas já contatadas ou marcadas como “não contatar” ficam de fora.
         </p>
-        <Link href="/leads?situacao=nao_abordados" className="mt-5 inline-flex h-10 items-center rounded-xl bg-azul px-4 text-sm font-semibold text-white hover:bg-brilho">
+        <Link href="/leads?situacao=nao_abordados" className="mt-5 inline-flex h-10 items-center rounded-xl bg-azul px-4 text-sm font-semibold text-sobre-brasa hover:bg-brilho">
           Ir para Leads
         </Link>
       </div>
@@ -232,7 +232,7 @@ export function ListaWhatsapp({ itensIniciais, origem, remetente }: Props) {
           <p className="flex-1 text-muted-foreground">
             <b className="text-foreground">{semWhatsComEmail.length}</b> das escolhidas não têm WhatsApp, mas têm e-mail.
           </p>
-          <button type="button" onClick={emailParaOsSemWhats} className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-azul px-3 text-sm font-semibold text-white hover:bg-brilho">
+          <button type="button" onClick={emailParaOsSemWhats} className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-azul px-3 text-sm font-semibold text-sobre-brasa hover:bg-brilho">
             <Mail className="size-4" /> Enviar e-mail para elas
           </button>
         </div>

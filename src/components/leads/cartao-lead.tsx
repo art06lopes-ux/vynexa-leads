@@ -89,7 +89,7 @@ export function CartaoLead({
           onClick={() => aoSelecionar(lead.lead_id)}
           className={cn(
             "mt-0.5 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md border transition-colors",
-            selecionado ? "border-brilho bg-azul text-white" : "border-white/25 hover:border-brilho",
+            selecionado ? "border-brilho bg-azul text-sobre-brasa" : "border-white/25 hover:border-brilho",
           )}
         >
           {selecionado && <Check className="size-3.5" strokeWidth={3} />}

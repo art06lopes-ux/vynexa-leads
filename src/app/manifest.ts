@@ -12,13 +12,13 @@ import type { MetadataRoute } from "next";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Vynexa Leads",
+    name: "Vynexa Dev",
     short_name: "Vynexa",
     description: "Prospecção e vendas da Vynexa Dev.",
     start_url: "/?fonte=pwa",
     display: "standalone",
-    background_color: "#050a18",
-    theme_color: "#050a18",
+    background_color: "#0b0a09",
+    theme_color: "#0b0a09",
     lang: "pt-BR",
     icons: [
       { src: "/icones/icone-192.png", sizes: "192x192", type: "image/png" },

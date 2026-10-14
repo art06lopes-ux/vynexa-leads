@@ -69,7 +69,7 @@ export function ControleCampanha({ id, status, preparados, total, erros }: { id:
                 void executar("autorizar", { acao: "autorizar", quando: null }, "Envio autorizado. A fila começou.");
               }
             }}
-            className={cn(botao, "bg-azul text-white hover:bg-brilho")}
+            className={cn(botao, "bg-azul text-sobre-brasa hover:bg-brilho")}
           >
             {ocupado === "autorizar" ? <LoaderCircle className="size-4 animate-spin" /> : status === "pausada" ? <Play className="size-4" /> : <Send className="size-4" />}
             {status === "pausada" ? "Retomar envio" : "Autorizar e enviar agora"}
@@ -118,7 +118,7 @@ export function ControleCampanha({ id, status, preparados, total, erros }: { id:
             }}
           >
             <input type="datetime-local" required value={quando} onChange={(e) => setQuando(e.target.value)} className="h-10 rounded-xl border border-fio bg-placa px-3 text-sm [color-scheme:dark]" />
-            <button type="submit" className={cn(botao, "bg-azul text-white")}>
+            <button type="submit" className={cn(botao, "bg-azul text-sobre-brasa")}>
               Confirmar
             </button>
           </motion.form>
@@ -183,7 +183,7 @@ export function PreviewsEnvios({ campanhaId, envios, editavel }: { campanhaId: s
                       <input value={rascunho.assunto} onChange={(ev) => setRascunho((r) => ({ ...r, assunto: ev.target.value }))} className="h-9 w-full rounded-lg border border-fio bg-white/[0.03] px-3 text-sm" aria-label="Assunto" />
                       <textarea value={rascunho.corpo} onChange={(ev) => setRascunho((r) => ({ ...r, corpo: ev.target.value }))} rows={8} className="w-full rounded-lg border border-fio bg-white/[0.03] p-3 text-sm" aria-label="Corpo" />
                       <div className="flex gap-2">
-                        <button type="submit" disabled={salvando} className="h-9 cursor-pointer rounded-lg bg-azul px-3 text-sm font-semibold text-white">{salvando ? "Salvando…" : "Salvar"}</button>
+                        <button type="submit" disabled={salvando} className="h-9 cursor-pointer rounded-lg bg-azul px-3 text-sm font-semibold text-sobre-brasa">{salvando ? "Salvando…" : "Salvar"}</button>
                         <button type="button" onClick={() => setEditando(null)} className="h-9 cursor-pointer rounded-lg border border-fio px-3 text-sm">Cancelar</button>
                       </div>
                     </form>

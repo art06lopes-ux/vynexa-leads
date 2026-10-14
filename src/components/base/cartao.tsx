@@ -1,6 +1,7 @@
 import { ArrowUpRight, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 
+import { EsculturaV } from "@/components/marca/escultura-v";
 import { cn } from "@/lib/utils";
 
 /**
@@ -9,19 +10,66 @@ import { cn } from "@/lib/utils";
  * componente porque não cruzam a fronteira para o cliente.
  */
 
+export type NumeroCabecalho = { valor: React.ReactNode; rotulo: string };
+
+/**
+ * Cabeçalho de página.
+ *
+ * Páginas principais (sem trilha) ganham o banner em brasa com o V
+ * esculpido — a assinatura visual da Vynexa. Subpáginas (com trilha,
+ * como o perfil de um lead) ficam com o cabeçalho compacto, para o
+ * conteúdo aparecer logo.
+ */
 export function Cabecalho({
   icone: Icone,
   titulo,
   descricao,
   trilha,
   acoes,
+  secao,
+  numeros,
+  compacto = false,
 }: {
   icone?: LucideIcon;
   titulo: string;
   descricao?: React.ReactNode;
   trilha?: Array<{ href: string; rotulo: string }>;
   acoes?: React.ReactNode;
+  /** Trecho do caminho no alto do banner ("Prospecção"). */
+  secao?: string;
+  /** Números-resumo dentro do banner. */
+  numeros?: NumeroCabecalho[];
+  compacto?: boolean;
 }) {
+  if (!compacto && (!trilha || trilha.length === 0)) {
+    return (
+      <section className="heroi mb-6 px-5 py-6 sm:mb-8 sm:px-8 sm:py-8">
+        <EsculturaV className="absolute -right-10 top-1/2 -z-10 h-[150%] -translate-y-1/2 opacity-60 sm:right-2 sm:opacity-95 lg:right-10" />
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="flex items-center gap-1.5 text-[0.72rem] font-semibold text-white/75">
+              {Icone && <Icone className="size-3.5" aria-hidden="true" />}
+              Vynexa <span aria-hidden="true">/</span> {secao ?? titulo}
+            </p>
+            <h1 className="mt-2 text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-white sm:text-[2.6rem]">{titulo}</h1>
+            {descricao && <p className="mt-2.5 max-w-xl text-sm leading-relaxed text-white/90">{descricao}</p>}
+          </div>
+          {acoes && <div className="relative flex flex-wrap items-center gap-2">{acoes}</div>}
+        </div>
+        {numeros && numeros.length > 0 && (
+          <dl className="mt-6 grid max-w-3xl grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+            {numeros.map((n) => (
+              <div key={n.rotulo} className="min-w-32 rounded-xl border border-white/15 bg-black/25 px-3.5 py-2.5 backdrop-blur-sm">
+                <dt className="text-[0.7rem] text-white/75">{n.rotulo}</dt>
+                <dd className="font-display text-xl font-semibold text-white num">{n.valor}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </section>
+    );
+  }
+
   return (
     <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
       <div className="flex items-start gap-3.5">

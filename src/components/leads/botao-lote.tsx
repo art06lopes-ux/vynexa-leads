@@ -24,7 +24,7 @@ export function BotaoAnalisarLote({ ids, rotulo, gerarMensagens = false }: { ids
           setOcupado(false);
         }
       }}
-      className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-azul px-4 text-sm font-semibold text-white hover:bg-brilho disabled:opacity-60"
+      className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-azul px-4 text-sm font-semibold text-sobre-brasa hover:bg-brilho disabled:opacity-60"
     >
       {ocupado ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />} {rotulo}
     </button>

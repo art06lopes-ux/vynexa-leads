@@ -25,7 +25,7 @@ import {
 } from "@/server/acoes-configuracoes";
 
 const campo = "h-10 w-full rounded-xl border border-fio bg-white/[0.03] px-3 text-sm outline-none focus:border-brilho/60";
-const botaoPrimario = "inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl bg-azul px-4 text-sm font-semibold text-white hover:bg-brilho disabled:opacity-60";
+const botaoPrimario = "inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl bg-azul px-4 text-sm font-semibold text-sobre-brasa hover:bg-brilho disabled:opacity-60";
 
 function avisar(r: Resultado) {
   if (r.ok) toast.success(r.mensagem);

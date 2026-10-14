@@ -135,7 +135,7 @@ export function NovaCampanha({ provedores, provedorPadrao, categorias, cidades }
       <ol className="mb-6 flex items-center gap-2">
         {passos.map((p, i) => (
           <li key={p} className="flex flex-1 items-center gap-2">
-            <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors", i < passo ? "bg-sucesso text-[#03210f]" : i === passo ? "bg-azul text-white" : "bg-white/10 text-muted-foreground")}>
+            <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors", i < passo ? "bg-sucesso text-[#03210f]" : i === passo ? "bg-azul text-sobre-brasa" : "bg-white/10 text-muted-foreground")}>
               {i < passo ? <Check className="size-4" /> : i + 1}
             </span>
             <span className={cn("text-sm", i === passo ? "font-semibold" : "text-muted-foreground")}>{p}</span>
@@ -240,17 +240,17 @@ export function NovaCampanha({ provedores, provedorPadrao, categorias, cidades }
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="space-y-1">
                   <span className="rotulo">Ritmo: {cfg.ritmo} e-mails por hora</span>
-                  <input type="range" min={1} max={60} value={cfg.ritmo} onChange={(e) => setCfg((c) => ({ ...c, ritmo: Number(e.target.value) }))} className="h-10 w-full cursor-pointer accent-[#3366ff]" />
+                  <input type="range" min={1} max={60} value={cfg.ritmo} onChange={(e) => setCfg((c) => ({ ...c, ritmo: Number(e.target.value) }))} className="h-10 w-full cursor-pointer accent-[#ff5a1f]" />
                 </label>
                 <label className="space-y-1">
                   <span className="rotulo">Limite por dia: {cfg.limite}</span>
-                  <input type="range" min={5} max={300} step={5} value={cfg.limite} onChange={(e) => setCfg((c) => ({ ...c, limite: Number(e.target.value) }))} className="h-10 w-full cursor-pointer accent-[#3366ff]" />
+                  <input type="range" min={5} max={300} step={5} value={cfg.limite} onChange={(e) => setCfg((c) => ({ ...c, limite: Number(e.target.value) }))} className="h-10 w-full cursor-pointer accent-[#ff5a1f]" />
                 </label>
               </div>
               <p className="text-xs text-muted-foreground">Nunca disparamos tudo de uma vez: os e-mails saem em fila, no ritmo acima, com pausa entre cada um — o que protege a reputação do seu domínio.</p>
               <div className="rounded-xl border border-fio p-4">
                 <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
-                  <input type="checkbox" checked={cfg.followup} onChange={(e) => setCfg((c) => ({ ...c, followup: e.target.checked }))} className="size-4 accent-[#3366ff]" />
+                  <input type="checkbox" checked={cfg.followup} onChange={(e) => setCfg((c) => ({ ...c, followup: e.target.checked }))} className="size-4 accent-[#ff5a1f]" />
                   Follow-ups automáticos para quem não responder
                 </label>
                 {cfg.followup && (
@@ -295,12 +295,12 @@ export function NovaCampanha({ provedores, provedorPadrao, categorias, cidades }
             type="button"
             disabled={(passo === 0 && (!resumo || resumo.comEmail === 0)) || (passo === 1 && cfg.nome.trim().length < 3)}
             onClick={() => setPasso((p) => p + 1)}
-            className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-azul px-5 text-sm font-semibold text-white hover:bg-brilho disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-azul px-5 text-sm font-semibold text-sobre-brasa hover:bg-brilho disabled:cursor-not-allowed disabled:opacity-50"
           >
             Continuar <ArrowRight className="size-4" />
           </button>
         ) : (
-          <button type="button" onClick={criar} disabled={criando} className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-azul px-5 text-sm font-semibold text-white hover:bg-brilho disabled:opacity-60">
+          <button type="button" onClick={criar} disabled={criando} className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-azul px-5 text-sm font-semibold text-sobre-brasa hover:bg-brilho disabled:opacity-60">
             {criando ? <LoaderCircle className="size-4 animate-spin" /> : <Mail className="size-4" />} Criar e gerar e-mails
           </button>
         )}

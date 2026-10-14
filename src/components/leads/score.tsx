@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 
 export function corDoScore(score: number | null): string {
   if (score === null) return "#4a5784";
-  if (score >= 70) return "#6fd3ff";
+  if (score >= 70) return "#ffb347";
   if (score >= 45) return "#f5b83d";
   return "#7b88b3";
 }
@@ -28,7 +28,7 @@ export function AnelScore({ score, tamanho = 44, espessura = 4, className, rotul
   return (
     <span className={cn("relative inline-flex shrink-0 items-center justify-center", className)} style={{ width: tamanho, height: tamanho }} role="img" aria-label={score === null ? "Sem score" : `Score ${score} de 100`}>
       <svg width={tamanho} height={tamanho} className="-rotate-90">
-        <circle cx={tamanho / 2} cy={tamanho / 2} r={r} fill="none" stroke="rgba(122,150,255,0.14)" strokeWidth={espessura} />
+        <circle cx={tamanho / 2} cy={tamanho / 2} r={r} fill="none" stroke="rgba(255,214,186,0.14)" strokeWidth={espessura} />
         <motion.circle
           cx={tamanho / 2}
           cy={tamanho / 2}
@@ -41,7 +41,7 @@ export function AnelScore({ score, tamanho = 44, espessura = 4, className, rotul
           initial={{ strokeDashoffset: reduzir ? circ * (1 - fracao) : circ }}
           animate={{ strokeDashoffset: circ * (1 - fracao) }}
           transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-          style={{ filter: score !== null && score >= 70 ? "drop-shadow(0 0 4px rgba(111,211,255,0.6))" : undefined }}
+          style={{ filter: score !== null && score >= 70 ? "drop-shadow(0 0 4px rgba(255,179,71,0.6))" : undefined }}
         />
       </svg>
       {rotulo && (

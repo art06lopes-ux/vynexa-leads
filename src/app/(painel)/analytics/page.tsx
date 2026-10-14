@@ -126,7 +126,7 @@ export default async function PaginaAnalytics() {
         </Entrada>
         <Entrada atraso={0.04}>
           <Cartao icone={Globe2} titulo="Leads por país">
-            <BarrasHorizontais itens={paises.map((p) => ({ rotulo: nomePaisPt(p.pais), valor: p.total }))} cor="#6fd3ff" />
+            <BarrasHorizontais itens={paises.map((p) => ({ rotulo: nomePaisPt(p.pais), valor: p.total }))} cor="#ffb347" />
           </Cartao>
         </Entrada>
       </div>

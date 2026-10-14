@@ -116,7 +116,7 @@ export function AcoesLead({ leadId, naoContatar, iaConfigurada, analisado }: { l
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
-        <button type="button" disabled={ocupado !== null || !iaConfigurada} title={iaConfigurada ? undefined : "Configure a IA em Configurações"} onClick={() => executar("analisar", { acao: "analisar" }, "Análise concluída.")} className={cn(botao, "border-brilho/40 bg-azul/15 text-[#c4d3ff]")}>
+        <button type="button" disabled={ocupado !== null || !iaConfigurada} title={iaConfigurada ? undefined : "Configure a IA em Configurações"} onClick={() => executar("analisar", { acao: "analisar" }, "Análise concluída.")} className={cn(botao, "border-brilho/40 bg-azul/15 text-[#ffd2b8]")}>
           {ocupado === "analisar" ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4 text-ciano" />}
           {analisado ? "Analisar de novo" : "Analisar oportunidade com IA"}
         </button>
@@ -169,7 +169,7 @@ export function AcoesLead({ leadId, naoContatar, iaConfigurada, analisado }: { l
           >
             <div className="flex gap-2">
               <input autoFocus value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Ex.: falei com o dono, retornar na sexta" className="h-10 flex-1 rounded-xl border border-fio bg-placa px-3 text-sm outline-none focus:border-brilho/60" />
-              <button type="submit" disabled={ocupado === "nota"} className="h-10 cursor-pointer rounded-xl bg-azul px-4 text-sm font-semibold text-white hover:bg-brilho">
+              <button type="submit" disabled={ocupado === "nota"} className="h-10 cursor-pointer rounded-xl bg-azul px-4 text-sm font-semibold text-sobre-brasa hover:bg-brilho">
                 Salvar
               </button>
             </div>
@@ -217,7 +217,7 @@ export function EditarContatos({ leadId, inicial }: { leadId: string; inicial: {
       ))}
       <p className="text-[0.7rem] text-muted-foreground">Preenchido à mão: fica marcado como origem &quot;manual&quot;.</p>
       <div className="flex gap-2">
-        <button type="submit" disabled={salvando} className="h-9 cursor-pointer rounded-lg bg-azul px-3 text-sm font-semibold text-white">
+        <button type="submit" disabled={salvando} className="h-9 cursor-pointer rounded-lg bg-azul px-3 text-sm font-semibold text-sobre-brasa">
           {salvando ? "Salvando…" : "Salvar"}
         </button>
         <button type="button" onClick={() => setAberto(false)} className="h-9 cursor-pointer rounded-lg border border-fio px-3 text-sm">

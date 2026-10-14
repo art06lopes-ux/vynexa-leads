@@ -33,7 +33,7 @@ function ItemLink({ item, contadores, aoNavegar, id }: { item: ItemNav; contador
         // O indicador desliza entre os itens: um só elemento com layoutId.
         <motion.span
           layoutId={`nav-ativo-${id}`}
-          className="absolute inset-0 rounded-xl border border-brilho/50 bg-[linear-gradient(90deg,rgba(51,102,255,0.32),rgba(51,102,255,0.08))] shadow-[0_0_22px_-8px_rgba(77,124,255,0.9)]"
+          className="absolute inset-0 rounded-xl border border-brilho/50 bg-[linear-gradient(90deg,rgba(255,90,31,0.32),rgba(255,90,31,0.08))] shadow-[0_0_22px_-8px_rgba(255,122,69,0.9)]"
           transition={{ type: "spring", stiffness: 420, damping: 36 }}
         />
       )}

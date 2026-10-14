@@ -18,7 +18,7 @@ const manrope = Manrope({ variable: "--font-manrope", subsets: ["latin"], displa
 const mono = JetBrains_Mono({ variable: "--font-mono-numeros", subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "Vynexa Leads", template: "%s · Vynexa Leads" },
+  title: { default: "Vynexa Dev", template: "%s · Vynexa Dev" },
   description: "Plataforma de prospecção e vendas da Vynexa Dev.",
   // Ferramenta interna: não existe motivo para aparecer em buscador.
   robots: { index: false, follow: false },
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#050a18",
+  themeColor: "#0b0a09",
   // Sem esta meta o menu nativo de <select> abre branco no Chrome/Windows.
   colorScheme: "dark",
 };

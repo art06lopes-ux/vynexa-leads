@@ -61,8 +61,8 @@ export default async function PaginaConfiguracoes({ searchParams }: PageProps<"/
                 <Campo nome="empresa_instagram" rotulo="Instagram" valor={c.empresa_instagram} placeholder="@vynexadev" />
                 <Campo nome="empresa_site" rotulo="Site" valor={c.empresa_site} placeholder="https://vynexa.dev" />
                 <div className="flex gap-4">
-                  <Campo nome="cor_primaria" rotulo="Cor principal" valor={c.cor_primaria || "#3366ff"} tipo="color" />
-                  <Campo nome="cor_secundaria" rotulo="Cor secundária" valor={c.cor_secundaria || "#6fd3ff"} tipo="color" />
+                  <Campo nome="cor_primaria" rotulo="Cor principal" valor={c.cor_primaria || "#ff5a1f"} tipo="color" />
+                  <Campo nome="cor_secundaria" rotulo="Cor secundária" valor={c.cor_secundaria || "#ffb347"} tipo="color" />
                 </div>
               </div>
               <Campo nome="email_assinatura" rotulo="Assinatura de e-mail" valor={c.email_assinatura} linhas={4} dica="Vazia = nome, empresa, site e WhatsApp acima. Vai no fim de todo e-mail, com o logo." placeholder={"Artur · Vynexa Dev\nhttps://vynexa.dev\nWhatsApp: +55 92 …"} />
@@ -168,7 +168,7 @@ export default async function PaginaConfiguracoes({ searchParams }: PageProps<"/
           <Cartao titulo="Aviso no celular" subtitulo="Quando você gera um link de cobrança e quando o cliente paga">
             <div className="space-y-3 text-sm text-muted-foreground">
               <p>
-                No iPhone: abra o Vynexa Leads no Safari → Compartilhar → <strong className="text-foreground">Adicionar à Tela de Início</strong>. Abra pelo ícone
+                No iPhone: abra o Vynexa no Safari → Compartilhar → <strong className="text-foreground">Adicionar à Tela de Início</strong>. Abra pelo ícone
                 novo (o “V” da Vynexa) e toque em ativar abaixo. Os avisos chegam na tela de bloqueio com esse ícone, mesmo com o app fechado.
               </p>
               <BotaoNotificacoes />

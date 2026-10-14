@@ -47,7 +47,7 @@ export function BuscaRapida({ grande = true }: { grande?: boolean }) {
           e.preventDefault();
           enviar(texto);
         }}
-        className="group relative flex items-center gap-2 rounded-2xl border border-brilho/35 bg-placa/90 p-2 shadow-[0_0_0_1px_rgba(77,124,255,0.08),0_18px_50px_-24px_rgba(51,102,255,0.8)] transition-colors focus-within:border-brilho/70"
+        className="group relative flex items-center gap-2 rounded-2xl border border-brilho/35 bg-placa/90 p-2 shadow-[0_0_0_1px_rgba(255,122,69,0.08),0_18px_50px_-24px_rgba(255,90,31,0.8)] transition-colors focus-within:border-brilho/70"
       >
         <span className="pastilha ml-1 size-9 shrink-0">
           <Sparkles className="size-4" aria-hidden="true" />
@@ -74,7 +74,7 @@ export function BuscaRapida({ grande = true }: { grande?: boolean }) {
           type="submit"
           whileTap={{ scale: 0.96 }}
           disabled={!texto.trim()}
-          className="inline-flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-xl bg-azul px-4 text-sm font-semibold text-white shadow-[0_8px_24px_-8px_rgba(51,102,255,0.9)] transition-colors hover:bg-brilho disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-xl bg-azul px-4 text-sm font-semibold text-sobre-brasa shadow-[0_8px_24px_-8px_rgba(255,90,31,0.9)] transition-colors hover:bg-brilho disabled:cursor-not-allowed disabled:opacity-50"
         >
           Buscar leads <ArrowRight className="size-4" aria-hidden="true" />
         </motion.button>
@@ -90,7 +90,7 @@ export function BuscaRapida({ grande = true }: { grande?: boolean }) {
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
-                  className="rounded-full border border-brilho/30 bg-azul/10 px-2.5 py-1 text-xs font-medium text-[#b9caff]"
+                  className="rounded-full border border-brilho/30 bg-azul/10 px-2.5 py-1 text-xs font-medium text-[#ffd2b8]"
                 >
                   {c}
                 </motion.span>

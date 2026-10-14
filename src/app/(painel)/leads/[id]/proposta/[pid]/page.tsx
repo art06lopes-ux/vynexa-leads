@@ -34,7 +34,7 @@ export default async function PaginaProposta({ params }: PageProps<"/leads/[id]/
         <BotaoImprimir />
       </div>
       <article className="mx-auto max-w-3xl rounded-2xl bg-white p-10 text-[#0f172a] shadow-2xl print:rounded-none print:p-0 print:shadow-none">
-        <header className="flex items-start justify-between border-b-2 pb-6" style={{ borderColor: cfg.cor_primaria || "#3366ff" }}>
+        <header className="flex items-start justify-between border-b-2 pb-6" style={{ borderColor: cfg.cor_primaria || "#ff5a1f" }}>
           <div className="flex items-center gap-3">
             {identidade.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -62,7 +62,7 @@ export default async function PaginaProposta({ params }: PageProps<"/leads/[id]/
           ["Nossa proposta", c.solucao],
         ].map(([t, texto]) => (
           <section key={t} className="mt-7">
-            <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: cfg.cor_primaria || "#3366ff" }}>
+            <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: cfg.cor_primaria || "#ff5a1f" }}>
               {t}
             </h2>
             <p className="mt-2 leading-relaxed">{texto}</p>
@@ -70,13 +70,13 @@ export default async function PaginaProposta({ params }: PageProps<"/leads/[id]/
         ))}
 
         <section className="mt-7">
-          <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: cfg.cor_primaria || "#3366ff" }}>
+          <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: cfg.cor_primaria || "#ff5a1f" }}>
             O que está incluído
           </h2>
           <ul className="mt-2 space-y-1.5">
             {c.entregaveis.map((e) => (
               <li key={e} className="flex gap-2">
-                <span style={{ color: cfg.cor_primaria || "#3366ff" }}>✓</span> {e}
+                <span style={{ color: cfg.cor_primaria || "#ff5a1f" }}>✓</span> {e}
               </li>
             ))}
           </ul>
@@ -88,7 +88,7 @@ export default async function PaginaProposta({ params }: PageProps<"/leads/[id]/
         </section>
 
         <section className="mt-7">
-          <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: cfg.cor_primaria || "#3366ff" }}>
+          <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: cfg.cor_primaria || "#ff5a1f" }}>
             Próximos passos
           </h2>
           <ol className="mt-2 list-inside list-decimal space-y-1.5">

@@ -34,9 +34,9 @@ export type CartaoCrm = {
 };
 
 const COR: Record<EtapaLead, string> = {
-  novo: "#8e9bc2",
-  qualificado: "#4d7cff",
-  abordado: "#6fd3ff",
+  novo: "#a89c90",
+  qualificado: "#ff7a45",
+  abordado: "#ffb347",
   respondeu: "#f5b83d",
   negociacao: "#b48cff",
   proposta: "#ff9a5c",

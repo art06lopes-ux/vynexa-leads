@@ -215,7 +215,7 @@ export function BarraMassa({ ids, aoLimpar, origem }: { ids: Set<string>; aoLimp
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 80, opacity: 0 }}
           transition={{ type: "spring", stiffness: 420, damping: 34 }}
-          className="fixed inset-x-3 bottom-3 z-40 mx-auto flex max-w-3xl flex-wrap items-center gap-2 rounded-2xl border border-brilho/40 bg-popover/95 p-2 pl-4 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9),0_0_30px_-10px_rgba(51,102,255,0.5)] backdrop-blur-xl lg:left-[15.5rem]"
+          className="fixed inset-x-3 bottom-3 z-40 mx-auto flex max-w-3xl flex-wrap items-center gap-2 rounded-2xl border border-brilho/40 bg-popover/95 p-2 pl-4 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9),0_0_30px_-10px_rgba(255,90,31,0.5)] backdrop-blur-xl lg:left-[15.5rem]"
           role="region"
           aria-label="Ações para as empresas selecionadas"
         >
@@ -225,7 +225,7 @@ export function BarraMassa({ ids, aoLimpar, origem }: { ids: Set<string>; aoLimp
           <button type="button" disabled={ocupado !== null} onClick={enviarWhatsapp} className={cn(botao, "bg-[#1fa855] text-white hover:bg-[#25c062]")}>
             <MessageCircle className="size-4" /> WhatsApp
           </button>
-          <button type="button" disabled={ocupado !== null} onClick={enviarEmail} className={cn(botao, "bg-azul text-white hover:bg-brilho")}>
+          <button type="button" disabled={ocupado !== null} onClick={enviarEmail} className={cn(botao, "bg-azul text-sobre-brasa hover:bg-brilho")}>
             <Mail className="size-4" /> E-mail
           </button>
           <div className="relative">
@@ -241,7 +241,7 @@ export function BarraMassa({ ids, aoLimpar, origem }: { ids: Set<string>; aoLimp
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 4 }}
-                    className="absolute bottom-full right-0 z-50 mb-2 w-60 overflow-hidden rounded-xl border border-fio bg-[#0b1433] py-1 shadow-2xl"
+                    className="absolute bottom-full right-0 z-50 mb-2 w-60 overflow-hidden rounded-xl border border-fio bg-[#1a1612] py-1 shadow-2xl"
                   >
                     {(
                       [

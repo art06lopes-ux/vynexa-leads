@@ -20,7 +20,7 @@ const ABAS_CAMPANHAS = [
 export default async function PaginaCampanhas() {
   const campanhas = await listarCampanhas();
   const novo = (
-    <Link href="/campanhas/nova" className="inline-flex h-10 items-center gap-2 rounded-xl bg-azul px-4 text-sm font-semibold text-white hover:bg-brilho">
+    <Link href="/campanhas/nova" className="inline-flex h-10 items-center gap-2 rounded-xl bg-azul px-4 text-sm font-semibold text-sobre-brasa hover:bg-brilho">
       <Plus className="size-4" /> Nova campanha
     </Link>
   );

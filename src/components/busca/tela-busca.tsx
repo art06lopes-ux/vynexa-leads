@@ -340,7 +340,7 @@ export function TelaBusca({
           if (pareceLinkMaps(f.consultaNatural)) void buscar(f, f.consultaNatural.trim());
           else void buscar(aplicarFrase(f.consultaNatural));
         }}
-        className="flex items-center gap-2 rounded-2xl border border-brilho/35 bg-placa/90 p-2 shadow-[0_18px_50px_-24px_rgba(51,102,255,0.8)] focus-within:border-brilho/70"
+        className="flex items-center gap-2 rounded-2xl border border-brilho/35 bg-placa/90 p-2 shadow-[0_18px_50px_-24px_rgba(255,90,31,0.8)] focus-within:border-brilho/70"
       >
         <span className="pastilha ml-1 size-9 shrink-0">
           <Sparkles className="size-4" aria-hidden="true" />
@@ -355,7 +355,7 @@ export function TelaBusca({
         <button type="button" onClick={() => f.consultaNatural.trim() && !pareceLinkMaps(f.consultaNatural) && aplicarFrase(f.consultaNatural)} className="hidden h-11 cursor-pointer items-center rounded-xl px-3 text-sm text-muted-foreground hover:bg-white/5 hover:text-foreground sm:inline-flex">
           Preencher filtros
         </button>
-        <motion.button whileTap={{ scale: 0.96 }} type="submit" disabled={enviando || !f.consultaNatural.trim()} className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-xl bg-azul px-4 text-sm font-semibold text-white hover:bg-brilho disabled:cursor-not-allowed disabled:opacity-50">
+        <motion.button whileTap={{ scale: 0.96 }} type="submit" disabled={enviando || !f.consultaNatural.trim()} className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-xl bg-azul px-4 text-sm font-semibold text-sobre-brasa hover:bg-brilho disabled:cursor-not-allowed disabled:opacity-50">
           {enviando ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowRight className="size-4" />} <span className="hidden sm:inline">Buscar</span>
         </motion.button>
       </form>
@@ -448,10 +448,10 @@ export function TelaBusca({
 
           <button type="button" onClick={() => setFiltrosAbertos((a) => !a)} aria-expanded={filtrosAbertos} className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-fio bg-placa px-3 text-sm hover:border-brilho/40">
             <SlidersHorizontal className="size-4" /> Mais filtros
-            {filtrosAtivos > 0 && <span className="rounded-full bg-azul px-1.5 text-[0.7rem] font-bold text-white">{filtrosAtivos}</span>}
+            {filtrosAtivos > 0 && <span className="rounded-full bg-azul px-1.5 text-[0.7rem] font-bold text-sobre-brasa">{filtrosAtivos}</span>}
           </button>
 
-          <motion.button whileTap={{ scale: 0.97 }} type="submit" disabled={enviando} className="ml-auto inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-azul px-5 text-sm font-semibold text-white shadow-[0_8px_24px_-8px_rgba(51,102,255,0.9)] hover:bg-brilho disabled:opacity-60">
+          <motion.button whileTap={{ scale: 0.97 }} type="submit" disabled={enviando} className="ml-auto inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-azul px-5 text-sm font-semibold text-sobre-brasa shadow-[0_8px_24px_-8px_rgba(255,90,31,0.9)] hover:bg-brilho disabled:opacity-60">
             {enviando ? <LoaderCircle className="size-4 animate-spin" /> : <Search className="size-4" />} Buscar
           </motion.button>
         </div>
@@ -470,11 +470,11 @@ export function TelaBusca({
                 </label>
                 <label className="space-y-1.5">
                   <span className="rotulo">Raio: {f.raioKm > 0 ? `${f.raioKm} km a partir do centro da cidade` : "área da cidade"}</span>
-                  <input type="range" min={0} max={100} step={5} value={f.raioKm} onChange={(e) => mudar("raioKm", Number(e.target.value))} className="h-10 w-full cursor-pointer accent-[#3366ff]" />
+                  <input type="range" min={0} max={100} step={5} value={f.raioKm} onChange={(e) => mudar("raioKm", Number(e.target.value))} className="h-10 w-full cursor-pointer accent-[#ff5a1f]" />
                 </label>
                 <label className="space-y-1.5">
                   <span className="rotulo">Score mínimo: {f.scoreMin || "sem mínimo"}</span>
-                  <input type="range" min={0} max={100} step={5} value={f.scoreMin} onChange={(e) => mudar("scoreMin", Number(e.target.value))} className="h-10 w-full cursor-pointer accent-[#3366ff]" />
+                  <input type="range" min={0} max={100} step={5} value={f.scoreMin} onChange={(e) => mudar("scoreMin", Number(e.target.value))} className="h-10 w-full cursor-pointer accent-[#ff5a1f]" />
                 </label>
                 <label className="space-y-1.5">
                   <span className="rotulo">Mínimo de avaliações</span>
@@ -493,7 +493,7 @@ export function TelaBusca({
                 </div>
                 <label className="space-y-1.5">
                   <span className="rotulo">Teto de requisições ao Google: {f.maxRequisicoes}</span>
-                  <input type="range" min={1} max={60} value={f.maxRequisicoes} onChange={(e) => mudar("maxRequisicoes", Number(e.target.value))} className="h-10 w-full cursor-pointer accent-[#3366ff]" />
+                  <input type="range" min={1} max={60} value={f.maxRequisicoes} onChange={(e) => mudar("maxRequisicoes", Number(e.target.value))} className="h-10 w-full cursor-pointer accent-[#ff5a1f]" />
                   <span className="block text-[0.7rem] text-muted-foreground">Cada requisição traz até 20 empresas e conta na cota da Places API.</span>
                 </label>
               </div>
@@ -530,7 +530,7 @@ function ResultadoDaBusca({ estado, filtros, aoTentarDeNovo, aoLimpar }: { estad
         <p className="font-display text-lg font-semibold">Não conseguimos concluir essa busca.</p>
         <p className="mt-1 max-w-lg text-sm text-muted-foreground">{estado.erro ?? "Verifique sua configuração de API e tente novamente."}</p>
         <div className="mt-5 flex gap-2">
-          <button type="button" onClick={aoTentarDeNovo} className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-azul px-4 text-sm font-semibold text-white hover:bg-brilho">
+          <button type="button" onClick={aoTentarDeNovo} className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-azul px-4 text-sm font-semibold text-sobre-brasa hover:bg-brilho">
             <RefreshCw className="size-4" /> Tentar novamente
           </button>
           <Link href="/configuracoes?aba=integracoes" className="inline-flex h-10 items-center rounded-xl border border-fio px-4 text-sm hover:bg-white/5">
@@ -556,7 +556,7 @@ function Progresso({ estado }: { estado: EstadoBusca }) {
             {[0, 1, 2].map((i) => (
               <motion.span key={i} className="absolute inset-0 rounded-full border border-ciano/50" animate={{ scale: [0.5, 1.4], opacity: [0.8, 0] }} transition={{ duration: 2.4, repeat: Infinity, delay: i * 0.8, ease: "easeOut" }} />
             ))}
-            <motion.span className="absolute inset-2 rounded-full" style={{ background: "conic-gradient(from 0deg, rgba(111,211,255,0.55), transparent 35%)" }} animate={{ rotate: 360 }} transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }} />
+            <motion.span className="absolute inset-2 rounded-full" style={{ background: "conic-gradient(from 0deg, rgba(255,179,71,0.55), transparent 35%)" }} animate={{ rotate: 360 }} transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }} />
             <Radar className="relative size-7 text-white" />
           </div>
           <div className="min-w-0 flex-1">
@@ -695,7 +695,7 @@ function Resultados({ estado, filtros, aoLimpar }: { estado: EstadoBusca; filtro
               <b className="text-white">{r.comWhatsapp}</b> com WhatsApp e <b className="text-white">{r.comEmail}</b> com e-mail. Escolha quem abordar e envie de uma vez
               {estado.procurandoEmails ? " (ainda procurando e-mails nos sites)" : ""}.
             </p>
-            <Link href={`/leads?situacao=nao_abordados&busca=${estado.id}`} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-[#0a1330] hover:bg-white/90">
+            <Link href={`/leads?situacao=nao_abordados&busca=${estado.id}`} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-[#15120f] hover:bg-white/90">
               <Send className="size-4" /> Escolher quem abordar
             </Link>
           </div>

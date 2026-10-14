@@ -107,7 +107,7 @@ export function PainelNegocio({
               </option>
             ))}
           </select>
-          <button type="button" onClick={gerarProposta} disabled={gerando || !iaConfigurada} className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-brilho/40 bg-azul/15 px-3 text-sm text-[#c4d3ff] hover:bg-azul/25 disabled:opacity-50">
+          <button type="button" onClick={gerarProposta} disabled={gerando || !iaConfigurada} className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-brilho/40 bg-azul/15 px-3 text-sm text-[#ffd2b8] hover:bg-azul/25 disabled:opacity-50">
             {gerando ? <LoaderCircle className="size-4 animate-spin" /> : <FileText className="size-4" />} Gerar proposta
           </button>
         </div>
@@ -194,7 +194,7 @@ export function PainelNegocio({
                 <input type="checkbox" checked={venda.pago} onChange={(e) => setVenda((a) => ({ ...a, pago: e.target.checked }))} className="size-4 accent-[#2bd47d]" />
                 Já foi pago (sem cobrança pelo Asaas)
               </label>
-              <button type="submit" disabled={salvando} className="h-10 w-full cursor-pointer rounded-xl bg-azul text-sm font-semibold text-white hover:bg-brilho disabled:opacity-60">
+              <button type="submit" disabled={salvando} className="h-10 w-full cursor-pointer rounded-xl bg-azul text-sm font-semibold text-sobre-brasa hover:bg-brilho disabled:opacity-60">
                 {salvando ? "Registrando…" : "Confirmar venda"}
               </button>
             </motion.form>

@@ -106,7 +106,7 @@ export default async function Dashboard() {
                 </span>
               </div>
             </div>
-            <GraficoArea pontos={receita30.map((p) => ({ rotulo: rotuloDia(p.dia), valor: p.valor }))} formato="moeda" altura={110} cor="#6fd3ff" titulo="Receita por dia (30 dias)" />
+            <GraficoArea pontos={receita30.map((p) => ({ rotulo: rotuloDia(p.dia), valor: p.valor }))} formato="moeda" altura={110} cor="#ffb347" titulo="Receita por dia (30 dias)" />
           </div>
 
           <Escalonado className="mt-6 grid grid-cols-2 gap-2.5 sm:grid-cols-3 2xl:grid-cols-6">
@@ -184,7 +184,7 @@ export default async function Dashboard() {
               dados={mensal.map((m) => ({ rotulo: rotuloMes(m.mes), valores: { leads: m.leads, contatos: m.contatos } }))}
               series={[
                 { chave: "leads", rotulo: "Leads", cor: "#3987e5" },
-                { chave: "contatos", rotulo: "Contatos", cor: "#6fd3ff" },
+                { chave: "contatos", rotulo: "Contatos", cor: "#ffb347" },
               ]}
               altura={210}
             />
@@ -288,7 +288,7 @@ export default async function Dashboard() {
 
 function BotaoBuscar() {
   return (
-    <Link href="/buscar" className="inline-flex h-10 items-center gap-2 rounded-xl bg-azul px-4 text-sm font-semibold text-white shadow-[0_8px_24px_-8px_rgba(51,102,255,0.9)] hover:bg-brilho">
+    <Link href="/buscar" className="inline-flex h-10 items-center gap-2 rounded-xl bg-azul px-4 text-sm font-semibold text-sobre-brasa shadow-[0_8px_24px_-8px_rgba(255,90,31,0.9)] hover:bg-brilho">
       <Search className="size-4" /> Buscar novas oportunidades
     </Link>
   );

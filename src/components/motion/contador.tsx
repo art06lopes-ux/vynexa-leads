@@ -63,7 +63,7 @@ export function Contador({
   }, [valor, formato, moeda, visto, reduzir, duracao]);
 
   return (
-    <span ref={ref} className={className} aria-label={formatar(valor, formato, moeda)}>
+    <span ref={ref} className={formato === "moeda" ? `valor-sensivel ${className ?? ""}` : className} aria-label={formatar(valor, formato, moeda)}>
       {formatar(valor, formato, moeda)}
     </span>
   );

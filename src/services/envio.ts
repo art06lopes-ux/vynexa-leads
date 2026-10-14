@@ -45,7 +45,7 @@ export async function carregarIdentidade(banco: Client): Promise<{ identidade: I
       // Logo enviado pela tela vive no banco; o e-mail aponta para a rota
       // pública que o serve. Sem logo, nada de imagem.
       logoUrl: c.logo_data ? `${base}/api/marca/logo` : null,
-      corPrimaria: c.cor_primaria || "#2f6bff",
+      corPrimaria: c.cor_primaria || "#c2410c",
     },
   };
 }

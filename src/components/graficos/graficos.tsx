@@ -396,7 +396,7 @@ export function Funil({ etapas, titulo }: { etapas: Array<{ rotulo: string; valo
 }
 
 /** Barra horizontal simples (categoria, país). */
-export function BarrasHorizontais({ itens, cor = "#3987e5", formato = "inteiro" }: { itens: Array<{ rotulo: string; valor: number; extra?: string }>; cor?: string; formato?: FormatoNumero }) {
+export function BarrasHorizontais({ itens, cor = "#ff5a1f", formato = "inteiro" }: { itens: Array<{ rotulo: string; valor: number; extra?: string }>; cor?: string; formato?: FormatoNumero }) {
   const reduzir = useReducedMotion();
   const max = Math.max(1, ...itens.map((i) => i.valor));
   if (itens.length === 0) return <p className="py-6 text-center text-xs text-muted-foreground">Sem dados ainda.</p>;

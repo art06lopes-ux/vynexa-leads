@@ -51,9 +51,9 @@ function popup(p: Ponto): string {
       <div><b style="font-size:14px">${escapar(p.nome)}</b><div style="color:#a89c90">${escapar(p.categoria)}${p.cidade ? ` · ${escapar(p.cidade)}` : ""}</div></div>
       <div style="font-family:var(--font-sora);font-size:18px;font-weight:600;color:${corDoScore(p.score)}">${p.score ?? "–"}</div>
     </div>
-    <div style="margin-top:8px;color:#c9d3f2">${nota}</div>
-    <div style="color:#c9d3f2">Telefone: ${p.telefone ? escapar(p.telefone) : "<span style='color:#a89c90'>não encontrado</span>"}</div>
-    <div style="color:#c9d3f2">Site: ${p.website ? escapar(p.website.replace(/^https?:\/\//, "").slice(0, 40)) : "<span style='color:#a89c90'>não encontrado</span>"}</div>
+    <div style="margin-top:8px;color:#e9ddd1">${nota}</div>
+    <div style="color:#e9ddd1">Telefone: ${p.telefone ? escapar(p.telefone) : "<span style='color:#a89c90'>não encontrado</span>"}</div>
+    <div style="color:#e9ddd1">Site: ${p.website ? escapar(p.website.replace(/^https?:\/\//, "").slice(0, 40)) : "<span style='color:#a89c90'>não encontrado</span>"}</div>
     <div style="margin-top:6px"><span style="border:1px solid rgba(255,214,186,.3);border-radius:999px;padding:1px 8px;font-size:11px">${presenca}</span>
     ${p.prioridade ? `<span style="margin-left:4px;font-size:11px;color:#f5b83d">${p.prioridade === "alta" ? "Alta" : p.prioridade === "media" ? "Média" : "Baixa"} prioridade</span>` : ""}</div>
     <a href="/leads/${p.id}" style="display:block;margin-top:10px;text-align:center;background:#ff5a1f;color:#fff;border-radius:8px;padding:7px 0;font-weight:600;text-decoration:none">Abrir lead</a>

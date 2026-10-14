@@ -105,9 +105,9 @@ export default async function PaginaAnalytics() {
                 valores: { contatos: p.valor, respostas: respostas30.slice(-14)[i]?.valor ?? 0, vendas: vendas30.slice(-14)[i]?.valor ?? 0 },
               }))}
               series={[
-                { chave: "contatos", rotulo: "Contatos", cor: "#3987e5" },
-                { chave: "respostas", rotulo: "Respostas", cor: "#d95926" },
-                { chave: "vendas", rotulo: "Vendas", cor: "#199e70" },
+                { chave: "contatos", rotulo: "Contatos", cor: "#ff5a1f" },
+                { chave: "respostas", rotulo: "Respostas", cor: "#ffb347" },
+                { chave: "vendas", rotulo: "Vendas", cor: "#34d399" },
               ]}
               destacarUltimo={false}
               altura={200}
@@ -116,7 +116,7 @@ export default async function PaginaAnalytics() {
         </Entrada>
         <Entrada atraso={0.04}>
           <Cartao icone={TrendingUp} titulo="Receita por mês" subtitulo="Vendas pagas">
-            <GraficoBarras titulo="Receita por mês" dados={mensal.map((m) => ({ rotulo: rotuloMes(m.mes), valores: { receita: m.receita } }))} series={[{ chave: "receita", rotulo: "Receita", cor: "#3987e5" }]} formato="moeda" altura={200} />
+            <GraficoBarras titulo="Receita por mês" dados={mensal.map((m) => ({ rotulo: rotuloMes(m.mes), valores: { receita: m.receita } }))} series={[{ chave: "receita", rotulo: "Receita", cor: "#ff5a1f" }]} formato="moeda" altura={200} />
           </Cartao>
         </Entrada>
         <Entrada>

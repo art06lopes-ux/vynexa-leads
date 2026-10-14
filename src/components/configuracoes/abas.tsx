@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Archive, Check, Copy, KeyRound, LoaderCircle, Plus, Send, Trash2, Upload } from "lucide-react";
+import { Archive, BadgeCheck, Ban, Check, Copy, CreditCard, KeyRound, LoaderCircle, Mail, Package, Plug, Plus, Send, SlidersHorizontal, Trash2, Upload } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -33,13 +33,13 @@ function avisar(r: Resultado) {
 }
 
 export const ABAS = [
-  { chave: "identidade", rotulo: "Identidade" },
-  { chave: "produtos", rotulo: "Produtos" },
-  { chave: "integracoes", rotulo: "Integrações" },
-  { chave: "email", rotulo: "E-mail" },
-  { chave: "pagamentos", rotulo: "Pagamentos" },
-  { chave: "compliance", rotulo: "Não contatar" },
-  { chave: "avancado", rotulo: "Avançado" },
+  { chave: "identidade", rotulo: "Identidade", descricao: "Nome, logo e assinatura", icone: BadgeCheck },
+  { chave: "produtos", rotulo: "Produtos", descricao: "O que a Vynexa vende", icone: Package },
+  { chave: "integracoes", rotulo: "Integrações", descricao: "Google Maps, IA, chaves", icone: Plug },
+  { chave: "email", rotulo: "E-mail", descricao: "Envio e remetente", icone: Mail },
+  { chave: "pagamentos", rotulo: "Pagamentos", descricao: "Asaas e notificações", icone: CreditCard },
+  { chave: "compliance", rotulo: "Não contatar", descricao: "Quem pediu para sair", icone: Ban },
+  { chave: "avancado", rotulo: "Avançado", descricao: "Limites, fuso e zerar", icone: SlidersHorizontal },
 ] as const;
 
 export function SeletorAbas() {
@@ -48,20 +48,31 @@ export function SeletorAbas() {
   const pathname = usePathname();
   const atual = params.get("aba") ?? "identidade";
   return (
-    <nav className="-mx-4 mb-6 flex gap-1 overflow-x-auto border-b border-fio px-4 sm:mx-0 sm:px-0" role="tablist">
-      {ABAS.map((a) => (
-        <button
-          key={a.chave}
-          type="button"
-          role="tab"
-          aria-selected={atual === a.chave}
-          onClick={() => router.replace(`${pathname}?aba=${a.chave}`, { scroll: false })}
-          className={cn("relative h-11 shrink-0 cursor-pointer px-3.5 text-sm font-medium", atual === a.chave ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
-        >
-          {a.rotulo}
-          {atual === a.chave && <motion.span layoutId="aba-config" className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-ciano" />}
-        </button>
-      ))}
+    <nav className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 lg:sticky lg:top-20 lg:flex-col lg:overflow-visible lg:rounded-2xl lg:border lg:border-fio lg:bg-placa lg:p-2" role="tablist" aria-orientation="vertical" aria-label="Seções das configurações">
+      <p className="hidden px-3 pb-2 pt-2 text-xs font-semibold text-muted-foreground lg:block">Central da conta</p>
+      {ABAS.map((a) => {
+        const ativo = atual === a.chave;
+        return (
+          <button
+            key={a.chave}
+            type="button"
+            role="tab"
+            aria-selected={ativo}
+            onClick={() => router.replace(`${pathname}?aba=${a.chave}`, { scroll: false })}
+            className={cn(
+              "relative flex h-11 shrink-0 cursor-pointer items-center gap-3 rounded-xl px-3.5 text-left text-sm font-semibold transition-colors lg:h-auto lg:py-2.5",
+              ativo ? "text-sobre-brasa" : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground",
+            )}
+          >
+            {ativo && <motion.span layoutId="aba-config" className="absolute inset-0 rounded-xl bg-azul" transition={{ type: "spring", stiffness: 500, damping: 38 }} />}
+            <a.icone className="relative size-4 shrink-0" />
+            <span className="relative min-w-0">
+              <span className="block">{a.rotulo}</span>
+              <span className={cn("hidden truncate text-[0.7rem] font-normal lg:block", ativo ? "text-sobre-brasa/75" : "text-muted-foreground")}>{a.descricao}</span>
+            </span>
+          </button>
+        );
+      })}
     </nav>
   );
 }

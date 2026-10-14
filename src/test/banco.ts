@@ -24,6 +24,8 @@ export async function bancoDeTeste(): Promise<Client> {
   for (const arquivo of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
     await banco.executeMultiple(readFileSync(join(dir, arquivo), "utf8"));
   }
+  const { garantirEsquema } = await import("@/db/esquema-auto");
+  await garantirEsquema(banco);
   return banco;
 }
 

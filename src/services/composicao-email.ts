@@ -43,7 +43,7 @@ function linkificar(html: string, rastrear: ((url: string) => string) | null): s
   return html.replace(/https?:\/\/[^\s<>"']+/g, (url) => {
     const destino = url.replace(/&amp;/g, "&");
     const href = rastrear ? rastrear(destino) : destino;
-    return `<a href="${escaparHtml(href)}" style="color:#2563eb">${url}</a>`;
+    return `<a href="${escaparHtml(href)}" style="color:#c2410c">${url}</a>`;
   });
 }
 

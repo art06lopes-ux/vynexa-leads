@@ -275,7 +275,7 @@ export class GooglePlacesProvider implements LeadProvider {
       let quantos = 0;
       for (let pagina = 0; pagina < 3; pagina += 1) {
         if (requisicoes >= consulta.maxRequisicoes) {
-          aviso = `A busca parou no teto de ${requisicoesTexto(consulta.maxRequisicoes)} ao Google. Aumente o teto em "Mais filtros" para cobrir a área inteira.`;
+          aviso = `A busca parou no teto de ${requisicoesTexto(consulta.maxRequisicoes)} ao Google. Aumente o teto de consultas no Radar para cobrir a área inteira.`;
           break;
         }
         const corpo: Record<string, unknown> = { textQuery: texto, pageSize: 20, languageCode: consulta.idioma };
@@ -366,7 +366,7 @@ export class GooglePlacesProvider implements LeadProvider {
 
     for (let pagina = 0; pagina < 3; pagina += 1) {
       if (requisicoes >= consulta.maxRequisicoes) {
-        aviso = `A busca parou no teto de ${requisicoesTexto(consulta.maxRequisicoes)} ao Google. Aumente o teto em "Mais filtros" para trazer mais resultados.`;
+        aviso = `A busca parou no teto de ${requisicoesTexto(consulta.maxRequisicoes)} ao Google. Aumente o teto de consultas no Radar para trazer mais resultados.`;
         break;
       }
       const corpo: Record<string, unknown> = { textQuery: link.consulta, pageSize: 20, languageCode: consulta.idioma };

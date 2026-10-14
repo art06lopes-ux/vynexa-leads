@@ -55,6 +55,10 @@ async function main() {
     novas += 1;
   }
 
+  // E as atualizações aditivas que o servidor também aplica sozinho.
+  const { garantirEsquema } = await import("../src/db/esquema-auto");
+  for (const nome of await garantirEsquema(banco)) console.log(`  + ${nome}`);
+
   console.log(
     novas === 0
       ? "\nBanco já estava atualizado."

@@ -21,6 +21,8 @@ export type NovaVenda = {
   produtoId: string | null;
   descricao: string;
   valorCentavos: number;
+  /** Quanto a venda custou (domínio, hospedagem, terceiros). O lucro é valor − custo. */
+  custoCentavos?: number;
   moeda: string;
   meioPagamento: string | null;
   pago: boolean;
@@ -56,12 +58,12 @@ export async function registrarVenda(banco: Client, v: NovaVenda): Promise<strin
   const statements: InStatement[] = [
     {
       sql: `INSERT INTO vendas (id, produto_id, lead_id, campanha_id, descricao, valor_centavos, moeda, status, origem, meio_pagamento,
-                                cliente_nome, cliente_empresa, cliente_email, cliente_telefone, cliente_documento, criado_em, pago_em)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'manual', ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                cliente_nome, cliente_empresa, cliente_email, cliente_telefone, cliente_documento, criado_em, pago_em, custo_centavos)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'manual', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         id, v.produtoId, v.leadId, campanhaId, v.descricao, v.valorCentavos, v.moeda, v.pago ? "pago" : "pendente", v.meioPagamento,
         v.cliente.nome, v.cliente.empresa, v.cliente.email, v.cliente.telefone, v.cliente.documento?.replace(/\D/g, "") || null,
-        instante, v.pago ? instante : null,
+        instante, v.pago ? instante : null, v.custoCentavos ?? 0,
       ],
     },
   ];

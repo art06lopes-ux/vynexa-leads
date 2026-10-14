@@ -42,12 +42,14 @@ export default async function PaginaConfiguracoes({ searchParams }: PageProps<"/
   return (
     <div>
       <Cabecalho icone={Settings} titulo="Configurações" descricao="Identidade da Vynexa, catálogo, chaves de API, e-mail, pagamentos e privacidade." />
-      <Suspense>
-        <SeletorAbas />
-      </Suspense>
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[15.5rem_minmax(0,1fr)] lg:items-start">
+        <Suspense>
+          <SeletorAbas />
+        </Suspense>
+        <div className="min-w-0">
 
       {aba === "identidade" && (
-        <div className="grid gap-5 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
           <Cartao titulo="Logo" subtitulo="Aparece no painel, notificações, e-mails, propostas e cobranças">
             <UploadLogo logoUrl={identidade.logoUrl} empresa={identidade.empresa} />
           </Cartao>
@@ -101,7 +103,7 @@ export default async function PaginaConfiguracoes({ searchParams }: PageProps<"/
       )}
 
       {aba === "email" && (
-        <div className="grid gap-5 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
           <Cartao titulo="Provedor de envio" subtitulo="Usado por campanhas e pelo envio avulso">
             <ul className="mb-4 space-y-2">
               {provedores.map((p) => (
@@ -140,7 +142,7 @@ export default async function PaginaConfiguracoes({ searchParams }: PageProps<"/
       )}
 
       {aba === "pagamentos" && (
-        <div className="grid gap-5 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
           <Cartao titulo="Asaas">
             <FormConfig>
               <label className="block space-y-1.5">
@@ -184,7 +186,7 @@ export default async function PaginaConfiguracoes({ searchParams }: PageProps<"/
       )}
 
       {aba === "avancado" && (
-        <div className="grid gap-5 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
           <Cartao titulo="Geral">
             <FormConfig>
               <Campo nome="app_url" rotulo="Endereço público do app" valor={c.app_url} placeholder="https://vynexa-leads.vercel.app" dica="Usado nos links dos e-mails (descadastro, rastreio) e nos webhooks." />
@@ -199,6 +201,8 @@ export default async function PaginaConfiguracoes({ searchParams }: PageProps<"/
           </Cartao>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }

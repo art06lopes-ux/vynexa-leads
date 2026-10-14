@@ -211,6 +211,13 @@
     background-color: #ffffff;
   }
 
+  /* Modo privacidade (olho no topo): valores em R$ ficam borrados. */
+  .modo-privado .valor-sensivel {
+    filter: blur(9px);
+    user-select: none;
+    transition: filter 0.2s;
+  }
+
   /* As linhas da escultura do V respiram, uma depois da outra. */
   .escultura-linha {
     animation: respira-linha 4.8s ease-in-out infinite;

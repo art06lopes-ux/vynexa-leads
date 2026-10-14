@@ -244,3 +244,30 @@ export async function lerIdentidade(): Promise<{ empresa: string; responsavel: s
     config: c,
   };
 }
+
+export type VendaPaga = { id: string; valor: number; custo: number; pagoEm: string; descricao: string; cliente: string | null; meio: string | null };
+
+/**
+ * Vendas pagas do último ano, com o custo — o Início agrupa no navegador
+ * (hoje por hora, semana por dia, ano por mês) sem ir ao banco a cada
+ * troca de período. Para o volume da Vynexa (dezenas a centenas por
+ * ano), é leve.
+ */
+export async function vendasPagasDoAno(): Promise<VendaPaga[]> {
+  const { rows } = await getBanco().execute(
+    `SELECT v.id, v.valor_centavos, COALESCE(v.custo_centavos, 0) AS custo, v.pago_em, v.descricao, v.meio_pagamento,
+            COALESCE(v.cliente_empresa, v.cliente_nome, e.nome) AS cliente
+     FROM vendas v LEFT JOIN leads l ON l.id = v.lead_id LEFT JOIN empresas e ON e.id = l.empresa_id
+     WHERE v.status = 'pago' AND v.pago_em >= datetime('now', '-366 days')
+     ORDER BY v.pago_em DESC`,
+  );
+  return rows.map((r) => ({
+    id: String(r.id),
+    valor: Number(r.valor_centavos ?? 0),
+    custo: Number(r.custo ?? 0),
+    pagoEm: String(r.pago_em),
+    descricao: String(r.descricao ?? ""),
+    cliente: r.cliente ? String(r.cliente) : null,
+    meio: r.meio_pagamento ? String(r.meio_pagamento) : null,
+  }));
+}

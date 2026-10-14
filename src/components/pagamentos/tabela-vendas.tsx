@@ -3,8 +3,8 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Copy, ExternalLink, LoaderCircle, Plus, QrCode, Receipt, X } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import type { VendaListada } from "@/db/vendas";
@@ -100,7 +100,18 @@ export function TabelaVendas({ vendas, asaasPronto, produtos }: { vendas: VendaL
   const [pagando, setPagando] = useState<string | null>(null);
   const [confirmandoPagamento, setConfirmandoPagamento] = useState(false);
   const [nova, setNova] = useState(false);
-  const [f, setF] = useState({ descricao: "", valor: "", produtoId: "", meio: "pix", pago: false, clienteNome: "", clienteEmpresa: "", clienteDocumento: "" });
+  const params = useSearchParams();
+
+  // /pagamentos?nova=1 (Início, carteira e paleta) já abre o formulário.
+  useEffect(() => {
+    if (params.get("nova") !== "1") return;
+    const t = setTimeout(() => {
+      setNova(true);
+      router.replace("/pagamentos", { scroll: false });
+    }, 0);
+    return () => clearTimeout(t);
+  }, [params, router]);
+  const [f, setF] = useState({ descricao: "", valor: "", custo: "", produtoId: "", meio: "pix", pago: false, clienteNome: "", clienteEmpresa: "", clienteDocumento: "" });
 
   return (
     <section className="placa overflow-hidden">
@@ -153,6 +164,10 @@ export function TabelaVendas({ vendas, asaasPronto, produtos }: { vendas: VendaL
               <label className="space-y-1">
                 <span className="rotulo">Valor (R$)</span>
                 <input required value={f.valor} onChange={(e) => setF((a) => ({ ...a, valor: e.target.value }))} inputMode="decimal" className={campo} />
+              </label>
+              <label className="space-y-1">
+                <span className="rotulo">Custo (R$)</span>
+                <input value={f.custo} onChange={(e) => setF((a) => ({ ...a, custo: e.target.value }))} inputMode="decimal" placeholder="0,00" title="Domínio, hospedagem, terceiros — o lucro é valor menos custo" className={campo} />
               </label>
               <label className="space-y-1">
                 <span className="rotulo">Cliente</span>

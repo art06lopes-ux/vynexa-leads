@@ -1,18 +1,26 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Menu, Search, X } from "lucide-react";
+import { Eye, EyeOff, Menu, RefreshCw, Search, X } from "lucide-react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 
 import { Marca } from "@/components/marca";
+import { cn } from "@/lib/utils";
 
+import { BotaoDicas } from "./dicas";
 import { ProvedorNotificacoes, Sino } from "./notificacoes";
-import { ConteudoSidebar, type Contadores } from "./sidebar";
+import { Paleta, useAtalhoPaleta } from "./paleta";
+import { ConteudoSidebar, Trilho, type Contadores } from "./sidebar";
 
 /**
- * A moldura do painel: sidebar fixa no desktop, gaveta no celular, barra
- * do topo com busca (⌘K / Ctrl+K), sino e relógio.
+ * A moldura do painel.
+ * - Desktop: trilho estreito à esquerda (ícone + nome curto).
+ * - Celular: gaveta com a lista completa.
+ * - Topo: busca/paleta (Ctrl+K), método de venda, AO VIVO, modo
+ *   privacidade (borra os valores em R$ para mostrar a tela a alguém),
+ *   atualizar, notificações e quem está logado.
  */
 
 type Props = {
@@ -23,88 +31,65 @@ type Props = {
   responsavel: string;
 };
 
-function Relogio() {
-  const [hora, setHora] = useState<string | null>(null);
-  useEffect(() => {
-    const atualizar = () => setHora(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
-    atualizar();
-    const id = setInterval(atualizar, 15_000);
-    return () => clearInterval(id);
-  }, []);
-  return (
-    <span className="ao-vivo hidden h-10 items-center gap-2 rounded-xl border border-fio bg-placa px-3 text-sm font-semibold num sm:inline-flex" title="Dados ao vivo">
-      {hora ?? "--:--"}
-    </span>
-  );
-}
+const CHAVE_PRIVADO = "vynexa:modo-privado";
 
-function BuscaTopo() {
-  const router = useRouter();
-  const ref = useRef<HTMLInputElement>(null);
-  const [texto, setTexto] = useState("");
-
+function usePrivacidade(): [boolean, () => void] {
+  const [privado, setPrivado] = useState(false);
   useEffect(() => {
-    const atalho = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        ref.current?.focus();
+    const t = setTimeout(() => {
+      let salvo = false;
+      try {
+        salvo = localStorage.getItem(CHAVE_PRIVADO) === "1";
+      } catch {
+        /* navegador sem armazenamento: começa visível */
       }
-    };
-    window.addEventListener("keydown", atalho);
-    return () => window.removeEventListener("keydown", atalho);
+      setPrivado(salvo);
+      document.documentElement.classList.toggle("modo-privado", salvo);
+    }, 0);
+    return () => clearTimeout(t);
   }, []);
-
-  return (
-    <form
-      role="search"
-      onSubmit={(e) => {
-        e.preventDefault();
-        const q = texto.trim();
-        if (q) router.push(`/leads?q=${encodeURIComponent(q)}`);
-      }}
-      className="relative flex-1 md:max-w-md"
-    >
-      <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-      <input
-        ref={ref}
-        value={texto}
-        onChange={(e) => setTexto(e.target.value)}
-        placeholder="Buscar leads, empresas, telefones…"
-        aria-label="Buscar na carteira"
-        className="h-10 w-full rounded-xl border border-fio bg-placa/80 pl-10 pr-14 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-brilho/60 focus:bg-placa"
-      />
-      <kbd className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded-md border border-fio bg-white/5 px-1.5 py-0.5 text-[0.65rem] font-semibold text-muted-foreground md:block">
-        Ctrl K
-      </kbd>
-    </form>
-  );
+  const alternar = useCallback(() => {
+    setPrivado((p) => {
+      const novo = !p;
+      document.documentElement.classList.toggle("modo-privado", novo);
+      try {
+        localStorage.setItem(CHAVE_PRIVADO, novo ? "1" : "0");
+      } catch {
+        /* ok */
+      }
+      return novo;
+    });
+  }, []);
+  return [privado, alternar];
 }
+
+const botaoTopo = "flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-fio bg-placa text-muted-foreground transition-colors hover:border-brilho/40 hover:text-foreground";
 
 export function Shell({ children, contadores, logoUrl, empresa, responsavel }: Props) {
   const pathname = usePathname();
-  // A gaveta guarda a página em que foi aberta: trocar de página (link,
-  // voltar do navegador) a fecha sem precisar de efeito.
+  const router = useRouter();
+  // A gaveta guarda a página em que foi aberta: trocar de página a fecha.
   const [abertaEm, setAbertaEm] = useState<string | null>(null);
   const gaveta = abertaEm === pathname;
   const setGaveta = (aberta: boolean) => setAbertaEm(aberta ? pathname : null);
+  const [paleta, setPaleta] = useState(false);
+  const abrirPaleta = useCallback(() => setPaleta(true), []);
+  useAtalhoPaleta(abrirPaleta);
+  const [privado, alternarPrivado] = usePrivacidade();
+  const [atualizando, iniciar] = useTransition();
+  const aoVivo = pathname.startsWith("/ao-vivo");
 
   return (
     <ProvedorNotificacoes logoUrl={logoUrl} empresa={empresa}>
       <div className="flex min-h-dvh">
-        <aside className="sticky top-0 hidden h-dvh w-[15.5rem] shrink-0 border-r border-fio bg-sidebar/80 backdrop-blur-xl lg:block">
-          <ConteudoSidebar contadores={contadores} logoUrl={logoUrl} empresa={empresa} responsavel={responsavel} id="fixa" />
+        <aside className="sticky top-0 hidden h-dvh w-[5.75rem] shrink-0 border-r border-fio bg-sidebar lg:block">
+          <Trilho contadores={contadores} id="fixa" />
         </aside>
 
         <AnimatePresence>
           {gaveta && (
             <>
-              <motion.div
-                className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setGaveta(false)}
-              />
+              <motion.div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setGaveta(false)} />
               <motion.aside
                 className="fixed inset-y-0 left-0 z-50 w-[17rem] border-r border-fio bg-sidebar lg:hidden"
                 initial={{ x: "-100%" }}
@@ -123,27 +108,66 @@ export function Shell({ children, contadores, logoUrl, empresa, responsavel }: P
         </AnimatePresence>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 border-b border-fio bg-background/70 backdrop-blur-xl">
-            <div className="flex h-16 items-center gap-3 px-4 sm:px-6">
-              <button type="button" onClick={() => setGaveta(true)} aria-label="Abrir menu" className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-fio bg-placa lg:hidden">
+          <header className="sticky top-0 z-30 border-b border-fio bg-background/75 backdrop-blur-xl">
+            <div className="flex h-16 items-center gap-2 px-3 sm:gap-2.5 sm:px-6">
+              <button type="button" onClick={() => setGaveta(true)} aria-label="Abrir menu" className={cn(botaoTopo, "lg:hidden")}>
                 <Menu className="size-5" />
               </button>
-              <span className="lg:hidden">
+              <span className="hidden sm:inline lg:hidden">
                 <Marca logoUrl={logoUrl} mostrarTexto={false} />
               </span>
-              <BuscaTopo />
-              <div className="ml-auto flex items-center gap-2.5">
+
+              <button
+                type="button"
+                onClick={abrirPaleta}
+                className="flex h-10 min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-xl border border-fio bg-placa/80 pl-3.5 pr-2 text-left text-sm text-muted-foreground/80 transition-colors hover:border-brilho/40 md:max-w-md"
+                aria-label="Procurar empresa, ir para uma tela ou criar algo (Ctrl+K)"
+              >
+                <Search className="size-4 shrink-0" />
+                <span className="flex-1 truncate">Procurar empresa, cliente ou tela…</span>
+                <kbd className="hidden rounded-md bg-azul/90 px-1.5 py-0.5 text-[0.65rem] font-bold text-sobre-brasa md:block">Ctrl K</kbd>
+              </button>
+              <BotaoDicas />
+
+              <div className="ml-auto flex items-center gap-2">
+                <Link
+                  href={aoVivo ? "/" : "/ao-vivo"}
+                  className={cn(
+                    "hidden h-10 items-center gap-2 rounded-xl px-3.5 text-xs font-bold sm:inline-flex",
+                    aoVivo ? "border border-fio bg-placa text-foreground" : "bg-gradient-to-b from-[#ff7a45] to-[#e8470f] text-sobre-brasa shadow-[0_6px_18px_-6px_rgba(255,90,31,0.9)]",
+                  )}
+                  title="Sala de vendas do dia"
+                >
+                  <span className="relative flex size-2">
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-current opacity-60" />
+                    <span className="relative inline-flex size-2 rounded-full bg-current" />
+                  </span>
+                  AO VIVO
+                </Link>
+                <button type="button" onClick={alternarPrivado} aria-pressed={privado} title={privado ? "Mostrar valores" : "Esconder valores (modo privacidade)"} aria-label={privado ? "Mostrar valores em R$" : "Esconder valores em R$"} className={cn(botaoTopo, privado && "border-brilho/50 text-ciano")}>
+                  {privado ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+                <button type="button" onClick={() => iniciar(() => router.refresh())} title="Atualizar dados" aria-label="Atualizar dados" className={cn(botaoTopo, "hidden sm:flex")}>
+                  <RefreshCw className={cn("size-4", atualizando && "animate-spin")} />
+                </button>
                 <Sino />
-                <Relogio />
+                <Link href="/configuracoes" className="hidden items-center gap-2.5 rounded-xl py-1 pl-1 pr-2 hover:bg-white/[0.04] xl:flex" title="Sua conta">
+                  <span className="flex size-9 items-center justify-center rounded-full border border-brilho/40 bg-azul/15 text-sm font-bold text-ciano">{responsavel.charAt(0).toUpperCase()}</span>
+                  <span className="leading-tight">
+                    <span className="block text-sm font-semibold">{responsavel}</span>
+                    <span className="block text-[0.7rem] text-muted-foreground">{empresa}</span>
+                  </span>
+                </Link>
               </div>
             </div>
           </header>
 
-          <main className="w-full min-w-0 flex-1 px-4 pb-16 pt-6 sm:px-6 lg:px-8 lg:pt-8">
-            <div className="mx-auto w-full max-w-[90rem]">{children}</div>
+          <main className="w-full min-w-0 flex-1 px-4 pb-16 pt-5 sm:px-6 lg:px-8 lg:pt-7">
+            <div className="mx-auto w-full max-w-[92rem]">{children}</div>
           </main>
         </div>
       </div>
+      <Paleta aberta={paleta} aoFechar={() => setPaleta(false)} />
     </ProvedorNotificacoes>
   );
 }

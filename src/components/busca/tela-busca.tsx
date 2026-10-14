@@ -1,24 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  ArrowRight,
-  Check,
-  CircleAlert,
-  Crosshair,
-  LoaderCircle,
-  Map as IconeMapa,
-  MapPin,
-  Radar,
-  RefreshCw,
-  Search,
-  Send,
-  SlidersHorizontal,
-  Sparkles,
-  X,
-} from "lucide-react";
+import { Check, CircleAlert, Crosshair, Map as IconeMapa, MapPin, Radar, RefreshCw, Send, X } from "lucide-react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -26,21 +10,15 @@ import { BarraMassa, SeletorQuantidade, useSelecao } from "@/components/leads/ba
 import { CartaoLead, EsqueletoCartao } from "@/components/leads/cartao-lead";
 import { Contador } from "@/components/motion/contador";
 import type { LeadListado } from "@/db/leads";
-import { CODIGOS_ISO, codigoDoPaisPorNome, nomePaisPt } from "@/lib/geo/mundo";
 import { cn } from "@/lib/utils";
-import { interpretarConsulta, type FiltroSite } from "@/services/consulta-natural";
-import { pareceLinkMaps } from "@/services/link-maps";
+import type { FiltroSite } from "@/services/consulta-natural";
 
 /**
- * A tela de busca: pedido em linguagem natural ou formulário completo →
- * busca no provedor (Google Maps por padrão) com o progresso de cada
- * etapa → resumo do que foi achado → cartões com seleção em massa.
+ * O resultado de uma busca: o progresso de cada etapa, o resumo do que
+ * foi achado e os cartões com seleção em massa. Usado pelo Radar.
  */
 
-type Provedores = Array<{ nome: "google_places" | "osm"; rotulo: string; disponivel: boolean }>;
-
-
-type Formulario = {
+export type Formulario = {
   consultaNatural: string;
   termo: string;
   provedor: "google_places";
@@ -60,7 +38,7 @@ type Formulario = {
   maxRequisicoes: number;
 };
 
-type Resumo = {
+export type Resumo = {
   total: number;
   novos: number;
   completados: number;
@@ -74,7 +52,7 @@ type Resumo = {
   aviso: string | null;
 };
 
-type EstadoBusca = {
+export type EstadoBusca = {
   id: string;
   status: "pendente" | "em_andamento" | "concluida" | "erro";
   etapa: string | null;
@@ -98,9 +76,8 @@ function indiceEtapa(etapa: string | null, status: string): number {
   return 0;
 }
 
-const UFS = ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"];
 
-const SUGESTOES = [
+export const SUGESTOES = [
   "Barbearia", "Salão de beleza", "Clínica de estética", "Estética automotiva", "Lava-jato", "Oficina mecânica", "Imobiliária",
   "Corretor de imóveis", "Escritório de advocacia", "Dentista", "Clínica médica", "Academia", "Personal trainer", "Pet shop",
   "Veterinária", "Restaurante", "Hotel", "Pousada", "Loja de roupas", "Loja de móveis", "Fotógrafo", "Agência de marketing",
@@ -108,7 +85,7 @@ const SUGESTOES = [
   "Plumber", "Dentist", "Realtor", "Real estate agency", "Auto detailing", "Car wash",
 ];
 
-const VAZIO: Formulario = {
+export const VAZIO: Formulario = {
   consultaNatural: "",
   termo: "",
   provedor: "google_places",
@@ -128,399 +105,7 @@ const VAZIO: Formulario = {
   maxRequisicoes: 10,
 };
 
-function Alternar({ ativo, aoMudar, rotulo }: { ativo: boolean; aoMudar: (v: boolean) => void; rotulo: string }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={ativo}
-      onClick={() => aoMudar(!ativo)}
-      className={cn("flex h-10 cursor-pointer items-center justify-between gap-3 rounded-xl border px-3 text-sm transition-colors", ativo ? "border-brilho/50 bg-azul/12" : "border-fio bg-placa hover:border-brilho/30")}
-    >
-      {rotulo}
-      <span className={cn("relative h-5 w-9 rounded-full transition-colors", ativo ? "bg-azul" : "bg-white/15")}>
-        <motion.span layout transition={{ type: "spring", stiffness: 600, damping: 32 }} className={cn("absolute top-0.5 size-4 rounded-full bg-white", ativo ? "right-0.5" : "left-0.5")} />
-      </span>
-    </button>
-  );
-}
-
-const campo = "h-10 w-full rounded-xl border border-fio bg-placa px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-brilho/60";
-
-export function TelaBusca({
-  provedores,
-  buscaInicial,
-  usoGoogle,
-  tetoPadrao,
-}: {
-  provedores: Provedores;
-  buscaInicial: string | null;
-  usoGoogle: { usadas: number; limite: number; restantes: number };
-  tetoPadrao: number;
-}) {
-  const router = useRouter();
-  const params = useSearchParams();
-  const googleOk = provedores.find((p) => p.nome === "google_places")?.disponivel ?? false;
-  const [f, setF] = useState<Formulario>({ ...VAZIO, maxRequisicoes: Math.min(Math.max(tetoPadrao, 1), 60) });
-  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
-  const [enviando, setEnviando] = useState(false);
-  const [estado, setEstado] = useState<EstadoBusca | null>(null);
-  const [cidades, setCidades] = useState<string[]>([]);
-  const iniciou = useRef(false);
-
-  const mudar = <K extends keyof Formulario>(k: K, v: Formulario[K]) => setF((a) => ({ ...a, [k]: v }));
-
-  // Nomes de país vêm do Intl, e o Node e o navegador trazem versões
-  // diferentes da tabela ("Hong Kong" × "Hong Kong, RAE da China"). A
-  // lista completa só é montada no navegador; antes disso, só o Brasil.
-  const [paises, setPaises] = useState([{ c: "BR", n: "Brasil" }]);
-  useEffect(() => {
-    const t = setTimeout(() =>
-      setPaises(CODIGOS_ISO.map((c) => ({ c, n: nomePaisPt(c) })).sort((a, b) => (a.c === "BR" ? -1 : b.c === "BR" ? 1 : a.n.localeCompare(b.n, "pt-BR")))),
-    );
-    return () => clearTimeout(t);
-  }, []);
-
-  // Municípios do IBGE quando o país é Brasil e há UF.
-  useEffect(() => {
-    if (f.pais !== "BR" || !UFS.includes(f.estado)) return;
-    let cancelado = false;
-    fetch(`/api/geo/municipios?uf=${f.estado}`)
-      .then((r) => (r.ok ? r.json() : { municipios: [] }))
-      .then((d: { municipios?: string[] }) => !cancelado && setCidades(d.municipios ?? []))
-      .catch(() => {});
-    return () => {
-      cancelado = true;
-    };
-  }, [f.pais, f.estado]);
-
-  /** Preenche o formulário a partir da frase. */
-  const aplicarFrase = useCallback(
-    (texto: string): Formulario => {
-      const c = interpretarConsulta(texto);
-      const novo: Formulario = { ...f, consultaNatural: texto, termo: c.termo || f.termo, site: c.site, comWhatsapp: c.comWhatsapp, comEmail: c.comEmail };
-      if (c.avaliacoesMin) novo.avaliacoesMin = String(c.avaliacoesMin);
-      if (c.notaMin) novo.notaMin = String(c.notaMin);
-      if (c.scoreMin) novo.scoreMin = c.scoreMin;
-      novo.estado = "";
-      novo.cidade = "";
-      novo.local = "";
-      if (c.local) {
-        const soPais = codigoDoPaisPorNome(c.local);
-        if (soPais) {
-          novo.pais = soPais;
-        } else {
-          novo.pais = c.pais ?? "";
-          if (novo.pais === "BR" && c.uf) novo.estado = c.uf;
-          novo.cidade = c.cidade ?? "";
-          // Só o estado ("em Santa Catarina"): busca no estado inteiro, sem cidade.
-          novo.local = c.cidade ? c.local : "";
-        }
-      } else if (!c.local && /qualquer lugar|anywhere|worldwide|todo o mundo/i.test(texto)) {
-        novo.pais = "";
-      }
-      setF(novo);
-      return novo;
-    },
-    [f],
-  );
-
-  const buscar = useCallback(
-    async (form: Formulario, linkMaps?: string) => {
-      if (!linkMaps && !form.termo.trim()) {
-        toast.error("Diga o que procurar — por exemplo, \"Barbearia\".");
-        return;
-      }
-      setEnviando(true);
-      try {
-        const r = await fetch("/api/buscas", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            consultaNatural: form.consultaNatural || undefined,
-            termo: linkMaps ? "" : form.termo,
-            linkMaps,
-            provedor: "google_places",
-            pais: form.pais || null,
-            estado: form.estado || undefined,
-            cidade: form.cidade || undefined,
-            bairro: form.bairro || undefined,
-            cep: form.cep || undefined,
-            local: form.local || (!form.cidade && !form.estado && form.pais ? nomePaisPt(form.pais) : undefined),
-            raioKm: form.raioKm > 0 ? form.raioKm : null,
-            filtros: {
-              site: form.site,
-              comWhatsapp: form.comWhatsapp,
-              comEmail: form.comEmail,
-              avaliacoesMin: form.avaliacoesMin ? Number(form.avaliacoesMin) : null,
-              notaMin: form.notaMin ? Number(form.notaMin.replace(",", ".")) : null,
-              scoreMin: form.scoreMin || null,
-            },
-            maxRequisicoes: form.maxRequisicoes,
-          }),
-        });
-        const d = (await r.json()) as { id?: string; erro?: string; codigo?: string };
-        if (!r.ok || !d.id) {
-          toast.error(d.erro ?? "Não conseguimos iniciar a busca.", d.codigo === "sem_configuracao" ? { action: { label: "Configurar", onClick: () => router.push("/configuracoes?aba=integracoes") } } : undefined);
-          return;
-        }
-        const rotulo = linkMaps ? "Pesquisa do Google Maps" : form.consultaNatural || `${form.termo}${form.cidade ? ` em ${form.cidade}` : form.pais ? ` em ${nomePaisPt(form.pais)}` : ""}`;
-        setEstado({ id: d.id, status: "pendente", etapa: "Na fila…", erro: null, resumo: null, rotulo });
-        router.replace(`/buscar?busca=${d.id}`, { scroll: false });
-      } catch {
-        toast.error("Falha de rede ao iniciar a busca.");
-      } finally {
-        setEnviando(false);
-      }
-    },
-    [router],
-  );
-
-  // Vindo do dashboard: /buscar?q=…&auto=1 já busca.
-  useEffect(() => {
-    if (iniciou.current) return;
-    iniciou.current = true;
-    const t = setTimeout(() => {
-      const q = params.get("q");
-      if (q && pareceLinkMaps(q)) {
-        setF((a) => ({ ...a, consultaNatural: q }));
-        if (params.get("auto") === "1") void buscar({ ...VAZIO, consultaNatural: q }, q);
-      } else if (q) {
-        const form = aplicarFrase(q);
-        if (params.get("auto") === "1") void buscar(form);
-      } else if (buscaInicial) {
-        setEstado({ id: buscaInicial, status: "em_andamento", etapa: null, erro: null, resumo: null, rotulo: "" });
-      }
-    }, 0);
-    return () => clearTimeout(t);
-  }, [params, aplicarFrase, buscar, buscaInicial]);
-
-  // Acompanha o andamento.
-  useEffect(() => {
-    if (!estado || estado.status === "erro" || (estado.status === "concluida" && !estado.procurandoEmails)) return;
-    let parar = false;
-    const consultar = async () => {
-      try {
-        const r = await fetch(`/api/buscas/${estado.id}`, { cache: "no-store" });
-        const d = (await r.json()) as { busca?: { status: EstadoBusca["status"]; etapa_atual: string | null; erro: string | null; consulta_natural: string | null; segmento: string; cidade: string | null }; resumo?: Resumo | null; procurandoEmails?: boolean; erro?: string };
-        if (parar || !d.busca) return;
-        setEstado((a) =>
-          a && a.id === estado.id
-            ? {
-                ...a,
-                status: d.busca!.status,
-                etapa: d.busca!.etapa_atual,
-                erro: d.busca!.erro,
-                resumo: d.resumo ?? null,
-                procurandoEmails: Boolean(d.procurandoEmails),
-                rotulo: a.rotulo || d.busca!.consulta_natural || `${d.busca!.segmento}${d.busca!.cidade ? ` em ${d.busca!.cidade}` : ""}`,
-              }
-            : a,
-        );
-      } catch {
-        /* tenta de novo */
-      }
-    };
-    void consultar();
-    const id = setInterval(consultar, estado.status === "concluida" ? 4000 : 1500);
-    return () => {
-      parar = true;
-      clearInterval(id);
-    };
-  }, [estado?.id, estado?.status, estado?.procurandoEmails]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const filtrosAtivos = [f.site !== "todos", f.comWhatsapp, f.comEmail, Boolean(f.avaliacoesMin), Boolean(f.notaMin), f.scoreMin > 0, f.raioKm > 0, Boolean(f.bairro), Boolean(f.cep)].filter(Boolean).length;
-
-  return (
-    <div className="space-y-6">
-      {/* Pedido em linguagem natural */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (pareceLinkMaps(f.consultaNatural)) void buscar(f, f.consultaNatural.trim());
-          else void buscar(aplicarFrase(f.consultaNatural));
-        }}
-        className="flex items-center gap-2 rounded-2xl border border-brilho/35 bg-placa/90 p-2 shadow-[0_18px_50px_-24px_rgba(255,90,31,0.8)] focus-within:border-brilho/70"
-      >
-        <span className="pastilha ml-1 size-9 shrink-0">
-          <Sparkles className="size-4" aria-hidden="true" />
-        </span>
-        <input
-          value={f.consultaNatural}
-          onChange={(e) => mudar("consultaNatural", e.target.value)}
-          placeholder="Ex.: hamburguerias em Manacapuru sem site — ou cole um link do Google Maps"
-          aria-label="Busca em linguagem natural"
-          className="h-11 min-w-0 flex-1 bg-transparent px-2 text-base outline-none placeholder:text-muted-foreground/60"
-        />
-        <button type="button" onClick={() => f.consultaNatural.trim() && !pareceLinkMaps(f.consultaNatural) && aplicarFrase(f.consultaNatural)} className="hidden h-11 cursor-pointer items-center rounded-xl px-3 text-sm text-muted-foreground hover:bg-white/5 hover:text-foreground sm:inline-flex">
-          Preencher filtros
-        </button>
-        <motion.button whileTap={{ scale: 0.96 }} type="submit" disabled={enviando || !f.consultaNatural.trim()} className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-xl bg-azul px-4 text-sm font-semibold text-sobre-brasa hover:bg-brilho disabled:cursor-not-allowed disabled:opacity-50">
-          {enviando ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowRight className="size-4" />} <span className="hidden sm:inline">Buscar</span>
-        </motion.button>
-      </form>
-
-      {/* Formulário completo */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void buscar(f);
-        }}
-        className="placa p-4 sm:p-5"
-      >
-        <div className="grid gap-3 md:grid-cols-12">
-          <label className="space-y-1.5 md:col-span-4">
-            <span className="rotulo">Categoria</span>
-            <input list="sugestoes-categoria" value={f.termo} onChange={(e) => mudar("termo", e.target.value)} placeholder="Qualquer categoria do Google Maps" className={campo} required />
-            <datalist id="sugestoes-categoria">
-              {SUGESTOES.map((s) => (
-                <option key={s} value={s} />
-              ))}
-            </datalist>
-          </label>
-          <label className="space-y-1.5 md:col-span-3">
-            <span className="rotulo">País</span>
-            <select value={f.pais} onChange={(e) => setF((a) => ({ ...a, pais: e.target.value, estado: "", cidade: "" }))} className={cn(campo, "cursor-pointer")}>
-              <option value="">Qualquer lugar</option>
-              {paises.map((p) => (
-                <option key={p.c} value={p.c}>
-                  {p.n}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="space-y-1.5 md:col-span-2">
-            <span className="rotulo">Estado / região</span>
-            {f.pais === "BR" ? (
-              <select value={f.estado} onChange={(e) => setF((a) => ({ ...a, estado: e.target.value, cidade: "" }))} className={cn(campo, "cursor-pointer")}>
-                <option value="">Todos</option>
-                {UFS.map((u) => (
-                  <option key={u} value={u}>
-                    {u}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input value={f.estado} onChange={(e) => mudar("estado", e.target.value)} placeholder="California" className={campo} disabled={!f.pais} />
-            )}
-          </label>
-          <label className="space-y-1.5 md:col-span-3">
-            <span className="rotulo">Cidade</span>
-            <input list="sugestoes-cidade" value={f.cidade} onChange={(e) => mudar("cidade", e.target.value)} placeholder={f.pais === "BR" ? "Manacapuru" : "Los Angeles"} className={campo} />
-            <datalist id="sugestoes-cidade">
-              {cidades.map((c) => (
-                <option key={c} value={c} />
-              ))}
-            </datalist>
-          </label>
-        </div>
-
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="inline-flex h-10 items-center gap-2 rounded-xl border border-fio bg-placa px-3 text-xs font-semibold">
-            <MapPin className="size-3.5 text-ciano" aria-hidden="true" />
-            Google Maps
-            {!googleOk && <span className="rounded bg-aviso/20 px-1 text-[0.6rem] text-aviso">sem chave</span>}
-            {googleOk && (
-              <span
-                title={`${usoGoogle.usadas} de ${usoGoogle.limite} requisições usadas este mês`}
-                className={cn("font-normal num", usoGoogle.restantes < 30 ? "text-aviso" : "text-muted-foreground")}
-              >
-                · restam {usoGoogle.restantes} no mês
-              </span>
-            )}
-          </span>
-
-          <div className="flex rounded-xl border border-fio bg-placa p-1" role="radiogroup" aria-label="Site">
-            {(
-              [
-                ["todos", "Todos"],
-                ["sem", "Sem site"],
-                ["com", "Com site"],
-                ["ruim", "Site fraco"],
-              ] as const
-            ).map(([v, r]) => (
-              <button key={v} type="button" role="radio" aria-checked={f.site === v} onClick={() => mudar("site", v)} className={cn("relative h-8 cursor-pointer rounded-lg px-3 text-xs font-semibold", f.site === v ? "text-white" : "text-muted-foreground hover:text-foreground")}>
-                {f.site === v && <motion.span layoutId="site-ativo" className="absolute inset-0 rounded-lg bg-white/10" transition={{ type: "spring", stiffness: 500, damping: 36 }} />}
-                <span className="relative">{r}</span>
-              </button>
-            ))}
-          </div>
-
-          <button type="button" onClick={() => setFiltrosAbertos((a) => !a)} aria-expanded={filtrosAbertos} className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-fio bg-placa px-3 text-sm hover:border-brilho/40">
-            <SlidersHorizontal className="size-4" /> Mais filtros
-            {filtrosAtivos > 0 && <span className="rounded-full bg-azul px-1.5 text-[0.7rem] font-bold text-sobre-brasa">{filtrosAtivos}</span>}
-          </button>
-
-          <motion.button whileTap={{ scale: 0.97 }} type="submit" disabled={enviando} className="ml-auto inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-azul px-5 text-sm font-semibold text-sobre-brasa shadow-[0_8px_24px_-8px_rgba(255,90,31,0.9)] hover:bg-brilho disabled:opacity-60">
-            {enviando ? <LoaderCircle className="size-4 animate-spin" /> : <Search className="size-4" />} Buscar
-          </motion.button>
-        </div>
-
-        <AnimatePresence initial={false}>
-          {filtrosAbertos && (
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22 }} className="overflow-hidden">
-              <div className="mt-4 grid gap-3 border-t border-fio pt-4 sm:grid-cols-2 lg:grid-cols-4">
-                <label className="space-y-1.5">
-                  <span className="rotulo">Bairro</span>
-                  <input value={f.bairro} onChange={(e) => mudar("bairro", e.target.value)} className={campo} placeholder="Centro" />
-                </label>
-                <label className="space-y-1.5">
-                  <span className="rotulo">CEP / código postal</span>
-                  <input value={f.cep} onChange={(e) => mudar("cep", e.target.value)} className={campo} placeholder="69400-000" />
-                </label>
-                <label className="space-y-1.5">
-                  <span className="rotulo">Raio: {f.raioKm > 0 ? `${f.raioKm} km a partir do centro da cidade` : "área da cidade"}</span>
-                  <input type="range" min={0} max={100} step={5} value={f.raioKm} onChange={(e) => mudar("raioKm", Number(e.target.value))} className="h-10 w-full cursor-pointer accent-[#ff5a1f]" />
-                </label>
-                <label className="space-y-1.5">
-                  <span className="rotulo">Score mínimo: {f.scoreMin || "sem mínimo"}</span>
-                  <input type="range" min={0} max={100} step={5} value={f.scoreMin} onChange={(e) => mudar("scoreMin", Number(e.target.value))} className="h-10 w-full cursor-pointer accent-[#ff5a1f]" />
-                </label>
-                <label className="space-y-1.5">
-                  <span className="rotulo">Mínimo de avaliações</span>
-                  <input inputMode="numeric" value={f.avaliacoesMin} onChange={(e) => mudar("avaliacoesMin", e.target.value.replace(/\D/g, ""))} className={campo} placeholder="50" />
-                </label>
-                <label className="space-y-1.5">
-                  <span className="rotulo">Nota mínima no Google</span>
-                  <input inputMode="decimal" value={f.notaMin} onChange={(e) => mudar("notaMin", e.target.value.replace(/[^\d.,]/g, ""))} className={campo} placeholder="4,5" />
-                </label>
-                <div className="space-y-1.5">
-                  <span className="rotulo">Canais</span>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Alternar ativo={f.comWhatsapp} aoMudar={(v) => mudar("comWhatsapp", v)} rotulo="WhatsApp" />
-                    <Alternar ativo={f.comEmail} aoMudar={(v) => mudar("comEmail", v)} rotulo="E-mail" />
-                  </div>
-                </div>
-                <label className="space-y-1.5">
-                  <span className="rotulo">Teto de requisições ao Google: {f.maxRequisicoes}</span>
-                  <input type="range" min={1} max={60} value={f.maxRequisicoes} onChange={(e) => mudar("maxRequisicoes", Number(e.target.value))} className="h-10 w-full cursor-pointer accent-[#ff5a1f]" />
-                  <span className="block text-[0.7rem] text-muted-foreground">Cada requisição traz até 20 empresas e conta na cota da Places API.</span>
-                </label>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </form>
-
-      {estado ? (
-        <ResultadoDaBusca estado={estado} filtros={f} aoTentarDeNovo={() => void buscar(f)} aoLimpar={() => { setEstado(null); router.replace("/buscar", { scroll: false }); }} />
-      ) : (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="placa flex flex-col items-center px-6 py-16 text-center">
-          <span className="relative mb-4 flex size-16 items-center justify-center">
-            <motion.span className="absolute inset-0 rounded-full border border-brilho/40" animate={{ scale: [1, 1.6], opacity: [0.6, 0] }} transition={{ duration: 2.2, repeat: Infinity, ease: "easeOut" }} />
-            <span className="pastilha size-14 rounded-full">
-              <Radar className="size-6" />
-            </span>
-          </span>
-          <p className="font-display text-lg font-semibold">Nenhum lead encontrado ainda</p>
-          <p className="mt-1 max-w-md text-sm text-muted-foreground">Faça uma busca por categoria e localização para começar. Funciona no mundo todo — Manacapuru, Lisboa ou San Diego.</p>
-        </motion.div>
-      )}
-    </div>
-  );
-}
-
-function ResultadoDaBusca({ estado, filtros, aoTentarDeNovo, aoLimpar }: { estado: EstadoBusca; filtros: Formulario; aoTentarDeNovo: () => void; aoLimpar: () => void }) {
+export function ResultadoDaBusca({ estado, filtros, aoTentarDeNovo, aoLimpar }: { estado: EstadoBusca; filtros: Formulario; aoTentarDeNovo: () => void; aoLimpar: () => void }) {
   if (estado.status === "erro") {
     return (
       <div className="placa flex flex-col items-center px-6 py-12 text-center">

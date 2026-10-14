@@ -108,6 +108,42 @@ export async function resolverLugar(consulta: ConsultaLugar): Promise<LugarResol
   return resolvido;
 }
 
+/**
+ * Resolve um endereço livre ("Centro, Manacapuru") — usado pelo "Ir ao
+ * local" do Radar. Mesmo limitador e mesmo cache da busca estruturada.
+ */
+export async function resolverTexto(texto: string): Promise<LugarResolvido> {
+  const q = texto.trim();
+  const chave = `texto|${q.toLowerCase()}`;
+  const guardado = cache.get(chave);
+  if (guardado) return guardado;
+
+  const url = new URL(ENDPOINT);
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("limit", "1");
+  url.searchParams.set("q", q);
+  url.searchParams.set("accept-language", "pt-BR,en");
+
+  const resposta = await agendar(() =>
+    fetch(url, { headers: { "User-Agent": getOsmUserAgent(), Accept: "application/json" }, signal: AbortSignal.timeout(15_000) }),
+  );
+  if (!resposta.ok) throw new ErroNominatim(`O serviço de geocodificação respondeu ${resposta.status}. Tente de novo em alguns segundos.`);
+
+  const dados = (await resposta.json()) as Array<{ display_name?: string; lat?: string; lon?: string; boundingbox?: [string, string, string, string] }>;
+  const primeiro = dados[0];
+  if (!primeiro?.boundingbox || !primeiro.lat || !primeiro.lon) throw new ErroNominatim(`Não encontrei "${q}" no mapa. Tente com a cidade e o estado.`);
+
+  const [minLat, maxLat, minLon, maxLon] = primeiro.boundingbox.map(Number);
+  const resolvido: LugarResolvido = {
+    rotulo: primeiro.display_name ?? q,
+    latitude: Number(primeiro.lat),
+    longitude: Number(primeiro.lon),
+    bbox: { sul: minLat, oeste: minLon, norte: maxLat, leste: maxLon },
+  };
+  cache.set(chave, resolvido);
+  return resolvido;
+}
+
 // ---------------------------------------------------------------------
 // Geometria da expansão de raio
 // ---------------------------------------------------------------------

@@ -9,6 +9,7 @@ import { registrarVenda } from "@/services/financeiro";
 const Corpo = z.object({
   descricao: z.string().trim().min(2).max(200),
   valor: z.string().trim().min(1).max(30),
+  custo: z.string().trim().max(30).optional(),
   produtoId: z.string().max(64).nullable(),
   meio: z.enum(["pix", "boleto", "cartao", "transferencia", "dinheiro", "outro"]).nullable(),
   pago: z.boolean(),
@@ -23,11 +24,15 @@ export const POST = rota(async (req) => {
   const c = await lerCorpo(req, Corpo);
   const valor = paraCentavos(c.valor);
   if (!valor || valor <= 0) throw new ErroApi("Valor inválido.");
+  const custo = c.custo ? paraCentavos(c.custo) : 0;
+  if (custo === null || custo < 0) throw new ErroApi("Custo inválido.");
+  if (custo > valor) throw new ErroApi("O custo não pode ser maior que o valor da venda.");
   const id = await registrarVenda(getBanco(), {
     leadId: null,
     produtoId: c.produtoId,
     descricao: c.descricao,
     valorCentavos: valor,
+    custoCentavos: custo,
     moeda: "BRL",
     meioPagamento: c.meio,
     pago: c.pago,

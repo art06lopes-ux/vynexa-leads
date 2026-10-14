@@ -13,7 +13,7 @@ export const ROTULO_CAMPANHA: Record<StatusCampanha, string> = {
 
 export const COR_CAMPANHA: Record<StatusCampanha, string> = {
   rascunho: "border-white/15 bg-white/5 text-muted-foreground",
-  preparando: "border-brilho/35 bg-azul/12 text-[#a9c0ff]",
+  preparando: "border-brilho/35 bg-azul/12 text-brilho",
   pronta: "border-aviso/35 bg-aviso/10 text-aviso",
   agendada: "border-ciano/30 bg-ciano/10 text-ciano",
   enviando: "border-ciano/40 bg-ciano/12 text-ciano",
@@ -38,7 +38,7 @@ export const ROTULO_ENVIO: Record<StatusEnvio, string> = {
 
 export const COR_ENVIO: Record<StatusEnvio, string> = {
   pendente: "text-muted-foreground",
-  preparado: "text-[#a9c0ff]",
+  preparado: "text-brilho",
   agendado: "text-ciano",
   enviando: "text-ciano",
   enviado: "text-foreground",

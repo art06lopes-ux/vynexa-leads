@@ -1,4 +1,5 @@
 import { CreditCard, TrendingUp } from "lucide-react";
+import { Suspense } from "react";
 
 import { AbasPagina } from "@/components/base/abas-pagina";
 import { AvisoConfiguracao, Cabecalho, Cartao } from "@/components/base/cartao";
@@ -65,14 +66,16 @@ export default async function PaginaPagamentos() {
           <GraficoBarras
             titulo="Receita por mês"
             dados={mensal.map((m) => ({ rotulo: rotuloMes(m.mes), valores: { receita: m.receita } }))}
-            series={[{ chave: "receita", rotulo: "Receita", cor: "#3987e5" }]}
+            series={[{ chave: "receita", rotulo: "Receita", cor: "#ff5a1f" }]}
             formato="moeda"
             altura={220}
           />
         </Cartao>
       </Entrada>
 
-      <TabelaVendas vendas={vendas} asaasPronto={asaas.ok} produtos={produtos} />
+      <Suspense>
+        <TabelaVendas vendas={vendas} asaasPronto={asaas.ok} produtos={produtos} />
+      </Suspense>
     </div>
   );
 }

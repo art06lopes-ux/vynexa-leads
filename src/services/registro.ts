@@ -145,6 +145,7 @@ export async function registrarLugares(
 
     const statusSite = classificarStatusSite({
       website: l.website,
+      categoria: [l.categoria, l.categoriaRotulo].filter(Boolean).join(" "),
       telefone: l.telefone,
       email: item.emailNorm,
       instagram: l.instagram,
@@ -183,6 +184,7 @@ export async function registrarLugares(
       categoria: l.categoria,
       categoria_rotulo: l.categoriaRotulo,
       telefone: l.telefone,
+      website: l.website,
     });
     statements.push({
       sql: `INSERT INTO leads (id, empresa_id, score_oportunidade, score_motivos, score_calculado_em, prioridade, etapa, etapa_em, criado_em, atualizado_em)

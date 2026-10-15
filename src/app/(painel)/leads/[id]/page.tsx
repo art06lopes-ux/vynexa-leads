@@ -116,7 +116,7 @@ export default async function PaginaLead({ params }: PageProps<"/leads/[id]">) {
                 )}
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <SeloPresenca statusSite={e.status_site} qualidade={e.site_qualidade} />
+                <SeloPresenca statusSite={e.status_site} qualidade={e.site_qualidade} website={e.website} />
                 <SeloPrioridade prioridade={lead.prioridade} />
                 {e.nao_contatar === 1 && <span className="rounded-full border border-perigo/40 bg-perigo/15 px-2 py-0.5 text-[0.7rem] font-bold text-perigo">NÃO CONTATAR</span>}
               </div>

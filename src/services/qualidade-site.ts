@@ -32,6 +32,11 @@ export type SinaisSite = {
   tamanhoKb: number | null;
   /** O domínio redirecionou para outro (ex.: para o Instagram). */
   redirecionouPara: string | null;
+  /**
+   * O endereço não é um site próprio: leva a uma rede social ou é uma
+   * loja de plataforma de cardápio (Brendi, Anota Aí…), mesmo com domínio próprio.
+   */
+  semSiteProprio?: "rede_social" | "cardapio" | null;
 };
 
 export type Avaliacao = {

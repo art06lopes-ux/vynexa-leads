@@ -421,6 +421,12 @@ export function TelaRadar({
                 ["todos", "Todos"],
               ]}
             />
+            {site === "sem" && (
+              <p className="text-[0.72rem] leading-relaxed text-muted-foreground">
+                Inclui quem só tem Instagram ou WhatsApp. Em restaurante, hamburgueria e outros de alimentação, também quem só tem cardápio de plataforma
+                (iFood, Brendi, Anota Aí, Goomer…).
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-2">
               <label className="space-y-1.5">
                 <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground">

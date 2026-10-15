@@ -7,8 +7,9 @@ import type { Client } from "@libsql/client";
  * Só entram aqui mudanças ADITIVAS e idempotentes: criar tabela que não
  * existe, acrescentar coluna que falta. Cada passo confere antes de
  * mexer, então rodar duas vezes (dois servidores subindo juntos) é
- * inofensivo. Recriar tabela ou mover dados continua sendo migração
- * manual, em db/migracoes.
+ * inofensivo. Recriar tabela ou mover dados em massa continua sendo
+ * migração manual, em db/migracoes; reclassificações pequenas e
+ * idempotentes (como a do cardápio) podem entrar aqui.
  */
 
 async function temColuna(banco: Client, tabela: string, coluna: string): Promise<boolean> {
@@ -60,6 +61,43 @@ export const MIGRACOES_AUTO: MigracaoAuto[] = [
         criado_em  TEXT NOT NULL DEFAULT (datetime('now'))
       )`);
       await banco.execute(`CREATE INDEX IF NOT EXISTS prompts_criado_idx ON prompts (criado_em DESC)`);
+    },
+  },
+  {
+    // Restaurante/hamburgueria cujo "site" no Google é só cardápio de
+    // plataforma (Brendi, Anota Aí, iFood…) passa a contar como sem site
+    // próprio. Reclassifica o que já estava salvo; buscas novas já entram
+    // assim. Só mexe em quem casa com as duas regras — rodar de novo não muda nada.
+    nome: "auto_0014_cardapio_nao_e_site_v2",
+    async aplicar(banco) {
+      const { ehAlimentacao, ehCardapioOnline } = await import("@/lib/leads/classificacao");
+      const { rows } = await banco.execute(`SELECT id, website, categoria, categoria_rotulo FROM empresas WHERE status_site = 'tem_site' AND website IS NOT NULL`);
+      const comida = rows.filter((r) => ehAlimentacao(`${r.categoria ?? ""} ${r.categoria_rotulo ?? ""}`));
+      const ids = comida.filter((r) => ehCardapioOnline(r.website as string)).map((r) => String(r.id));
+      // Os demais de alimentação com "site" voltam para a fila de avaliação:
+      // a visita descobre domínio próprio que só redireciona para o cardápio
+      // (majordelivery.com.br → Brendi) ou loja de plataforma com domínio próprio.
+      const revisitar = comida.map((r) => String(r.id)).filter((id) => !ids.includes(id));
+      for (let i = 0; i < revisitar.length; i += 50) {
+        const lote = revisitar.slice(i, i + 50);
+        await banco.execute({ sql: `UPDATE empresas SET site_avaliado_em = NULL WHERE id IN (${lote.map(() => "?").join(",")})`, args: lote });
+      }
+      if (revisitar.length > 0) {
+        const { enfileirarUmaVez } = await import("@/worker/handlers/busca-provedor");
+        await enfileirarUmaVez(banco, "avaliar_site", { limite: 20 });
+      }
+      for (let i = 0; i < ids.length; i += 50) {
+        const lote = ids.slice(i, i + 50);
+        await banco.execute({
+          sql: `UPDATE empresas SET status_site = 'rede_social', dominio = NULL, site_qualidade = NULL WHERE id IN (${lote.map(() => "?").join(",")})`,
+          args: lote,
+        });
+      }
+      if (ids.length > 0) {
+        const { recalcularScores } = await import("@/services/registro");
+        await recalcularScores(banco, ids);
+      }
+      console.log(`[esquema-auto] cardápio não é site: ${ids.length} reclassificada(s), ${revisitar.length} de alimentação para revisitar`);
     },
   },
 ];

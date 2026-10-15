@@ -1,5 +1,5 @@
 import { getOsmUserAgent } from "@/lib/ambiente";
-import { ehRedeSocial } from "@/lib/leads/classificacao";
+import { ehCardapioOnline, ehRedeSocial, paginaDeCardapio } from "@/lib/leads/classificacao";
 import { extrairSinaisDoHtml, type SinaisSite } from "@/services/qualidade-site";
 import { robotsPermite } from "@/worker/handlers/enriquecer-email";
 
@@ -66,8 +66,10 @@ export async function verificarSite(website: string): Promise<SinaisSite & { blo
   const base = { ok: resposta.r.ok, statusHttp: resposta.r.status, https, tempoMs: resposta.ms, redirecionouPara };
 
   if (!resposta.r.ok) return { ...vazio, ...base, bloqueadoPorRobots: false };
-  // O domínio próprio redireciona para o Instagram: na prática, não há site.
-  if (redirecionouPara && ehRedeSocial(redirecionouPara)) return { ...vazio, ...base, ok: false, bloqueadoPorRobots: false };
+  // O domínio próprio redireciona para o Instagram ou para um cardápio
+  // (majordelivery.com.br → pedido.brendi.com.br): na prática, não há site.
+  if (redirecionouPara && ehRedeSocial(redirecionouPara)) return { ...vazio, ...base, ok: false, bloqueadoPorRobots: false, semSiteProprio: "rede_social" };
+  if (redirecionouPara && ehCardapioOnline(redirecionouPara)) return { ...vazio, ...base, ok: false, bloqueadoPorRobots: false, semSiteProprio: "cardapio" };
 
   if (!(await robotsPermite(final))) {
     await resposta.r.body?.cancel().catch(() => {});
@@ -77,5 +79,5 @@ export async function verificarSite(website: string): Promise<SinaisSite & { blo
   const tipo = resposta.r.headers.get("content-type") ?? "";
   if (!tipo.includes("text/html")) return { ...vazio, ...base, bloqueadoPorRobots: false };
   const html = (await resposta.r.text()).slice(0, 1_500_000);
-  return { ...base, ...extrairSinaisDoHtml(html), bloqueadoPorRobots: false };
+  return { ...base, ...extrairSinaisDoHtml(html), bloqueadoPorRobots: false, semSiteProprio: paginaDeCardapio(html) ? "cardapio" : null };
 }

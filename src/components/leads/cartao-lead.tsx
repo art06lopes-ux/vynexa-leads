@@ -123,7 +123,7 @@ export function CartaoLead({
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">
-        <SeloPresenca statusSite={lead.status_site} qualidade={lead.site_qualidade} />
+        <SeloPresenca statusSite={lead.status_site} qualidade={lead.site_qualidade} website={lead.website} />
         {mostrarEtapa && <SeloEtapa etapa={lead.etapa} />}
         {lead.nao_contatar === 1 && <span className="inline-flex h-6 items-center rounded-full border border-perigo/30 bg-perigo/10 px-2 text-[0.7rem] font-semibold text-perigo">Não contatar</span>}
       </div>

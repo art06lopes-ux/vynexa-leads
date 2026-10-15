@@ -1,5 +1,6 @@
 import type { Empresa, MotivoScore } from "@/db/tipos";
 import { nomePaisPt } from "@/lib/geo/mundo";
+import { ehCardapioOnline } from "@/lib/leads/classificacao";
 import { rotuloDoSegmento } from "@/lib/osm/segmentos";
 import { DESCRICAO_PRESENCA, statusPresenca } from "@/services/qualidade-site";
 
@@ -106,7 +107,11 @@ export function blocoFatos(d: DadosLead): { texto: string; numeros: Set<string> 
   }
 
   const presenca = statusPresenca(e.status_site, e.site_qualidade);
-  linhas.push(`Presença na web: ${DESCRICAO_PRESENCA[presenca]}`);
+  linhas.push(
+    presenca === "rede_social" && ehCardapioOnline(e.website)
+      ? "Presença na web: só um cardápio em plataforma de pedidos (o link do Google leva para ela); não tem site próprio."
+      : `Presença na web: ${DESCRICAO_PRESENCA[presenca]}`,
+  );
   if (d.problemasSite.length > 0) linhas.push(`Problemas medidos no site: ${d.problemasSite.join("; ")}`);
   if (d.score !== null) linhas.push(`Score de oportunidade (interno): ${d.score}/100 — ${d.motivosScore.map((m) => m.motivo).join("; ")}`);
   if (d.diagnostico) linhas.push(`Diagnóstico anterior: ${d.diagnostico}`);

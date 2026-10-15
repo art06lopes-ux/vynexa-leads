@@ -154,7 +154,7 @@ export async function editarContato(banco: Client, empresaId: string, campos: { 
     args: [
       telefone, telefoneE164(telefone, pais), telefone, telefone, telefone, abreWhatsapp(telefone, pais),
       email, email, email, instagram, website, dominioProprio(website),
-      classificarStatusSite({ website, telefone, email, instagram, facebook: e.facebook as string | null }),
+      classificarStatusSite({ website, telefone, email, instagram, facebook: e.facebook as string | null, categoria: [e.categoria, e.categoria_rotulo].filter(Boolean).join(" ") }),
       website, website, agora(), empresaId,
     ],
   });

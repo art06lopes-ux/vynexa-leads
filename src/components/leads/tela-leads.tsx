@@ -403,7 +403,7 @@ export function TelaLeads({
                     </td>
                     <td className="hidden py-2.5 text-muted-foreground num xl:table-cell">{l.avaliacao_nota !== null ? `${l.avaliacao_nota.toFixed(1).replace(".", ",")}★ (${l.avaliacao_qtd})` : "—"}</td>
                     <td className="py-2.5">
-                      <SeloPresenca statusSite={l.status_site} qualidade={l.site_qualidade} />
+                      <SeloPresenca statusSite={l.status_site} qualidade={l.site_qualidade} website={l.website} />
                     </td>
                     <td className="py-2.5">
                       <SeloEtapa etapa={l.etapa} />

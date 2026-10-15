@@ -1,4 +1,5 @@
 import type { MotivoScore, Prioridade, QualidadeSite, StatusSite } from "@/db/tipos";
+import { ehCardapioOnline } from "@/lib/leads/classificacao";
 import { simplificar } from "@/services/normalizacao";
 
 /**
@@ -26,6 +27,7 @@ export type EntradaScore = {
   categoria: string;
   categoria_rotulo: string | null;
   telefone: string | null;
+  website?: string | null;
 };
 
 export type ResultadoScore = {
@@ -91,7 +93,8 @@ export function calcularScore(e: EntradaScore): ResultadoScore {
   // Presença na web. "sem_dado" não soma: sem site E sem contato é
   // ausência de informação, não ausência de site.
   if (e.status_site === "sem_site") somar(PESOS.semSite, "Não possui site");
-  else if (e.status_site === "rede_social") somar(PESOS.semSite, "Só tem rede social, sem site próprio");
+  else if (e.status_site === "rede_social")
+    somar(PESOS.semSite, ehCardapioOnline(e.website) ? "Só tem cardápio em plataforma (iFood, Brendi, Anota Aí…), sem site próprio" : "Só tem rede social, sem site próprio");
   else if (e.status_site === "tem_site") {
     if (e.site_qualidade === "fraco") somar(PESOS.siteRuim, "Site com problemas ou desatualizado");
     else if (e.site_qualidade === "fora_do_ar") somar(PESOS.siteRuim, "Site fora do ar");

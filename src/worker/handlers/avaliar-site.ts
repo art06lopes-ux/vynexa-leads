@@ -2,6 +2,7 @@ import type { Client, InStatement } from "@libsql/client";
 
 import { agora, novoId } from "@/db/cliente";
 import { verificarSite } from "@/integrations/site/verificador";
+import { ehAlimentacao } from "@/lib/leads/classificacao";
 import { eventoSql } from "@/services/eventos";
 import { avaliarSinais, ROTULO_PRESENCA } from "@/services/qualidade-site";
 import { recalcularScores } from "@/services/registro";
@@ -22,12 +23,12 @@ export async function processarAvaliacaoSites(banco: Client, payload: PayloadAva
 
   const { rows } = payload.empresaIds?.length
     ? await banco.execute({
-        sql: `SELECT e.id, e.website, l.id AS lead_id FROM empresas e LEFT JOIN leads l ON l.empresa_id = e.id
+        sql: `SELECT e.id, e.website, e.categoria, e.categoria_rotulo, l.id AS lead_id FROM empresas e LEFT JOIN leads l ON l.empresa_id = e.id
               WHERE e.id IN (${payload.empresaIds.slice(0, 90).map(() => "?").join(",")}) AND e.website IS NOT NULL AND e.status_site = 'tem_site'`,
         args: payload.empresaIds.slice(0, 90),
       })
     : await banco.execute({
-        sql: `SELECT e.id, e.website, l.id AS lead_id FROM empresas e LEFT JOIN leads l ON l.empresa_id = e.id
+        sql: `SELECT e.id, e.website, e.categoria, e.categoria_rotulo, l.id AS lead_id FROM empresas e LEFT JOIN leads l ON l.empresa_id = e.id
               WHERE e.status_site = 'tem_site' AND e.website IS NOT NULL AND e.site_avaliado_em IS NULL
               ORDER BY e.criado_em DESC LIMIT ?`,
         args: [limite],
@@ -40,6 +41,26 @@ export async function processarAvaliacaoSites(banco: Client, payload: PayloadAva
     const instante = agora();
     if (!sinais) {
       await banco.execute({ sql: `UPDATE empresas SET site_avaliado_em = ? WHERE id = ?`, args: [instante, String(r.id)] });
+      continue;
+    }
+    // Endereço que só leva ao Instagram (qualquer ramo) ou a um cardápio de
+    // plataforma (só alimentação): não é site próprio — vira "sem site".
+    const terceiro =
+      sinais.semSiteProprio === "rede_social" ||
+      (sinais.semSiteProprio === "cardapio" && ehAlimentacao(`${r.categoria ?? ""} ${r.categoria_rotulo ?? ""}`));
+    if (terceiro) {
+      const statements: InStatement[] = [
+        {
+          sql: `UPDATE empresas SET status_site = 'rede_social', dominio = NULL, site_qualidade = NULL, site_sinais = ?, site_avaliado_em = ?, atualizado_em = ? WHERE id = ?`,
+          args: [JSON.stringify({ sinais }), instante, instante, String(r.id)],
+        },
+      ];
+      if (r.lead_id) {
+        const oque = sinais.semSiteProprio === "cardapio" ? "cardápio de plataforma de pedidos" : "rede social";
+        statements.push(eventoSql(String(r.lead_id), "site_avaliado", `O endereço do site leva só a um ${oque} — sem site próprio`));
+      }
+      await banco.batch(statements, "write");
+      avaliados.push(String(r.id));
       continue;
     }
     const av = avaliarSinais(sinais);

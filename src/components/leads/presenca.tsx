@@ -1,7 +1,7 @@
 import { CircleAlert, CircleCheck, CircleDashed, CircleOff, CircleX, Globe, type LucideIcon } from "lucide-react";
 
 import type { EtapaLead, QualidadeSite, StatusSite } from "@/db/tipos";
-import { ehCardapioOnline } from "@/lib/leads/classificacao";
+import { plataformaDoLink } from "@/lib/leads/classificacao";
 import { cn } from "@/lib/utils";
 import { ROTULO_ETAPA } from "@/services/crm";
 import { ROTULO_PRESENCA, statusPresenca } from "@/services/qualidade-site";
@@ -24,8 +24,9 @@ const ESTILO: Record<string, { classe: string; icone: LucideIcon }> = {
 export function SeloPresenca({ statusSite, qualidade, website, className }: { statusSite: StatusSite; qualidade: QualidadeSite | null; website?: string | null; className?: string }) {
   const p = statusPresenca(statusSite, qualidade);
   const { classe, icone: Icone } = ESTILO[p];
-  // Restaurante só com Brendi, Anota Aí, iFood…: mesmo caso de "só rede social", rótulo próprio.
-  const rotulo = p === "rede_social" && ehCardapioOnline(website) ? "Só cardápio online" : ROTULO_PRESENCA[p];
+  // Restaurante só com Brendi/iFood, barbearia só com AppBarber/Trinks: mesmo caso de "só rede social", rótulo próprio.
+  const plataforma = p === "rede_social" ? plataformaDoLink(website) : null;
+  const rotulo = plataforma === "cardapio" ? "Só cardápio online" : plataforma === "agenda" ? "Só agenda online" : ROTULO_PRESENCA[p];
   return (
     <span className={cn("inline-flex h-6 items-center gap-1 rounded-full border px-2 text-[0.7rem] font-semibold whitespace-nowrap", classe, className)}>
       <Icone className="size-3" aria-hidden="true" />

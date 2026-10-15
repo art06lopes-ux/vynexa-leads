@@ -34,9 +34,9 @@ export type SinaisSite = {
   redirecionouPara: string | null;
   /**
    * O endereço não é um site próprio: leva a uma rede social ou é uma
-   * loja de plataforma de cardápio (Brendi, Anota Aí…), mesmo com domínio próprio.
+   * página de plataforma de cardápio ou de agenda (Brendi, AppBarber…), mesmo com domínio próprio.
    */
-  semSiteProprio?: "rede_social" | "cardapio" | null;
+  semSiteProprio?: "rede_social" | "cardapio" | "agenda" | null;
 };
 
 export type Avaliacao = {

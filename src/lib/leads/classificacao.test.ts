@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 
-import { classificarStatusSite, ehAlimentacao, ehCardapioOnline, paginaDeCardapio } from "@/lib/leads/classificacao";
+import { classificarStatusSite, ehAlimentacao, ehBeleza, ehCardapioOnline, paginaDeCardapio, plataformaNaPagina } from "@/lib/leads/classificacao";
 import { dominioProprio } from "@/services/normalizacao";
 
 const base = { telefone: "92999999999" };
@@ -31,7 +31,7 @@ describe("cardápio de plataforma não é site (só em alimentação)", () => {
 
   it("fora de alimentação, o link continua contando como site", () => {
     assert.equal(classificarStatusSite({ ...base, website: "https://x.kyte.site", categoria: "Loja de roupas" }), "tem_site");
-    assert.equal(classificarStatusSite({ ...base, website: "https://pedido.anota.ai/loja/x", categoria: "Barbearia" }), "tem_site");
+    assert.equal(classificarStatusSite({ ...base, website: "https://pedido.anota.ai/loja/x", categoria: "Academia" }), "tem_site");
     assert.equal(classificarStatusSite({ ...base, website: "https://pedido.anota.ai/loja/x" }), "tem_site", "sem categoria, não presume");
   });
 
@@ -51,5 +51,29 @@ describe("cardápio de plataforma não é site (só em alimentação)", () => {
     const site = `<html><body><h1>Burger X</h1><a href="https://www.ifood.com.br/delivery/burger-x">Peça no iFood</a></body></html>`;
     assert.equal(paginaDeCardapio(loja), true);
     assert.equal(paginaDeCardapio(site), false);
+  });
+});
+
+describe("agenda de plataforma não é site (só em beleza)", () => {
+  it("barbearia e salão só com AppBarber, Trinks, Booksy contam como sem site próprio", () => {
+    assert.equal(classificarStatusSite({ ...base, website: "https://sites.appbarber.com.br/route070barbearia", categoria: "barbearia manacapuru Barbearia" }), "rede_social");
+    assert.equal(classificarStatusSite({ ...base, website: "https://www.trinks.com/salao-x", categoria: "Salão de beleza" }), "rede_social");
+    assert.equal(classificarStatusSite({ ...base, website: "https://booksy.com/pt-br/123_x", categoria: "Estética" }), "rede_social");
+    assert.equal(classificarStatusSite({ ...base, website: "https://barbeariax.com.br", categoria: "Barbearia" }), "tem_site");
+  });
+
+  it("fora de beleza a agenda conta como site; contate.me é link de bio em qualquer ramo", () => {
+    assert.equal(classificarStatusSite({ ...base, website: "https://calendly.com/consultor", categoria: "Contabilidade" }), "tem_site");
+    assert.equal(classificarStatusSite({ ...base, website: "https://contate.me/x", categoria: "Contabilidade" }), "rede_social");
+  });
+
+  it("detecta beleza sem pegar outros ramos", () => {
+    for (const c of ["Barbearia", "Salão de beleza", "Clínica de estética", "Manicure", "Design de sobrancelhas", "hair_salon", "Nail salon"]) assert.equal(ehBeleza(c), true, c);
+    for (const c of ["Hamburgueria", "Academia", "Imobiliária", null]) assert.equal(ehBeleza(c), false, String(c));
+  });
+
+  it("percebe página de agenda com domínio próprio", () => {
+    const html = `<script src="https://cdn.appbarber.com.br/a.js"></script><link href="https://cdn.appbarber.com.br/a.css">`;
+    assert.equal(plataformaNaPagina(html), "agenda");
   });
 });

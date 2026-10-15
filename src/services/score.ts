@@ -1,5 +1,5 @@
 import type { MotivoScore, Prioridade, QualidadeSite, StatusSite } from "@/db/tipos";
-import { ehCardapioOnline } from "@/lib/leads/classificacao";
+import { plataformaDoLink } from "@/lib/leads/classificacao";
 import { simplificar } from "@/services/normalizacao";
 
 /**
@@ -94,7 +94,14 @@ export function calcularScore(e: EntradaScore): ResultadoScore {
   // ausência de informação, não ausência de site.
   if (e.status_site === "sem_site") somar(PESOS.semSite, "Não possui site");
   else if (e.status_site === "rede_social")
-    somar(PESOS.semSite, ehCardapioOnline(e.website) ? "Só tem cardápio em plataforma (iFood, Brendi, Anota Aí…), sem site próprio" : "Só tem rede social, sem site próprio");
+    somar(
+      PESOS.semSite,
+      plataformaDoLink(e.website) === "cardapio"
+        ? "Só tem cardápio em plataforma (iFood, Brendi, Anota Aí…), sem site próprio"
+        : plataformaDoLink(e.website) === "agenda"
+          ? "Só tem agenda em plataforma (AppBarber, Trinks, Booksy…), sem site próprio"
+          : "Só tem rede social, sem site próprio",
+    );
   else if (e.status_site === "tem_site") {
     if (e.site_qualidade === "fraco") somar(PESOS.siteRuim, "Site com problemas ou desatualizado");
     else if (e.site_qualidade === "fora_do_ar") somar(PESOS.siteRuim, "Site fora do ar");

@@ -2,7 +2,7 @@ import type { Client, InStatement } from "@libsql/client";
 
 import { agora, novoId } from "@/db/cliente";
 import { verificarSite } from "@/integrations/site/verificador";
-import { ehAlimentacao } from "@/lib/leads/classificacao";
+import { plataformaValeNoRamo } from "@/lib/leads/classificacao";
 import { eventoSql } from "@/services/eventos";
 import { avaliarSinais, ROTULO_PRESENCA } from "@/services/qualidade-site";
 import { recalcularScores } from "@/services/registro";
@@ -43,11 +43,11 @@ export async function processarAvaliacaoSites(banco: Client, payload: PayloadAva
       await banco.execute({ sql: `UPDATE empresas SET site_avaliado_em = ? WHERE id = ?`, args: [instante, String(r.id)] });
       continue;
     }
-    // Endereço que só leva ao Instagram (qualquer ramo) ou a um cardápio de
-    // plataforma (só alimentação): não é site próprio — vira "sem site".
+    // Endereço que só leva ao Instagram (qualquer ramo), a um cardápio de
+    // plataforma (alimentação) ou a uma agenda online (beleza): não é site próprio.
     const terceiro =
       sinais.semSiteProprio === "rede_social" ||
-      (sinais.semSiteProprio === "cardapio" && ehAlimentacao(`${r.categoria ?? ""} ${r.categoria_rotulo ?? ""}`));
+      plataformaValeNoRamo(sinais.semSiteProprio, `${r.categoria ?? ""} ${r.categoria_rotulo ?? ""}`);
     if (terceiro) {
       const statements: InStatement[] = [
         {
@@ -56,7 +56,7 @@ export async function processarAvaliacaoSites(banco: Client, payload: PayloadAva
         },
       ];
       if (r.lead_id) {
-        const oque = sinais.semSiteProprio === "cardapio" ? "cardápio de plataforma de pedidos" : "rede social";
+        const oque = sinais.semSiteProprio === "cardapio" ? "cardápio de plataforma de pedidos" : sinais.semSiteProprio === "agenda" ? "agenda online de plataforma" : "rede social";
         statements.push(eventoSql(String(r.lead_id), "site_avaliado", `O endereço do site leva só a um ${oque} — sem site próprio`));
       }
       await banco.batch(statements, "write");

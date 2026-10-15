@@ -68,12 +68,15 @@ export const MIGRACOES_AUTO: MigracaoAuto[] = [
     // plataforma (Brendi, Anota Aí, iFood…) passa a contar como sem site
     // próprio. Reclassifica o que já estava salvo; buscas novas já entram
     // assim. Só mexe em quem casa com as duas regras — rodar de novo não muda nada.
-    nome: "auto_0014_cardapio_nao_e_site_v2",
+    nome: "auto_0015_plataforma_nao_e_site",
     async aplicar(banco) {
-      const { ehAlimentacao, ehCardapioOnline } = await import("@/lib/leads/classificacao");
+      const { ehAlimentacao, ehBeleza, ehRedeSocial, plataformaDoLink, plataformaValeNoRamo } = await import("@/lib/leads/classificacao");
       const { rows } = await banco.execute(`SELECT id, website, categoria, categoria_rotulo FROM empresas WHERE status_site = 'tem_site' AND website IS NOT NULL`);
-      const comida = rows.filter((r) => ehAlimentacao(`${r.categoria ?? ""} ${r.categoria_rotulo ?? ""}`));
-      const ids = comida.filter((r) => ehCardapioOnline(r.website as string)).map((r) => String(r.id));
+      const ramo = (r: (typeof rows)[number]) => `${r.categoria ?? ""} ${r.categoria_rotulo ?? ""}`;
+      const comida = rows.filter((r) => ehAlimentacao(ramo(r)) || ehBeleza(ramo(r)));
+      const ids = rows
+        .filter((r) => ehRedeSocial(r.website as string) || plataformaValeNoRamo(plataformaDoLink(r.website as string), ramo(r)))
+        .map((r) => String(r.id));
       // Os demais de alimentação com "site" voltam para a fila de avaliação:
       // a visita descobre domínio próprio que só redireciona para o cardápio
       // (majordelivery.com.br → Brendi) ou loja de plataforma com domínio próprio.
@@ -97,7 +100,7 @@ export const MIGRACOES_AUTO: MigracaoAuto[] = [
         const { recalcularScores } = await import("@/services/registro");
         await recalcularScores(banco, ids);
       }
-      console.log(`[esquema-auto] cardápio não é site: ${ids.length} reclassificada(s), ${revisitar.length} de alimentação para revisitar`);
+      console.log(`[esquema-auto] plataforma não é site: ${ids.length} reclassificada(s), ${revisitar.length} de alimentação/beleza para revisitar`);
     },
   },
 ];

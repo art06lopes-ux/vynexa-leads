@@ -13,6 +13,7 @@ const DOMINIOS_REDE_SOCIAL = [
   "fb.me",
   "m.me",
   "linktr.ee",
+  "contate.me",
   "linktree.com",
   "beacons.ai",
   "bio.link",
@@ -103,8 +104,7 @@ const ALIMENTACAO =
 /** Restaurante, hamburgueria, pizzaria, açaí, padaria… pela categoria da busca ou do Google. */
 export function ehAlimentacao(categoria: string | null | undefined): boolean {
   if (!categoria) return false;
-  const t = categoria.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/_/g, " ");
-  return ALIMENTACAO.test(t);
+  return ALIMENTACAO.test(normalizar(categoria));
 }
 
 /** O link é de um cardápio ou plataforma de pedido (Brendi, Anota Aí, iFood…)? */
@@ -115,17 +115,85 @@ export function ehCardapioOnline(website: string | null | undefined): boolean {
 }
 
 /**
+ * Agendamento online de beleza. Barbearia ou salão que só tem a página
+ * da AppBarber, Trinks, Booksy… no Google não tem site: é a agenda de uma
+ * plataforma. Vale só para beleza (ver `ehBeleza`).
+ */
+const DOMINIOS_AGENDA = [
+  "appbarber.com.br",
+  "barbercode.com.br",
+  "cashbarber.com.br",
+  "inbarber.com.br",
+  "trinks.com",
+  "avec.app",
+  "avec.beauty",
+  "salaovip.com.br",
+  "salao99.com.br",
+  "beautydate.com.br",
+  "simplesagenda.com.br",
+  "belasis.com.br",
+  "agendapro.com",
+  "booksy.com",
+  "fresha.com",
+  "vagaro.com",
+  "styleseat.com",
+  "schedulicity.com",
+  "setmore.com",
+  "calendly.com",
+];
+
+const BELEZA =
+  /barbear|barber|salao|cabeleire|cabelo|\bhair|estetica|manicure|pedicure|\bunha|\bnail|sobrancelh|cilios|\blash|maquiag|makeup|depila|\bspa\b|massag|beleza|beauty|podolog|micropigment|tranc|esmalter/;
+
+function normalizar(texto: string): string {
+  return texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/_/g, " ");
+}
+
+/** Barbearia, salão, estética, manicure, sobrancelha… pela categoria da busca ou do Google. */
+export function ehBeleza(categoria: string | null | undefined): boolean {
+  return Boolean(categoria) && BELEZA.test(normalizar(categoria!));
+}
+
+/** O link é de uma agenda online de beleza (AppBarber, Trinks, Booksy…)? */
+export function ehAgendaOnline(website: string | null | undefined): boolean {
+  const dominio = extrairDominio(website);
+  if (dominio === null) return false;
+  return DOMINIOS_AGENDA.some((d) => dominio === d || dominio.endsWith(`.${d}`));
+}
+
+export type Plataforma = "cardapio" | "agenda";
+
+/** Qual plataforma de terceiro é o endereço, se for alguma (sem olhar o ramo). */
+export function plataformaDoLink(website: string | null | undefined): Plataforma | null {
+  if (ehCardapioOnline(website)) return "cardapio";
+  if (ehAgendaOnline(website)) return "agenda";
+  return null;
+}
+
+/** A plataforma só conta como "sem site" no ramo dela: cardápio em alimentação, agenda em beleza. */
+export function plataformaValeNoRamo(plataforma: Plataforma | null | undefined, categoria: string | null | undefined): boolean {
+  if (plataforma === "cardapio") return ehAlimentacao(categoria);
+  if (plataforma === "agenda") return ehBeleza(categoria);
+  return false;
+}
+
+/**
  * A página é de uma plataforma de cardápio mesmo com domínio próprio
  * ("white label"): os scripts, estilos e links dela vêm da plataforma.
  * Duas referências bastam — um site de verdade pode ter UM botão para o
  * iFood, mas não carrega a loja inteira de lá.
  */
-export function paginaDeCardapio(html: string): boolean {
-  let n = 0;
+export function plataformaNaPagina(html: string): Plataforma | null {
+  const n: Record<Plataforma, number> = { cardapio: 0, agenda: 0 };
   for (const m of html.matchAll(/(?:src|href|content)\s*=\s*["']https?:\/\/([^/"'\s>]+)/gi)) {
-    if (ehCardapioOnline(m[1]) && ++n >= 2) return true;
+    const p = plataformaDoLink(m[1]);
+    if (p && ++n[p] >= 2) return p;
   }
-  return false;
+  return null;
+}
+
+export function paginaDeCardapio(html: string): boolean {
+  return plataformaNaPagina(html) === "cardapio";
 }
 
 /** Extrai o host de uma URL que pode vir sem esquema, como o OSM às vezes traz. */
@@ -157,7 +225,7 @@ export function ehRedeSocial(website: string | null | undefined): boolean {
  */
 export function classificarStatusSite(entrada: {
   website: string | null | undefined;
-  /** Categoria da busca/Google. Em alimentação, link de cardápio não conta como site. */
+  /** Categoria da busca/Google. Cardápio (alimentação) ou agenda (beleza) de plataforma não conta como site. */
   categoria?: string | null | undefined;
   telefone: string | null | undefined;
   email?: string | null | undefined;
@@ -168,7 +236,7 @@ export function classificarStatusSite(entrada: {
   const temContato = Boolean(entrada.telefone?.trim() || entrada.email?.trim());
   const temRede = Boolean(entrada.instagram?.trim() || entrada.facebook?.trim());
 
-  if (site) return ehRedeSocial(site) || (ehAlimentacao(entrada.categoria) && ehCardapioOnline(site)) ? "rede_social" : "tem_site";
+  if (site) return ehRedeSocial(site) || plataformaValeNoRamo(plataformaDoLink(site), entrada.categoria) ? "rede_social" : "tem_site";
 
   // Sem site, mas com perfil de rede social registrado no OSM: é o caso
   // clássico de "só rede social", mesmo com o campo website vazio.

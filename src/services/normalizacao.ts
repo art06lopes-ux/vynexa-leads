@@ -1,4 +1,4 @@
-import { ehCardapioOnline, ehRedeSocial, extrairDominio } from "@/lib/leads/classificacao";
+import { ehRedeSocial, extrairDominio, plataformaDoLink } from "@/lib/leads/classificacao";
 import { normalizarTelefone } from "@/lib/leads/whatsapp";
 
 /**
@@ -61,11 +61,11 @@ export function chaveEndereco(endereco: string | null | undefined): string | nul
 }
 
 /**
- * Domínio do site PRÓPRIO. Instagram, Linktree, Wix grátis, iFood, Brendi
- * e afins não contam: duas empresas podem estar no mesmo ifood.com.br.
+ * Domínio do site PRÓPRIO. Instagram, Linktree, Wix grátis, iFood, Brendi,
+ * AppBarber e afins não contam: duas empresas podem estar no mesmo ifood.com.br.
  */
 export function dominioProprio(website: string | null | undefined): string | null {
-  if (!website || ehRedeSocial(website) || ehCardapioOnline(website)) return null;
+  if (!website || ehRedeSocial(website) || plataformaDoLink(website)) return null;
   return extrairDominio(website);
 }
 

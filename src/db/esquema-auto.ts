@@ -17,11 +17,13 @@ async function temColuna(banco: Client, tabela: string, coluna: string): Promise
   return rows.some((r) => String(r.name) === coluna);
 }
 
-type MigracaoAuto = { nome: string; aplicar: (banco: Client) => Promise<void> };
+/** `esquema`: só cria tabela/coluna — entra no esquema com que nasce o banco de um assinante. */
+type MigracaoAuto = { nome: string; esquema?: boolean; aplicar: (banco: Client) => Promise<void> };
 
 export const MIGRACOES_AUTO: MigracaoAuto[] = [
   {
     nome: "auto_0013_projetos_prompts_custo",
+    esquema: true,
     async aplicar(banco) {
       // Custo da venda: é o que separa receita de lucro no Início.
       if (!(await temColuna(banco, "vendas", "custo_centavos"))) {
@@ -105,17 +107,115 @@ export const MIGRACOES_AUTO: MigracaoAuto[] = [
   },
 ];
 
-let emAndamento: Promise<string[]> | null = null;
+/**
+ * Tabelas de controle do SaaS — só no banco principal (o do dono): contas,
+ * usuários, planos, faturas e uso do mês. O banco de cada assinante não
+ * tem nada disso; ele só guarda a carteira dele.
+ */
+export const MIGRACOES_CONTROLE: MigracaoAuto[] = [
+  {
+    nome: "auto_0016_saas_controle",
+    async aplicar(banco) {
+      await banco.batch(
+        [
+          `CREATE TABLE IF NOT EXISTS contas (
+            id                   TEXT PRIMARY KEY,
+            nome                 TEXT NOT NULL,
+            plano                TEXT NOT NULL DEFAULT 'essencial',
+            status               TEXT NOT NULL DEFAULT 'teste',      -- teste | ativa | atrasada | cancelada | bloqueada
+            valida_ate           TEXT,
+            banco_tipo           TEXT NOT NULL DEFAULT 'pendente',   -- principal | d1 | arquivo | pendente
+            banco_ref            TEXT,
+            documento            TEXT,
+            telefone             TEXT,
+            asaas_cliente_id     TEXT,
+            asaas_assinatura_id  TEXT,
+            origem               TEXT,
+            observacao           TEXT,
+            criado_em            TEXT NOT NULL DEFAULT (datetime('now')),
+            atualizado_em        TEXT NOT NULL DEFAULT (datetime('now')),
+            cancelada_em         TEXT
+          )`,
+          `CREATE INDEX IF NOT EXISTS contas_status_idx ON contas (status, valida_ate)`,
+          `CREATE INDEX IF NOT EXISTS contas_assinatura_idx ON contas (asaas_assinatura_id)`,
+          `CREATE TABLE IF NOT EXISTS usuarios (
+            id                TEXT PRIMARY KEY,
+            conta_id          TEXT NOT NULL REFERENCES contas(id) ON DELETE CASCADE,
+            nome              TEXT NOT NULL,
+            email             TEXT NOT NULL COLLATE NOCASE UNIQUE,
+            senha_hash        TEXT,
+            papel             TEXT NOT NULL DEFAULT 'dono',          -- dono (da conta) | membro
+            admin             INTEGER NOT NULL DEFAULT 0,            -- 1 = dono do SaaS
+            ativo             INTEGER NOT NULL DEFAULT 1,
+            ultimo_acesso_em  TEXT,
+            criado_em         TEXT NOT NULL DEFAULT (datetime('now'))
+          )`,
+          `CREATE INDEX IF NOT EXISTS usuarios_conta_idx ON usuarios (conta_id)`,
+          `CREATE TABLE IF NOT EXISTS planos (
+            id              TEXT PRIMARY KEY,
+            nome            TEXT NOT NULL,
+            descricao       TEXT,
+            preco_centavos  INTEGER NOT NULL,
+            destaque        INTEGER NOT NULL DEFAULT 0,
+            ordem           INTEGER NOT NULL DEFAULT 0,
+            ativo           INTEGER NOT NULL DEFAULT 1,
+            limites         TEXT NOT NULL DEFAULT '{}',
+            atualizado_em   TEXT NOT NULL DEFAULT (datetime('now'))
+          )`,
+          `CREATE TABLE IF NOT EXISTS faturas (
+            id                  TEXT PRIMARY KEY,
+            conta_id            TEXT NOT NULL REFERENCES contas(id) ON DELETE CASCADE,
+            asaas_pagamento_id  TEXT UNIQUE,
+            plano               TEXT,
+            valor_centavos      INTEGER NOT NULL DEFAULT 0,
+            status              TEXT NOT NULL DEFAULT 'pendente',    -- pendente | paga | atrasada | estornada | cancelada
+            forma               TEXT,
+            vencimento          TEXT,
+            pago_em             TEXT,
+            link                TEXT,
+            criado_em           TEXT NOT NULL DEFAULT (datetime('now')),
+            atualizado_em       TEXT NOT NULL DEFAULT (datetime('now'))
+          )`,
+          `CREATE INDEX IF NOT EXISTS faturas_conta_idx ON faturas (conta_id, criado_em DESC)`,
+          `CREATE TABLE IF NOT EXISTS uso_contas (
+            conta_id  TEXT NOT NULL,
+            mes       TEXT NOT NULL,
+            chave     TEXT NOT NULL,
+            valor     INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (conta_id, mes, chave)
+          )`,
+          `CREATE TABLE IF NOT EXISTS redefinicoes_senha (
+            token_hash  TEXT PRIMARY KEY,
+            usuario_id  TEXT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+            expira_em   TEXT NOT NULL,
+            usado_em    TEXT
+          )`,
+          // A conta do dono: o banco de sempre, plano sem limite.
+          `INSERT OR IGNORE INTO contas (id, nome, plano, status, banco_tipo) VALUES ('principal', 'Vynexa', 'dono', 'ativa', 'principal')`,
+        ],
+        "write",
+      );
+    },
+  },
+];
 
-/** Aplica o que falta. Uma vez por processo; nunca lança (o painel não pode cair por isso). */
-export function garantirEsquema(banco: Client): Promise<string[]> {
-  emAndamento ??= (async () => {
+const emAndamento = new WeakMap<Client, Promise<string[]>>();
+
+/**
+ * Aplica o que falta. Uma vez por processo e por banco; nunca lança (o
+ * painel não pode cair por isso). `principal` inclui as tabelas de controle.
+ */
+export function garantirEsquema(banco: Client, opcoes: { principal?: boolean } = { principal: true }): Promise<string[]> {
+  const existente = emAndamento.get(banco);
+  if (existente) return existente;
+  const lista = opcoes.principal ? [...MIGRACOES_AUTO, ...MIGRACOES_CONTROLE] : MIGRACOES_AUTO;
+  const p = (async () => {
     const aplicadas: string[] = [];
     try {
       await banco.execute(`CREATE TABLE IF NOT EXISTS migracoes_aplicadas (nome TEXT PRIMARY KEY, aplicada_em TEXT NOT NULL DEFAULT (datetime('now')))`);
       const { rows } = await banco.execute(`SELECT nome FROM migracoes_aplicadas WHERE nome LIKE 'auto_%'`);
       const feitas = new Set(rows.map((r) => String(r.nome)));
-      for (const m of MIGRACOES_AUTO) {
+      for (const m of lista) {
         if (feitas.has(m.nome)) continue;
         await m.aplicar(banco);
         await banco.execute({ sql: `INSERT OR IGNORE INTO migracoes_aplicadas (nome) VALUES (?)`, args: [m.nome] });
@@ -123,9 +223,10 @@ export function garantirEsquema(banco: Client): Promise<string[]> {
       }
     } catch (erro) {
       console.error("[esquema-auto]", erro instanceof Error ? erro.message : erro);
-      emAndamento = null; // tenta de novo na próxima subida
+      emAndamento.delete(banco); // tenta de novo na próxima vez
     }
     return aplicadas;
   })();
-  return emAndamento;
+  emAndamento.set(banco, p);
+  return p;
 }

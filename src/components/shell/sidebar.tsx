@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { LogOut } from "lucide-react";
+import { Lock, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -9,7 +9,8 @@ import { Marca, MonogramaProvisorio } from "@/components/marca";
 import { cn } from "@/lib/utils";
 import { sair } from "@/server/acoes-auth";
 
-import { ativo, GRUPOS_NAV, NAV_RODAPE, type ChaveContador, type ItemNav } from "./navegacao";
+import { useConta } from "./conta-contexto";
+import { ativo, GRUPOS_NAV, NAV_RODAPE, visivel, type ChaveContador, type ItemNav } from "./navegacao";
 
 export type Contadores = Partial<Record<ChaveContador, number>>;
 
@@ -35,25 +36,32 @@ function Contador({ n, ativoItem, compacto }: { n: number; ativoItem: boolean; c
   );
 }
 
+/** A tela é de um plano acima do atual: o item fica, com cadeado (leva à explicação). */
+function useTravado(item: ItemNav): boolean {
+  const { recursos } = useConta();
+  return Boolean(item.recurso && !recursos.includes(item.recurso));
+}
+
 function ItemTrilho({ item, contadores, id }: { item: ItemNav; contadores: Contadores; id: string }) {
   const pathname = usePathname();
   const eAtivo = ativo(pathname, item);
   const n = item.contador ? (contadores[item.contador] ?? 0) : 0;
   const Icone = item.icone;
+  const travado = useTravado(item);
   return (
-    <Link href={item.href} aria-current={eAtivo ? "page" : undefined} title={item.rotulo} className="group flex flex-col items-center gap-1 py-1.5">
-      <span className={cn("relative flex size-11 items-center justify-center rounded-2xl transition-colors", eAtivo ? "text-sobre-brasa" : "text-sidebar-foreground/70 group-hover:bg-white/[0.06] group-hover:text-white")}>
+    <Link href={item.href} aria-current={eAtivo ? "page" : undefined} title={travado ? `${item.rotulo} (outro plano)` : item.rotulo} className="group flex flex-col items-center gap-0.5 py-0.5">
+      <span className={cn("relative flex size-9 items-center justify-center rounded-xl transition-colors", eAtivo ? "text-sobre-brasa" : "text-sidebar-foreground/70 group-hover:bg-white/[0.06] group-hover:text-white")}>
         {eAtivo && (
           <motion.span
             layoutId={`trilho-ativo-${id}`}
-            className="absolute inset-0 rounded-2xl bg-gradient-to-b from-[#ff7a45] to-[#e8470f] shadow-[0_8px_24px_-8px_rgba(255,90,31,0.9)]"
+            className="absolute inset-0 rounded-xl bg-gradient-to-b from-[#ff7a45] to-[#e8470f] shadow-[0_8px_24px_-8px_rgba(255,90,31,0.9)]"
             transition={{ type: "spring", stiffness: 460, damping: 36 }}
           />
         )}
-        <Icone className="relative size-[1.2rem]" aria-hidden="true" />
-        <Contador n={n} ativoItem={eAtivo} compacto />
+        <Icone className={cn("relative size-[1.1rem]", travado && "opacity-50")} aria-hidden="true" />
+        {travado ? <Lock className="absolute -right-0.5 -top-0.5 size-3 text-muted-foreground" aria-label="Disponível em outro plano" /> : <Contador n={n} ativoItem={eAtivo} compacto />}
       </span>
-      <span className={cn("text-[0.66rem] font-semibold leading-none", eAtivo ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")}>{item.curto}</span>
+      <span className={cn("text-[0.64rem] font-semibold leading-none", eAtivo ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")}>{item.curto}</span>
     </Link>
   );
 }
@@ -63,6 +71,7 @@ function ItemLista({ item, contadores, aoNavegar, id }: { item: ItemNav; contado
   const eAtivo = ativo(pathname, item);
   const n = item.contador ? (contadores[item.contador] ?? 0) : 0;
   const Icone = item.icone;
+  const travado = useTravado(item);
   return (
     <Link
       href={item.href}
@@ -72,30 +81,31 @@ function ItemLista({ item, contadores, aoNavegar, id }: { item: ItemNav; contado
     >
       {eAtivo && <motion.span layoutId={`lista-ativo-${id}`} className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#ff6a2e] to-[#e8470f]" transition={{ type: "spring", stiffness: 460, damping: 36 }} />}
       <Icone className="relative size-[1.1rem]" aria-hidden="true" />
-      <span className="relative">{item.rotulo}</span>
-      <Contador n={n} ativoItem={eAtivo} />
+      <span className={cn("relative", travado && "opacity-60")}>{item.rotulo}</span>
+      {travado ? <Lock className="relative ml-auto size-3.5 text-muted-foreground" aria-label="Disponível em outro plano" /> : <Contador n={n} ativoItem={eAtivo} />}
     </Link>
   );
 }
 
 export function Trilho({ contadores, id }: { contadores: Contadores; id: string }) {
+  const { ehDono } = useConta();
   return (
-    <div className="flex h-full flex-col items-center py-4">
-      <Link href="/" aria-label="Ir para o Início" className="mb-4">
+    <div className="flex h-full flex-col items-center py-3">
+      <Link href="/" aria-label="Ir para o Início" className="mb-3">
         <MonogramaProvisorio className="size-9" />
       </Link>
       <nav className="flex flex-1 flex-col items-center gap-0.5 overflow-y-auto [scrollbar-width:none]" aria-label="Navegação principal">
         {GRUPOS_NAV.map((g, i) => (
           <div key={g.titulo} className="flex flex-col items-center">
-            {i > 0 && <span className="my-2 h-px w-8 bg-fio" aria-hidden="true" />}
-            {g.itens.map((item) => (
+            {i > 0 && <span className="my-1.5 h-px w-8 bg-fio" aria-hidden="true" />}
+            {g.itens.filter((item) => visivel(item, ehDono)).map((item) => (
               <ItemTrilho key={item.href} item={item} contadores={contadores} id={id} />
             ))}
           </div>
         ))}
       </nav>
       <div className="mt-2 flex flex-col items-center border-t border-fio pt-2">
-        {NAV_RODAPE.map((item) => (
+        {NAV_RODAPE.filter((item) => visivel(item, ehDono)).map((item) => (
           <ItemTrilho key={item.href} item={item} contadores={contadores} id={id} />
         ))}
         <form action={sair}>
@@ -123,6 +133,7 @@ export function ConteudoSidebar({
   aoNavegar?: () => void;
   id: string;
 }) {
+  const { ehDono } = useConta();
   return (
     <div className="flex h-full flex-col">
       <Link href="/" onClick={aoNavegar} className="flex h-16 shrink-0 items-center px-4" aria-label="Ir para o Início">
@@ -133,7 +144,7 @@ export function ConteudoSidebar({
           <div key={grupo.titulo}>
             <p className="mb-1 px-3 text-[0.7rem] font-semibold text-muted-foreground/70">{grupo.titulo}</p>
             <div className="space-y-0.5">
-              {grupo.itens.map((item) => (
+              {grupo.itens.filter((item) => visivel(item, ehDono)).map((item) => (
                 <ItemLista key={item.href} item={item} contadores={contadores} aoNavegar={aoNavegar} id={id} />
               ))}
             </div>
@@ -141,7 +152,7 @@ export function ConteudoSidebar({
         ))}
       </nav>
       <div className="space-y-0.5 border-t border-fio px-3 py-3">
-        {NAV_RODAPE.map((item) => (
+        {NAV_RODAPE.filter((item) => visivel(item, ehDono)).map((item) => (
           <ItemLista key={item.href} item={item} contadores={contadores} aoNavegar={aoNavegar} id={id} />
         ))}
       </div>

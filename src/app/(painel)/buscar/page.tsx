@@ -11,11 +11,14 @@ import { buscasRecentes, obterKpis } from "@/db/painel";
 import { estadoDosProvedores } from "@/integrations/leads";
 import { haQuantoTempo } from "@/services/crm";
 import { usoGoogle } from "@/services/cota-google";
+import { exigirSessao } from "@/server/sessao";
 
 export const metadata = { title: "Radar" };
 
 export default async function PaginaRadar({ searchParams }: PageProps<"/buscar">) {
   const { busca } = await searchParams;
+  const sessao = await exigirSessao();
+  const planoGoogle = sessao.recursos.includes("radar_google");
   const banco = getBanco();
   const [provedores, uso, teto, kpis, buscas] = await Promise.all([
     estadoDosProvedores(),
@@ -33,21 +36,21 @@ export default async function PaginaRadar({ searchParams }: PageProps<"/buscar">
         icone={Radar}
         secao="Prospecção"
         titulo="Radar"
-        descricao="Marque o território, diga o que procura e o Radar varre o Google Maps: cada empresa chega com a presença digital avaliada e a oportunidade calculada."
+        descricao={planoGoogle ? "Marque o território, diga o que procura e o Radar varre o Google Maps ou o OpenStreetMap: cada empresa chega com a presença digital avaliada e a oportunidade calculada." : "Marque o território, escolha o segmento e o Radar varre o OpenStreetMap: cada empresa chega com a presença digital avaliada e a oportunidade calculada."}
         numeros={[
-          { valor: <Contador valor={uso.restantes} />, rotulo: "consultas restantes no mês" },
+          ...(planoGoogle ? [{ valor: <Contador valor={uso.restantes} />, rotulo: "consultas Google restantes no mês" }] : []),
           { valor: <Contador valor={kpis.leads} />, rotulo: "empresas mapeadas" },
           { valor: <Contador valor={kpis.semSite} />, rotulo: "sem website" },
         ]}
       />
-      {!googleOk && (
+      {planoGoogle && !googleOk && (
         <AvisoConfiguracao titulo="Google Maps ainda não configurado">
-          O Radar usa a Google Places API, a forma oficial de consultar o Google Maps. Cole a chave em Configurações → Integrações para mapear.
+          Para buscar no Google Maps, cole a sua chave da Google Places API em Configurações → Integrações (passo a passo em Tutoriais). Enquanto isso, o OpenStreetMap funciona sem chave.
         </AvisoConfiguracao>
       )}
 
       <Suspense>
-        <TelaRadar googleOk={googleOk} uso={uso} tetoPadrao={teto} buscasIniciais={iniciais} />
+        <TelaRadar googleOk={googleOk} planoGoogle={planoGoogle} uso={uso} tetoPadrao={teto} buscasIniciais={iniciais} />
       </Suspense>
 
       <section aria-labelledby="titulo-capturadas" className="space-y-4">

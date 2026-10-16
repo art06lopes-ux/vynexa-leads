@@ -12,6 +12,7 @@ import { serieMensal } from "@/db/painel";
 import { listarVendas, resumoFinanceiro } from "@/db/vendas";
 import { obterPagamentos } from "@/integrations/pagamentos/asaas";
 import { rotuloMes } from "@/lib/datas";
+import { exigirRecursoNaPagina } from "@/server/sessao";
 
 export const metadata = { title: "Vendas" };
 
@@ -21,6 +22,7 @@ const ABAS_VENDAS = [
 ];
 
 export default async function PaginaPagamentos() {
+  await exigirRecursoNaPagina("vendas");
   const [resumo, vendas, mensal, asaas, prods] = await Promise.all([
     resumoFinanceiro(),
     listarVendas(),

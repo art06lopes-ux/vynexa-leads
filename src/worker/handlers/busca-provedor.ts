@@ -6,6 +6,7 @@ import { ehProvedorBusca, obterProvedor, type ConsultaBusca } from "@/integratio
 import { notificar } from "@/integrations/notificacoes";
 import { idiomaProvavel } from "@/lib/geo/mundo";
 import { registrarUsoGoogle } from "@/services/cota-google";
+import { planoAtual } from "@/services/contas";
 import { registrarLugares } from "@/services/registro";
 
 /**
@@ -90,7 +91,8 @@ export async function processarBuscaProvedor(banco: Client, payload: PayloadBusc
   const registro = await registrarLugares(banco, resultado.lugares, { buscaId: busca.id });
 
   await etapa(banco, busca.id, "Calculando oportunidade…");
-  const resumo = await resumir(banco, busca.id, resultado.aviso);
+  const avisoLimite = registro.foraDoLimite > 0 ? `${registro.foraDoLimite} empresa(s) novas ficaram de fora: os leads do seu plano neste mês acabaram.` : null;
+  const resumo = await resumir(banco, busca.id, [resultado.aviso, avisoLimite].filter(Boolean).join(" ") || null);
 
   const instante = agora();
   await banco.execute({
@@ -115,7 +117,8 @@ export async function processarBuscaProvedor(banco: Client, payload: PayloadBusc
     sql: `INSERT INTO jobs (id, tipo, payload, status) VALUES (?, 'enriquecer_email', ?, 'pendente')`,
     args: [novoId(), JSON.stringify({ limite: 60, buscaId: busca.id })],
   });
-  if (registro.novosIds.length > 0) {
+  const { recursos } = await planoAtual();
+  if (registro.novosIds.length > 0 && recursos.includes("ia")) {
     const { rows: altas } = await banco.execute({
       sql: `SELECT id FROM leads WHERE prioridade = 'alta' AND analisado_em IS NULL AND empresa_id IN (${registro.novosIds.slice(0, 90).map(() => "?").join(",")})`,
       args: registro.novosIds.slice(0, 90),

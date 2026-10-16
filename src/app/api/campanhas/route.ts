@@ -49,4 +49,4 @@ export const POST = rota(async (req) => {
     after(() => executarAgora(getBanco(), jobId));
   }
   return json(r, 201);
-});
+}, { recurso: "campanhas" });

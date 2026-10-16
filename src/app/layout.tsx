@@ -18,8 +18,8 @@ const manrope = Manrope({ variable: "--font-manrope", subsets: ["latin"], displa
 const mono = JetBrains_Mono({ variable: "--font-mono-numeros", subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "Vynexa Dev", template: "%s · Vynexa Dev" },
-  description: "Plataforma de prospecção e vendas da Vynexa Dev.",
+  title: { default: "Vynexa Leads", template: "%s · Vynexa Leads" },
+  description: "Encontre empresas sem site na sua cidade, qualifique e venda. Prospecção para quem vende sites e sistemas.",
   // Ferramenta interna: não existe motivo para aparecer em buscador.
   robots: { index: false, follow: false },
   // Instalado na tela de início do iPhone ("Adicionar à Tela de Início"):

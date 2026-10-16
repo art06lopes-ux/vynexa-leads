@@ -43,4 +43,4 @@ export const POST = rota(async (req, ctx: { params: Promise<{ id: string }> }) =
       await banco.execute({ sql: `UPDATE cobrancas SET status = 'cancelado', atualizado_em = ? WHERE venda_id = ? AND status = 'pendente'`, args: [agora(), id] });
       return json({ ok: true });
   }
-});
+}, { recurso: "vendas" });

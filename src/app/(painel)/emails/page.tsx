@@ -11,6 +11,7 @@ import type { StatusEnvio } from "@/db/tipos";
 import { estadoProvedoresEmail } from "@/integrations/email";
 import { dataHora } from "@/lib/datas";
 import { cn } from "@/lib/utils";
+import { exigirRecursoNaPagina } from "@/server/sessao";
 
 export const metadata = { title: "E-mails enviados" };
 
@@ -23,6 +24,7 @@ const ABAS = [
 ];
 
 export default async function PaginaEmails({ searchParams }: PageProps<"/emails">) {
+  await exigirRecursoNaPagina("campanhas");
   const { status } = await searchParams;
   const filtro = typeof status === "string" && status in ROTULO_ENVIO ? status : null;
   const banco = getBanco();

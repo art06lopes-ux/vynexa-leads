@@ -5,6 +5,6 @@
  * "use server" só pode exportar funções assíncronas. Exportar a constante
  * de lá quebra o build com "found object".
  */
-export type EstadoAcao = { mensagem: string | null };
+export type EstadoAcao = { mensagem: string | null; sucesso?: string | null };
 
 export const ESTADO_INICIAL: EstadoAcao = { mensagem: null };

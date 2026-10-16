@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { FormularioLogin } from "@/app/login/formulario-login";
 import { Marca } from "@/components/marca";
@@ -25,21 +26,32 @@ export default async function PaginaLogin({ searchParams }: PageProps<"/login">)
         <EsculturaV className="absolute -right-20 -top-10 -z-10 h-[64%] opacity-95 lg:-right-14 lg:-top-6 lg:h-[62%]" />
         {/* Base escura: o texto branco fica sobre brasa funda, não sobre o V claro. */}
         <div aria-hidden="true" className="absolute inset-x-0 bottom-0 -z-10 h-2/3 bg-gradient-to-t from-[#3a0d02]/85 via-[#5a1604]/45 to-transparent" />
-        <Marca className="[&_span]:text-white" />
+        <Link href="/conheca" aria-label="Vynexa Leads">
+          <Marca className="[&_span]:text-white" />
+        </Link>
         <div className="max-w-md">
-          <p className="text-[0.72rem] font-semibold text-white/75">Sites · Apps · Soluções com IA</p>
-          <h1 className="mt-3 text-[2.2rem] font-semibold leading-[1.02] tracking-[-0.035em] text-white sm:text-[3.4rem]">Transformamos ideias em tecnologia.</h1>
+          <h1 className="text-[2.2rem] font-semibold leading-[1.02] tracking-[-0.035em] text-white sm:text-[3.4rem]">Encontre quem precisa de um site hoje.</h1>
           <p className="mt-4 hidden max-w-sm text-sm leading-relaxed text-white/90 sm:block">
-            A central da Vynexa: encontre empresas, aborde, feche e entregue — tudo num lugar só.
+            O Vynexa Leads mapeia as empresas da sua cidade, mostra quem não tem site e organiza a sua abordagem até a venda.
           </p>
         </div>
       </section>
 
       <section className="flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-sm">
-          <h2 className="text-2xl font-semibold tracking-tight">Entrar na central</h2>
-          <p className="mb-6 mt-1.5 text-sm text-muted-foreground">Acesso restrito à Vynexa Dev.</p>
+          <h2 className="text-2xl font-semibold tracking-tight">Entrar</h2>
+          <p className="mb-6 mt-1.5 text-sm text-muted-foreground">
+            Ainda não tem conta?{" "}
+            <Link href="/cadastro" className="font-semibold text-ciano underline-offset-2 hover:underline">
+              Teste grátis
+            </Link>
+          </p>
           <FormularioLogin destino={destinoSeguro} />
+          <p className="mt-6 text-center text-xs text-muted-foreground">
+            <Link href="/conheca" className="hover:text-foreground">
+              Conhecer o Vynexa Leads
+            </Link>
+          </p>
         </div>
       </section>
     </main>

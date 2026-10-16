@@ -1,3 +1,5 @@
+import { tokenPublico } from "@/db/contas-banco";
+
 /**
  * Rastreio de e-mail: pixel de abertura, link rastreado e descadastro.
  *
@@ -48,13 +50,15 @@ export async function linksDeRastreio(base: string, token: string): Promise<{
   descadastro: string;
   rastrearLink: (url: string) => Promise<string>;
 }> {
+  // Assinante: o link leva a conta junto (`conta~token`); a assinatura é só do token.
+  const pub = await tokenPublico(token);
   return {
-    pixel: `${base}/api/t/a/${token}`,
-    descadastro: `${base}/descadastro/${token}`,
+    pixel: `${base}/api/t/a/${pub}`,
+    descadastro: `${base}/descadastro/${pub}`,
     rastrearLink: async (url: string) => {
       if (!/^https?:\/\//i.test(url)) return url;
       const s = await assinar(token, url);
-      return `${base}/api/t/c/${token}?u=${encodeURIComponent(url)}&s=${s}`;
+      return `${base}/api/t/c/${pub}?u=${encodeURIComponent(url)}&s=${s}`;
     },
   };
 }

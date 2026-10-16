@@ -51,8 +51,8 @@ export async function carregarRemetente(banco: Client): Promise<Remetente> {
   const { rows } = await banco.execute(`SELECT chave, valor FROM configuracoes`);
   const c = Object.fromEntries(rows.map((r) => [String(r.chave), String(r.valor)]));
   return {
-    nome: c.responsavel_nome || c.remetente_nome || "Artur",
-    empresa: c.empresa_nome || "Vynexa Dev",
+    nome: c.responsavel_nome || c.remetente_nome || "",
+    empresa: c.empresa_nome || "",
     site: c.empresa_site || null,
     whatsapp: c.empresa_whatsapp || null,
     instagram: c.empresa_instagram || null,

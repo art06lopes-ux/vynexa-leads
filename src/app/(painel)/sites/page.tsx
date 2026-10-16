@@ -5,10 +5,12 @@ import { Cabecalho } from "@/components/base/cartao";
 import { Contador } from "@/components/motion/contador";
 import { TelaSites } from "@/components/sites/tela-sites";
 import { carteira, listarProjetos } from "@/db/carteira";
+import { exigirRecursoNaPagina } from "@/server/sessao";
 
 export const metadata = { title: "Sites" };
 
 export default async function PaginaSites() {
+  await exigirRecursoNaPagina("sites");
   const [projetos, clientes] = await Promise.all([listarProjetos(), carteira()]);
   const ativos = projetos.filter((p) => p.status !== "arquivado");
   const publicados = projetos.filter((p) => p.status === "publicado").length;

@@ -45,4 +45,4 @@ export const POST = rota(async (req) => {
     },
   });
   return json({ id }, 201);
-});
+}, { recurso: "vendas" });

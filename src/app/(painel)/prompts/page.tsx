@@ -4,10 +4,12 @@ import { Cabecalho } from "@/components/base/cartao";
 import { TelaPrompts } from "@/components/prompts/tela-prompts";
 import { listarPrompts } from "@/db/prompts";
 import { obterIA } from "@/integrations/ai";
+import { exigirRecursoNaPagina } from "@/server/sessao";
 
 export const metadata = { title: "Gerador de prompts" };
 
 export default async function PaginaPrompts() {
+  await exigirRecursoNaPagina("prompts");
   const [salvos, iaOk] = await Promise.all([listarPrompts(), obterIA().disponivel()]);
   return (
     <div>

@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { getBanco } from "@/db/cliente";
+import { comTokenPublico } from "@/db/contas-banco";
 import { notificar } from "@/integrations/notificacoes";
 import { marcarNaoContatar } from "@/services/supressao";
 
@@ -13,7 +14,12 @@ export async function confirmarDescadastro(form: FormData): Promise<void> {
   redirect(`/descadastro/${encodeURIComponent(token)}?feito=1`);
 }
 
-export async function descadastrar(token: string): Promise<boolean> {
+/** O token pode vir com a conta do assinante na frente (`conta~token`). */
+export async function descadastrar(bruto: string): Promise<boolean> {
+  return comTokenPublico(bruto, descadastrarNaConta, false);
+}
+
+async function descadastrarNaConta(token: string): Promise<boolean> {
   if (!/^[A-Za-z0-9_-]{16,40}$/.test(token)) return false;
   const banco = getBanco();
   const { rows } = await banco.execute({

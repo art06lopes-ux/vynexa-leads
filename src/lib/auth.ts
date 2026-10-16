@@ -64,27 +64,44 @@ export function senhaCorreta(tentativa: string): boolean {
   return iguaisEmTempoConstante(tentativa, getSenhaPainel());
 }
 
-export async function criarValorDeSessao(): Promise<{ valor: string; expiraEm: Date }> {
+/**
+ * Quem está logado. Desde o SaaS, o cookie é `usuario~conta~prazo.assinatura`:
+ * a assinatura cobre os três, então trocar a conta no cookie invalida a
+ * sessão. O formato antigo (`prazo.assinatura`, da senha única) continua
+ * valendo e é o dono — assim ninguém é derrubado pela atualização.
+ */
+export type Sessao = { usuario: string | null; conta: string };
+
+export async function criarValorDeSessao(usuario: string | null = null, conta = "principal"): Promise<{ valor: string; expiraEm: Date }> {
   const expiraEm = new Date(Date.now() + DURACAO_MS);
-  const marca = String(expiraEm.getTime());
+  const marca = `${usuario ?? ""}~${conta}~${expiraEm.getTime()}`;
   return { valor: `${marca}.${await assinar(marca)}`, expiraEm };
 }
 
-export async function sessaoValida(valor: string | undefined): Promise<boolean> {
-  if (!valor) return false;
+export async function lerSessao(valor: string | undefined): Promise<Sessao | null> {
+  if (!valor) return null;
 
   const separador = valor.lastIndexOf(".");
-  if (separador <= 0) return false;
+  if (separador <= 0) return null;
 
   const marca = valor.slice(0, separador);
   const assinatura = valor.slice(separador + 1);
 
-  const prazo = Number(marca);
-  if (!Number.isFinite(prazo) || prazo < Date.now()) return false;
+  const partes = marca.split("~");
+  const prazo = Number(partes.length === 3 ? partes[2] : marca);
+  if (!Number.isFinite(prazo) || prazo < Date.now()) return null;
+  if (partes.length !== 1 && partes.length !== 3) return null;
 
   // A assinatura é conferida depois do prazo de propósito: um cookie
   // vencido não merece o custo do HMAC.
-  return iguaisEmTempoConstante(assinatura, await assinar(marca));
+  if (!iguaisEmTempoConstante(assinatura, await assinar(marca))) return null;
+  if (partes.length === 1) return { usuario: null, conta: "principal" };
+  if (!/^[a-z0-9-]{1,64}$/i.test(partes[1])) return null;
+  return { usuario: partes[0] || null, conta: partes[1] };
+}
+
+export async function sessaoValida(valor: string | undefined): Promise<boolean> {
+  return (await lerSessao(valor)) !== null;
 }
 
 export const OPCOES_COOKIE = {

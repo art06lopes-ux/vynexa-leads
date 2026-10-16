@@ -10,10 +10,10 @@ export const PATCH = rota(async (req, ctx: Ctx) => {
   const { favorito } = await lerCorpo(req, z.object({ favorito: z.boolean() }));
   if (!(await marcarFavorito(id, favorito))) throw new ErroApi("Prompt não encontrado.", 404);
   return json({ ok: true });
-});
+}, { recurso: "prompts" });
 
 export const DELETE = rota(async (_req, ctx: Ctx) => {
   const { id } = await ctx.params;
   if (!(await excluirPrompt(id))) throw new ErroApi("Prompt não encontrado.", 404);
   return json({ ok: true });
-});
+}, { recurso: "prompts" });

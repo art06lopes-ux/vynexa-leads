@@ -21,10 +21,10 @@ export const PATCH = rota(async (req, ctx: Ctx) => {
   });
   if (!ok) throw new ErroApi("Projeto não encontrado.", 404);
   return json({ ok: true });
-});
+}, { recurso: "sites" });
 
 export const DELETE = rota(async (_req, ctx: Ctx) => {
   const { id } = await ctx.params;
   if (!(await excluirProjeto(id))) throw new ErroApi("Projeto não encontrado.", 404);
   return json({ ok: true });
-});
+}, { recurso: "sites" });

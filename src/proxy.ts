@@ -24,6 +24,14 @@ import { NOME_COOKIE, sessaoValida } from "@/lib/auth";
  */
 const PUBLICAS = [
   "/login",
+  // O site do SaaS: landing, cadastro, senha, termos.
+  "/conheca",
+  "/cadastro",
+  "/recuperar-senha",
+  "/redefinir-senha",
+  "/termos",
+  "/privacidade",
+  "/landing",
   "/api/webhooks",
   // Abertos por quem RECEBE o e-mail (sem sessão): pixel de abertura,
   // link rastreado, página de descadastro e o logo que aparece no e-mail.
@@ -47,6 +55,13 @@ export async function proxy(request: NextRequest) {
   const ehPublica = PUBLICAS.some((r) => pathname === r || pathname.startsWith(`${r}/`));
   const autenticado = await sessaoValida(request.cookies.get(NOME_COOKIE)?.value);
 
+  // Visitante na raiz: a landing page do SaaS (o endereço continua "/").
+  if (!autenticado && pathname === "/") {
+    const landing = request.nextUrl.clone();
+    landing.pathname = "/conheca";
+    return NextResponse.rewrite(landing);
+  }
+
   if (!autenticado && !ehPublica) {
     const login = request.nextUrl.clone();
     login.pathname = "/login";
@@ -55,14 +70,18 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(login);
   }
 
-  if (autenticado && pathname === "/login") {
+  if (autenticado && (pathname === "/login" || pathname === "/cadastro")) {
     const painel = request.nextUrl.clone();
     painel.pathname = "/";
     painel.search = "";
     return NextResponse.redirect(painel);
   }
 
-  return NextResponse.next();
+  // O layout do painel precisa saber a rota (bloqueio por plano/assinatura)
+  // e o Next não entrega o caminho a layouts.
+  const cabecalhos = new Headers(request.headers);
+  cabecalhos.set("x-caminho", pathname);
+  return NextResponse.next({ request: { headers: cabecalhos } });
 }
 
 export const config = {

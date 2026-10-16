@@ -1,5 +1,7 @@
 import { createClient, type Client, type InStatement, type ResultSet, type Row } from "@libsql/client";
 
+import { contaDoContexto, resolverBancoDaConta } from "@/db/contas-banco";
+
 /**
  * Cliente do banco.
  *
@@ -90,7 +92,7 @@ function normalizarEntrada(entrada: InStatement): { sql: string; params: unknown
  * usa. Não é o `Client` inteiro (não tem `.sync()`, `.close()` etc.) —
  * por isso o cast `as unknown as Client` em `getBanco()`.
  */
-function clienteD1(accountId: string, databaseId: string, apiToken: string): Client {
+export function clienteD1(accountId: string, databaseId: string, apiToken: string): Client {
   const base = `https://api.cloudflare.com/client/v4/accounts/${accountId}/d1/database/${databaseId}/query`;
 
   async function chamar(corpo: Record<string, unknown>): Promise<Array<{ results: Row[]; meta: { rows_written: number; last_row_id: number; changes: number } }>> {
@@ -175,7 +177,32 @@ function clienteD1(accountId: string, databaseId: string, apiToken: string): Cli
   } as unknown as Client;
 }
 
+/**
+ * Banco da conta que está usando o sistema agora.
+ *
+ * Cada assinante tem um banco só dele (isolamento por construção: uma
+ * consulta esquecida sem filtro não tem como enxergar outro cliente). A
+ * conta vem do contexto — `comConta()` no worker e nos webhooks, ou o
+ * cookie de sessão numa requisição. Sem nenhum dos dois (scripts, testes,
+ * rotas públicas), é o banco principal: o do dono, que também guarda as
+ * contas, os usuários e os planos.
+ *
+ * Os métodos já eram assíncronos, então o roteador resolve a conta na
+ * primeira chamada e não muda nada para quem usa `getBanco()`.
+ */
 export function getBanco(): Client {
+  let alvo: Promise<Client> | null = null;
+  const resolver = () => (alvo ??= contaDoContexto().then((conta) => (conta ? resolverBancoDaConta(conta) : getBancoPrincipal())));
+  return {
+    execute: async (e: InStatement) => (await resolver()).execute(e),
+    batch: async (e: InStatement[], modo?: "write" | "read" | "deferred") => (await resolver()).batch(e, modo),
+    executeMultiple: async (sql: string) => (await resolver()).executeMultiple(sql),
+    transaction: async (modo?: "write" | "read" | "deferred") => (await resolver()).transaction(modo),
+  } as unknown as Client;
+}
+
+/** O banco do dono — e o de controle (contas, usuários, planos, faturas). */
+export function getBancoPrincipal(): Client {
   if (cache !== null) return cache;
 
   const accountId = limpar(process.env.CLOUDFLARE_ACCOUNT_ID);

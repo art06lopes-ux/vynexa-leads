@@ -2,6 +2,7 @@ import { CircleCheck } from "lucide-react";
 
 import { MonogramaProvisorio } from "@/components/marca";
 import { getBanco } from "@/db/cliente";
+import { comTokenPublico } from "@/db/contas-banco";
 import { lerIdentidade } from "@/db/painel";
 
 import { confirmarDescadastro } from "./acao";
@@ -19,10 +20,17 @@ export const metadata = { title: "Não receber mais mensagens" };
 export default async function PaginaDescadastro({ params, searchParams }: PageProps<"/descadastro/[token]">) {
   const { token } = await params;
   const { feito } = await searchParams;
-  const identidade = await lerIdentidade();
-  const { rows } = /^[A-Za-z0-9_-]{16,40}$/.test(token)
-    ? await getBanco().execute({ sql: `SELECT e.nome, e.nao_contatar FROM envios en JOIN leads l ON l.id = en.lead_id JOIN empresas e ON e.id = l.empresa_id WHERE en.token = ?`, args: [token] })
-    : { rows: [] };
+  // A página fala com o banco da conta que mandou o e-mail (token `conta~token`).
+  const { identidade, rows } = await comTokenPublico(
+    token,
+    async (t) => ({
+      identidade: await lerIdentidade(),
+      rows: /^[A-Za-z0-9_-]{16,40}$/.test(t)
+        ? (await getBanco().execute({ sql: `SELECT e.nome, e.nao_contatar FROM envios en JOIN leads l ON l.id = en.lead_id JOIN empresas e ON e.id = l.empresa_id WHERE en.token = ?`, args: [t] })).rows
+        : [],
+    }),
+    { identidade: { empresa: "", logoUrl: null } as unknown as Awaited<ReturnType<typeof lerIdentidade>>, rows: [] },
+  );
   const alvo = rows[0];
   const concluido = feito === "1" || Number(alvo?.nao_contatar) === 1;
 

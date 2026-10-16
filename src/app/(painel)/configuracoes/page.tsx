@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { Cabecalho, Cartao } from "@/components/base/cartao";
 import { BotaoNotificacoes } from "@/components/configuracoes/botao-push";
 import { ConexaoGoogle } from "@/components/configuracoes/conexao-google";
+import { Equipe } from "@/components/configuracoes/equipe";
 import { ZerarDados } from "@/components/configuracoes/zerar";
 import { LIMITE_MENSAL_PADRAO, usoGoogle } from "@/services/cota-google";
 import { Campo, CampoSegredo, Copiavel, FormConfig, Produtos, SeletorAbas, Supressao, TesteEmail, UploadLogo } from "@/components/configuracoes/abas";
@@ -12,13 +13,25 @@ import { lerIdentidade } from "@/db/painel";
 import { estadoProvedoresEmail } from "@/integrations/email";
 import { estadoDosSegredos } from "@/integrations/segredos";
 import { contaConectada } from "@/lib/google/oauth";
+import { listarEquipe } from "@/services/contas";
 import { urlBase } from "@/services/rastreio";
+import { exigirSessao } from "@/server/sessao";
+import Link from "next/link";
 
 export const metadata = { title: "Configurações" };
 
 export default async function PaginaConfiguracoes({ searchParams }: PageProps<"/configuracoes">) {
   const { aba: abaBruta } = await searchParams;
   const aba = typeof abaBruta === "string" ? abaBruta : "identidade";
+  const sessao = await exigirSessao();
+  // O dono vê tudo; o assinante não vê o que é da operação da Vynexa
+  // (Receita Federal, endereço do app) nem o que o plano dele não tem.
+  const dono = sessao.ehDono;
+  const temVendas = sessao.recursos.includes("vendas");
+  const temGoogle = sessao.recursos.includes("radar_google");
+  const ocultas = [...(dono ? ["equipe"] : []), ...(temVendas ? [] : ["pagamentos"])];
+  const equipe = !dono && aba === "equipe" ? await listarEquipe(sessao.conta.id) : [];
+  const sufixoConta = dono ? "" : `?conta=${sessao.conta.id}`;
   const banco = getBanco();
   const contagens =
     aba === "avancado"
@@ -41,10 +54,10 @@ export default async function PaginaConfiguracoes({ searchParams }: PageProps<"/
 
   return (
     <div>
-      <Cabecalho icone={Settings} titulo="Configurações" descricao="Identidade da Vynexa, catálogo, chaves de API, e-mail, pagamentos e privacidade." />
+      <Cabecalho icone={Settings} titulo="Configurações" descricao={dono ? "Identidade da Vynexa, catálogo, chaves de API, e-mail, pagamentos e privacidade." : "Sua identidade, o que você vende, as suas chaves, e-mail e a sua equipe."} />
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[15.5rem_minmax(0,1fr)] lg:items-start">
         <Suspense>
-          <SeletorAbas />
+          <SeletorAbas ocultas={ocultas} comEquipe={!dono} />
         </Suspense>
         <div className="min-w-0">
 
@@ -53,34 +66,57 @@ export default async function PaginaConfiguracoes({ searchParams }: PageProps<"/
           <Cartao titulo="Logo" subtitulo="Aparece no painel, notificações, e-mails, propostas e cobranças">
             <UploadLogo logoUrl={identidade.logoUrl} empresa={identidade.empresa} />
           </Cartao>
-          <Cartao titulo="Identidade da Vynexa">
+          <Cartao titulo={dono ? "Identidade da Vynexa" : "Sua identidade"} subtitulo={dono ? undefined : "Vai nas mensagens, e-mails e propostas"}>
             <FormConfig>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Campo nome="empresa_nome" rotulo="Nome" valor={c.empresa_nome || "Vynexa Dev"} />
-                <Campo nome="responsavel_nome" rotulo="Nome do responsável" valor={c.responsavel_nome || "Artur"} />
+                <Campo nome="empresa_nome" rotulo="Nome" valor={c.empresa_nome || (dono ? "Vynexa Dev" : "")} />
+                <Campo nome="responsavel_nome" rotulo="Nome do responsável" valor={c.responsavel_nome || (dono ? "Artur" : "")} />
                 <Campo nome="empresa_email" rotulo="E-mail" valor={c.empresa_email} tipo="email" />
                 <Campo nome="empresa_whatsapp" rotulo="WhatsApp" valor={c.empresa_whatsapp} placeholder="+55 92 99999-0000" />
-                <Campo nome="empresa_instagram" rotulo="Instagram" valor={c.empresa_instagram} placeholder="@vynexadev" />
-                <Campo nome="empresa_site" rotulo="Site" valor={c.empresa_site} placeholder="https://vynexa.dev" />
+                <Campo nome="empresa_instagram" rotulo="Instagram" valor={c.empresa_instagram} placeholder={dono ? "@vynexadev" : "@seuestudio"} />
+                <Campo nome="empresa_site" rotulo="Site" valor={c.empresa_site} placeholder={dono ? "https://vynexa.dev" : "https://seusite.com.br"} />
                 <div className="flex gap-4">
                   <Campo nome="cor_primaria" rotulo="Cor principal" valor={c.cor_primaria || "#ff5a1f"} tipo="color" />
                   <Campo nome="cor_secundaria" rotulo="Cor secundária" valor={c.cor_secundaria || "#ffb347"} tipo="color" />
                 </div>
               </div>
-              <Campo nome="email_assinatura" rotulo="Assinatura de e-mail" valor={c.email_assinatura} linhas={4} dica="Vazia = nome, empresa, site e WhatsApp acima. Vai no fim de todo e-mail, com o logo." placeholder={"Artur · Vynexa Dev\nhttps://vynexa.dev\nWhatsApp: +55 92 …"} />
+              <Campo nome="email_assinatura" rotulo="Assinatura de e-mail" valor={c.email_assinatura} linhas={4} dica="Vazia = nome, empresa, site e WhatsApp acima. Vai no fim de todo e-mail, com o logo." placeholder={dono ? "Artur · Vynexa Dev\nhttps://vynexa.dev\nWhatsApp: +55 92 …" : "Seu nome · Seu estúdio\nhttps://seusite.com.br\nWhatsApp: +55 …"} />
             </FormConfig>
           </Cartao>
         </div>
       )}
 
       {aba === "produtos" && (
-        <Cartao titulo="Catálogo de produtos" subtitulo="O que a Vynexa vende">
+        <Cartao titulo="Catálogo de produtos" subtitulo={dono ? "O que a Vynexa vende" : "O que você vende — a IA usa para sugerir a oferta certa"}>
           <Produtos produtos={planos(prods.rows)} />
         </Cartao>
       )}
 
       {aba === "integracoes" && (
         <div className="grid gap-4 xl:grid-cols-2">
+          {!temGoogle ? (
+            <Cartao titulo="Google Maps">
+              <p className="text-sm text-muted-foreground">
+                A busca no Google Maps faz parte dos planos PRO e Agência. No seu plano, o Radar usa o OpenStreetMap, sem chave.{" "}
+                <Link href="/assinatura?recurso=radar_google" className="font-semibold text-ciano underline underline-offset-2">
+                  Ver planos
+                </Link>
+              </p>
+            </Cartao>
+          ) : !dono ? (
+            <CampoSegredo
+              s={s("GOOGLE_PLACES_API_KEY")}
+              ajuda={
+                <>
+                  A sua chave da <b>Places API (New)</b> do Google. O Google dá uma cota grátis por mês para cada conta.{" "}
+                  <Link href="/tutoriais/chave-google" className="font-semibold text-ciano underline underline-offset-2">
+                    Passo a passo para criar
+                  </Link>
+                  . Uso neste mês: <b className="text-foreground">{reqMes.usadas} de {reqMes.limite}</b> requisições.
+                </>
+              }
+            />
+          ) : (
           <CampoSegredo
             s={s("GOOGLE_PLACES_API_KEY")}
             ajuda={
@@ -89,16 +125,31 @@ export default async function PaginaConfiguracoes({ searchParams }: PageProps<"/
               </>
             }
           />
-          <CampoSegredo s={s("GEMINI_API_KEY")} ajuda={<>IA de análise e mensagens. Chave gratuita, sem cartão, em aistudio.google.com/apikey.</>} />
+          )}
+          <CampoSegredo
+            s={s("GEMINI_API_KEY")}
+            ajuda={
+              dono ? (
+                <>IA de análise e mensagens. Chave gratuita, sem cartão, em aistudio.google.com/apikey.</>
+              ) : (
+                <>
+                  Opcional. Sem chave, você usa a IA da Vynexa dentro do limite do plano. Com a sua chave gratuita do Gemini, a IA fica sem limite.{" "}
+                  <Link href="/tutoriais/chave-gemini" className="font-semibold text-ciano underline underline-offset-2">
+                    Como criar
+                  </Link>
+                </>
+              )
+            }
+          />
           <CampoSegredo s={s("RESEND_API_KEY")} ajuda={<>Envio de e-mail por API (resend.com). Exige domínio verificado; o plano gratuito envia até 100 por dia.</>} />
           <CampoSegredo s={s("SMTP_PASSWORD")} ajuda={<>Senha da caixa SMTP (Hostinger Mail ou outro). Servidor e usuário ficam na aba E-mail.</>} />
-          <CampoSegredo s={s("ASAAS_API_KEY")} ajuda={<>Cobranças por Pix, boleto e cartão. Comece com a chave do sandbox; o ambiente é escolhido na aba Pagamentos.</>} />
-          <CampoSegredo s={s("ASAAS_WEBHOOK_TOKEN")} ajuda={<>Invente um token longo e cole aqui E no cadastro do webhook no Asaas. Sem ele, o webhook recusa tudo.</>} />
+          {temVendas && <CampoSegredo s={s("ASAAS_API_KEY")} ajuda={<>Cobranças por Pix, boleto e cartão. Comece com a chave do sandbox; o ambiente é escolhido na aba Pagamentos.</>} />}
+          {temVendas && <CampoSegredo s={s("ASAAS_WEBHOOK_TOKEN")} ajuda={<>Invente um token longo e cole aqui E no cadastro do webhook no Asaas. Sem ele, o webhook recusa tudo.</>} />}
           <CampoSegredo s={s("RESEND_WEBHOOK_SECRET")} ajuda={<>Opcional: o segredo (whsec_…) do webhook do Resend, para registrar “entregue” e “aberto”.</>} />
           <Cartao titulo="Mapa">
             <p className="text-sm text-muted-foreground">O mapa usa OpenStreetMap, sem chave. Nada a configurar.</p>
           </Cartao>
-          <p className="text-xs text-muted-foreground xl:col-span-2">Chaves salvas aqui ficam cifradas no banco (AES-GCM) e nunca voltam para o navegador — a tela mostra só os quatro últimos caracteres. Variáveis de ambiente com o mesmo nome continuam valendo quando nada foi salvo aqui.</p>
+          <p className="text-xs text-muted-foreground xl:col-span-2">Chaves salvas aqui ficam cifradas no banco (AES-GCM) e nunca voltam para o navegador — a tela mostra só os quatro últimos caracteres. {dono ? " Variáveis de ambiente com o mesmo nome continuam valendo quando nada foi salvo aqui." : ""}</p>
         </div>
       )}
 
@@ -158,13 +209,13 @@ export default async function PaginaConfiguracoes({ searchParams }: PageProps<"/
           <Cartao titulo="Webhook do Asaas" subtitulo="Cadastre no painel do Asaas → Integrações → Webhooks">
             <div className="space-y-3 text-sm">
               <p className="rotulo">URL</p>
-              <Copiavel texto={`${base}/api/webhooks/asaas`} />
+              <Copiavel texto={`${base}/api/webhooks/asaas${sufixoConta}`} />
               <p className="text-muted-foreground">
                 Token de autenticação: o mesmo valor salvo em Integrações → “Token do webhook do Asaas”. Eventos: PAYMENT_CREATED, PAYMENT_CONFIRMED, PAYMENT_RECEIVED, PAYMENT_OVERDUE, PAYMENT_DELETED, PAYMENT_REFUNDED.
               </p>
               <p className="text-muted-foreground">Quando um pagamento é confirmado, a venda vira “paga” uma única vez (eventos repetidos são ignorados) e a notificação de venda aparece.</p>
               <p className="rotulo pt-2">Webhook do Resend (opcional)</p>
-              <Copiavel texto={`${base}/api/webhooks/resend`} />
+              <Copiavel texto={`${base}/api/webhooks/resend${sufixoConta}`} />
             </div>
           </Cartao>
           <Cartao titulo="Aviso no celular" subtitulo="Quando você gera um link de cobrança e quando o cliente paga">
@@ -179,6 +230,12 @@ export default async function PaginaConfiguracoes({ searchParams }: PageProps<"/
         </div>
       )}
 
+      {aba === "equipe" && !dono && (
+        <Cartao titulo="Equipe" subtitulo={`Plano ${sessao.plano.nome}`}>
+          <Equipe pessoas={equipe} limite={sessao.plano.limites.usuarios} titular={sessao.usuario.papel === "dono"} />
+        </Cartao>
+      )}
+
       {aba === "compliance" && (
         <Cartao titulo="Lista de supressão" subtitulo="Opt-out, bloqueio e “não contatar novamente”">
           <Supressao itens={planos(supr.rows)} />
@@ -189,16 +246,26 @@ export default async function PaginaConfiguracoes({ searchParams }: PageProps<"/
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
           <Cartao titulo="Geral">
             <FormConfig>
-              <Campo nome="app_url" rotulo="Endereço público do app" valor={c.app_url} placeholder="https://vynexa-leads.vercel.app" dica="Usado nos links dos e-mails (descadastro, rastreio) e nos webhooks." />
+              {dono && <Campo nome="app_url" rotulo="Endereço público do app" valor={c.app_url} placeholder="https://vynexa-leads.vercel.app" dica="Usado nos links dos e-mails (descadastro, rastreio) e nos webhooks." />}
               <Campo nome="fuso" rotulo="Fuso horário" valor={c.fuso || "America/Manaus"} dica="Ex.: America/Manaus, America/Sao_Paulo, Europe/Lisbon." />
               <Campo nome="google_teto_requisicoes" rotulo="Teto padrão de requisições por busca no Google" valor={c.google_teto_requisicoes || "10"} dica="Cada requisição traz até 20 empresas." />
               <Campo nome="google_limite_mensal" rotulo="Limite de requisições ao Google por mês" valor={c.google_limite_mensal || String(LIMITE_MENSAL_PADRAO)} dica="O Google dá 1.000 grátis por mês e cobra o que passar. Com 900, sobra folga e o custo fica zero." />
-              <Campo nome="receita_ufs" rotulo="Estados importados da Receita Federal" valor={c.receita_ufs} placeholder="AM, PA" dica="Base de CNPJs usada como fonte complementar no Brasil (buscas pelo OpenStreetMap)." />
+              {dono && <Campo nome="receita_ufs" rotulo="Estados importados da Receita Federal" valor={c.receita_ufs} placeholder="AM, PA" dica="Base de CNPJs usada como fonte complementar no Brasil (buscas pelo OpenStreetMap)." />}
             </FormConfig>
           </Cartao>
           <Cartao titulo="Começar do zero" subtitulo="Apaga a carteira de leads e mantém as configurações">
             <ZerarDados leads={contagens.leads} vendas={contagens.vendas} />
           </Cartao>
+          {!dono && (
+            <Cartao titulo="Aviso no celular" subtitulo="Busca concluída, lead respondeu, venda">
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <p>
+                  No iPhone: abra o site no Safari → Compartilhar → <strong className="text-foreground">Adicionar à Tela de Início</strong>, abra pelo ícone novo e toque em ativar. No Android, é só ativar.
+                </p>
+                <BotaoNotificacoes />
+              </div>
+            </Cartao>
+          )}
         </div>
       )}
         </div>

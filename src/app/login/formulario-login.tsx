@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useId, useState } from "react";
 import { AlertCircle, Eye, EyeOff, LoaderCircle, LogIn } from "lucide-react";
 
@@ -14,6 +15,7 @@ export function FormularioLogin({ destino }: { destino?: string }) {
   const [estado, acao, pendente] = useActionState(entrar, ESTADO_INICIAL);
   const [verSenha, setVerSenha] = useState(false);
   const idSenha = useId();
+  const idEmail = useId();
   const idErro = useId();
 
   return (
@@ -23,7 +25,17 @@ export function FormularioLogin({ destino }: { destino?: string }) {
           {destino && <input type="hidden" name="destino" value={destino} />}
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor={idSenha}>Senha de acesso</Label>
+            <Label htmlFor={idEmail}>E-mail</Label>
+            <Input id={idEmail} name="email" type="email" autoComplete="email" required autoFocus className="h-11" />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <div className="flex items-baseline justify-between">
+              <Label htmlFor={idSenha}>Senha</Label>
+              <Link href="/recuperar-senha" className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+                Esqueci a senha
+              </Link>
+            </div>
             <div className="relative">
               <Input
                 id={idSenha}
@@ -31,7 +43,6 @@ export function FormularioLogin({ destino }: { destino?: string }) {
                 type={verSenha ? "text" : "password"}
                 autoComplete="current-password"
                 required
-                autoFocus
                 className="h-11 pr-11"
                 aria-invalid={estado.mensagem !== null}
                 aria-describedby={estado.mensagem ? idErro : undefined}

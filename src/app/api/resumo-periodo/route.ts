@@ -22,7 +22,7 @@ const Corpo = z.object({ periodo: z.enum(PERIODOS.map((p) => p.chave) as [Period
 const ESQUEMA: EsquemaResposta = {
   type: "object",
   properties: {
-    resumo: { type: "string", description: "2 a 4 frases sobre o período, em português do Brasil, falando com o Artur (você)." },
+    resumo: { type: "string", description: "2 a 4 frases sobre o período, em português do Brasil, falando com o dono do negócio (você)." },
     proximos_passos: { type: "array", items: { type: "string" }, description: "Exatamente 3 ações concretas para os próximos dias." },
   },
   required: ["resumo", "proximos_passos"],
@@ -71,7 +71,7 @@ export const POST = rota(async (req) => {
     numeros.add(String(reais)).add(reais.toLocaleString("pt-BR"));
   }
 
-  const instrucao = `Você é o assistente comercial da Vynexa Dev (estúdio que cria sites, sistemas e aplicativos). Escreva um resumo curto do período para o dono, Artur.
+  const instrucao = `Você é o assistente comercial de um estúdio que cria sites, sistemas e aplicativos. Escreva um resumo curto do período para o dono do negócio.
 
 FATOS (use somente estes números, exatamente como estão):
 ${textoFatos}

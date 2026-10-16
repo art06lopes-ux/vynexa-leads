@@ -12,10 +12,12 @@ import { dataHora } from "@/lib/datas";
 import { formatarDinheiro } from "@/lib/pagamento/dinheiro";
 import { cn } from "@/lib/utils";
 import { taxa } from "@/services/crm";
+import { exigirRecursoNaPagina } from "@/server/sessao";
 
 export const metadata = { title: "Campanha" };
 
 export default async function PaginaCampanha({ params }: PageProps<"/campanhas/[id]">) {
+  await exigirRecursoNaPagina("campanhas");
   const { id } = await params;
   const [c, envios, porStatus, identidade] = await Promise.all([obterCampanha(id), enviosDaCampanha(id), contagemPorStatus(id), lerIdentidade()]);
   if (!c) notFound();

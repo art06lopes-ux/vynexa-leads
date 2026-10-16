@@ -69,7 +69,7 @@ export const GET = rota(async (req) => {
   const formato = formatoDe(req);
   const leads = await leadsParaExportar(filtrosDaUrl(new URL(req.url).searchParams));
   return responder(leads.map(linha), formato);
-});
+}, { recurso: "exportar" });
 
 export const POST = rota(async (req) => {
   const formato = formatoDe(req);
@@ -87,4 +87,4 @@ export const POST = rota(async (req) => {
     linhas.push(...planos<LeadListado>(rows));
   }
   return responder(linhas.map(linha), formato);
-});
+}, { recurso: "exportar" });

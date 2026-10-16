@@ -18,4 +18,4 @@ export const POST = rota(async (req) => {
     observacoes: c.observacoes || null,
   });
   return json({ id }, 201);
-});
+}, { recurso: "sites" });

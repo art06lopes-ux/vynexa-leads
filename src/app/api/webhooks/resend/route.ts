@@ -1,4 +1,5 @@
 import { getBanco } from "@/db/cliente";
+import { comConta, CONTA_PRINCIPAL } from "@/db/contas-banco";
 import { obterSegredo } from "@/integrations/segredos";
 import { registrarEntrega } from "@/services/rastreio-eventos";
 
@@ -22,7 +23,14 @@ async function assinaturaValida(segredo: string, id: string, ts: string, corpo: 
   });
 }
 
+/** Assinantes cadastram a URL com `?conta=<id>`; sem isso, é a conta do dono. */
 export async function POST(request: Request) {
+  const conta = new URL(request.url).searchParams.get("conta") ?? CONTA_PRINCIPAL;
+  if (!/^[a-z0-9-]{1,64}$/i.test(conta)) return Response.json({ erro: "Conta inválida." }, { status: 400 });
+  return comConta(conta, () => processar(request)).catch(() => Response.json({ erro: "Conta inválida." }, { status: 404 }));
+}
+
+async function processar(request: Request): Promise<Response> {
   const segredo = await obterSegredo("RESEND_WEBHOOK_SECRET");
   if (!segredo) return Response.json({ erro: "Webhook do Resend não configurado." }, { status: 503 });
   const corpo = await request.text();

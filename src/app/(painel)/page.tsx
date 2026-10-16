@@ -6,6 +6,7 @@ import { LimparBuscas } from "@/components/dashboard/limpar-buscas";
 import { Carteira } from "@/components/inicio/carteira";
 import { LucroPorPeriodo } from "@/components/inicio/lucro-por-periodo";
 import { PainelLucro } from "@/components/inicio/painel-lucro";
+import { PrimeirosPassos } from "@/components/inicio/primeiros-passos";
 import { SeloPresenca } from "@/components/leads/presenca";
 import { AnelScore } from "@/components/leads/score";
 import { EsculturaV } from "@/components/marca/escultura-v";
@@ -16,6 +17,7 @@ import { atividadeRecente, buscasRecentes, lerIdentidade, melhoresOportunidades,
 import { hojePorExtenso, saudacao } from "@/lib/datas";
 import { haQuantoTempo } from "@/services/crm";
 import { ROTULO_EVENTO } from "@/services/eventos";
+import { exigirSessao } from "@/server/sessao";
 
 export const metadata = { title: "Início" };
 
@@ -36,7 +38,11 @@ function doMes(vendas: Awaited<ReturnType<typeof vendasPagasDoAno>>, mesesAtras:
   return { receita, lucro };
 }
 
-export default async function Inicio() {
+export default async function Inicio({ searchParams }: PageProps<"/">) {
+  const sessao = await exigirSessao();
+  const { "bem-vindo": bemVindo } = await searchParams;
+  // Lucro e carteira só para quem tem o módulo de Vendas (Agência e o dono).
+  const temVendas = sessao.recursos.includes("vendas");
   const [identidade, kpis, vendas, top, atividade, buscas, retomar] = await Promise.all([
     lerIdentidade(),
     obterKpis(),
@@ -83,11 +89,19 @@ export default async function Inicio() {
         </p>
       </Entrada>
 
+      {!sessao.ehDono && (
+        <Entrada atraso={0.02}>
+          <PrimeirosPassos temGoogle={sessao.recursos.includes("radar_google")} bemVindo={bemVindo === "1"} />
+        </Entrada>
+      )}
+
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
-        <div className="flex min-w-0 flex-col gap-5 xl:col-span-8">
-          <Entrada atraso={0.04}>
-            <PainelLucro vendas={vendas} />
-          </Entrada>
+        <div className={temVendas ? "flex min-w-0 flex-col gap-5 xl:col-span-8" : "flex min-w-0 flex-col gap-5 xl:col-span-12"}>
+          {temVendas && (
+            <Entrada atraso={0.04}>
+              <PainelLucro vendas={vendas} />
+            </Entrada>
+          )}
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <Entrada atraso={0.08}>
               <section className="heroi relative flex h-full min-h-60 flex-col justify-between p-5 sm:p-6">
@@ -108,14 +122,36 @@ export default async function Inicio() {
                 </div>
               </section>
             </Entrada>
-            <Entrada atraso={0.12}>
-              <LucroPorPeriodo vendas={vendas} />
-            </Entrada>
+            {temVendas ? (
+              <Entrada atraso={0.12}>
+                <LucroPorPeriodo vendas={vendas} />
+              </Entrada>
+            ) : (
+              <Entrada atraso={0.12}>
+                <Cartao icone={Activity} titulo="Sua prospecção" subtitulo="O que já está na carteira" className="h-full">
+                  <dl className="grid grid-cols-2 gap-3">
+                    <div className="rounded-xl border border-fio p-3">
+                      <dt className="text-xs text-muted-foreground">Para abordar</dt>
+                      <dd className="num font-display text-2xl font-semibold">{kpis.paraAbordar.toLocaleString("pt-BR")}</dd>
+                    </div>
+                    <div className="rounded-xl border border-fio p-3">
+                      <dt className="text-xs text-muted-foreground">Para retomar</dt>
+                      <dd className="num font-display text-2xl font-semibold">{retomar.total.toLocaleString("pt-BR")}</dd>
+                    </div>
+                  </dl>
+                  <Link href="/crm" className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl border border-fio px-4 text-sm font-semibold hover:border-brilho/40">
+                    Abrir o CRM
+                  </Link>
+                </Cartao>
+              </Entrada>
+            )}
           </div>
         </div>
-        <Entrada atraso={0.06} className="xl:col-span-4">
-          <Carteira vendas={vendas} lucroMes={mes.lucro} receitaMes={mes.receita} variacao={variacaoMes} />
-        </Entrada>
+        {temVendas && (
+          <Entrada atraso={0.06} className="xl:col-span-4">
+            <Carteira vendas={vendas} lucroMes={mes.lucro} receitaMes={mes.receita} variacao={variacaoMes} />
+          </Entrada>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">

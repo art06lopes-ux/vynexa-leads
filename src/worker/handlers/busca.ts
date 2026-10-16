@@ -6,7 +6,7 @@ import { nomeDoPais } from "@/lib/geo/paises";
 import type { LugarEncontrado } from "@/integrations/leads/tipos";
 import { registrarLugares } from "@/services/registro";
 import { acharSegmento, type Segmento } from "@/lib/osm/segmentos";
-import { expandirBbox, raioAproximadoKm, resolverLugar, type Bbox } from "@/lib/osm/nominatim";
+import { expandirBbox, raioAproximadoKm, resolverLugar, type Bbox, type LugarResolvido } from "@/lib/osm/nominatim";
 import { buscarEstabelecimentos, type ElementoOsm } from "@/lib/osm/overpass";
 import { complementarComReceita } from "@/worker/handlers/receita";
 
@@ -55,14 +55,32 @@ const TETO_ABSOLUTO = 5000;
  */
 const RAIO_MAXIMO_PAIS_INTEIRO_KM = 3000;
 
+/** Caixa que contém o círculo (centro + raio em km) desenhado no mapa. */
+function caixaDoCirculo(lat: number, lng: number, raioKm: number, rotulo: string | null): LugarResolvido {
+  const dLat = raioKm / 111.32;
+  const dLng = raioKm / (111.32 * Math.max(0.1, Math.cos((lat * Math.PI) / 180)));
+  return {
+    rotulo: rotulo || `raio de ${raioKm} km`,
+    latitude: lat,
+    longitude: lng,
+    bbox: { sul: lat - dLat, norte: lat + dLat, oeste: lng - dLng, leste: lng + dLng },
+  };
+}
+
 export async function processarBusca(banco: Client, payload: PayloadBusca): Promise<string> {
   const { rows } = await banco.execute({
-    sql: `SELECT id, segmento, pais, estado, cidade, status FROM buscas WHERE id = ?`,
+    sql: `SELECT id, segmento, pais, estado, cidade, status, centro_lat, centro_lng, raio_km, rotulo_resolvido FROM buscas WHERE id = ?`,
     args: [payload.buscaId],
   });
 
-  const busca = rows[0] as unknown as Busca | undefined;
+  const busca = rows[0] as unknown as (Busca & { centro_lat: number | null; centro_lng: number | null; raio_km: number | null; rotulo_resolvido: string | null }) | undefined;
   if (!busca) throw new Error(`Busca ${payload.buscaId} não existe.`);
+  // Área desenhada no mapa do Radar: o círculo vira a caixa da consulta,
+  // sem passar pelo Nominatim (e sem a escada de expansão).
+  const circulo =
+    busca.centro_lat != null && busca.centro_lng != null && busca.raio_km
+      ? caixaDoCirculo(Number(busca.centro_lat), Number(busca.centro_lng), Number(busca.raio_km), busca.rotulo_resolvido)
+      : null;
 
   await banco.execute({
     sql: `UPDATE buscas SET status = 'em_andamento', erro = NULL WHERE id = ?`,
@@ -87,9 +105,11 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
   // OSM como sempre.
   // Cidade sem estado (ex.: "Manacapuru") NÃO é o país inteiro: o
   // Nominatim resolve a cidade sozinha.
-  const brasilInteiro = busca.pais === "BR" && !busca.estado && !busca.cidade;
+  const brasilInteiro = !circulo && busca.pais === "BR" && !busca.estado && !busca.cidade;
 
-  const lugar = brasilInteiro
+  const lugar = circulo
+    ? circulo
+    : brasilInteiro
     ? null
     : await resolverLugar({
         pais: busca.pais,
@@ -101,7 +121,7 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
   // para cobrir o buraco: um país grande sem estado/cidade não tem como
   // dar certo na Overpass. Falhar aqui, com um motivo claro, é melhor do
   // que "Concluída, 0 achadas" — que parece resultado real, não falha.
-  if (lugar && busca.pais !== "BR" && !busca.estado && !busca.cidade) {
+  if (lugar && !circulo && busca.pais !== "BR" && !busca.estado && !busca.cidade) {
     const raio = raioAproximadoKm(lugar.bbox);
     if (raio > RAIO_MAXIMO_PAIS_INTEIRO_KM) {
       throw new Error(
@@ -119,7 +139,7 @@ export async function processarBusca(banco: Client, payload: PayloadBusca): Prom
   let bboxUsada: Bbox | null = lugar?.bbox ?? null;
   let expansoes = 0;
 
-  for (const km of lugar === null ? [] : todas ? [0] : DEGRAUS_KM) {
+  for (const km of lugar === null ? [] : todas || circulo ? [0] : DEGRAUS_KM) {
     const bbox = km === 0 ? lugar!.bbox : expandirBbox(lugar!.bbox, km);
 
     // Teto generoso na consulta: o corte para o alvo acontece depois de

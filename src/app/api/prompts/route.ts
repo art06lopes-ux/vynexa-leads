@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { contaDoContexto } from "@/db/contas-banco";
+
 import { listarPrompts, salvarPrompt } from "@/db/prompts";
 import { ErroIA, obterIA } from "@/integrations/ai";
 import type { EsquemaResposta } from "@/integrations/ai/tipos";
@@ -32,6 +34,11 @@ const Corpo = z.discriminatedUnion("acao", [
 
 const CONTEXTO_VYNEXA = `A Vynexa Dev é um estúdio de Manacapuru (AM) que cria sites, landing pages, sistemas e aplicativos para negócios locais (barbearias, academias, deliveries, lojas, salões, clínicas).
 Stack padrão dos projetos: Next.js (App Router) com TypeScript, Tailwind CSS, Framer Motion para animação, deploy na Vercel; Supabase quando há banco de dados, login ou painel administrativo.
+Os projetos precisam funcionar muito bem no celular, carregar rápido, ter textos em português do Brasil e botão de WhatsApp quando fizer sentido.`;
+
+/** Para assinantes: o mesmo contexto, sem a cidade e a identidade da Vynexa. */
+const CONTEXTO_GERAL = `Quem pede é um estúdio/freelancer que cria sites, landing pages, sistemas e aplicativos para negócios locais (barbearias, academias, deliveries, lojas, salões, clínicas).
+Stack sugerida (use a do projeto se já existir outra): Next.js (App Router) com TypeScript, Tailwind CSS, Framer Motion para animação, deploy na Vercel; Supabase quando há banco de dados, login ou painel administrativo.
 Os projetos precisam funcionar muito bem no celular, carregar rápido, ter textos em português do Brasil e botão de WhatsApp quando fizer sentido.`;
 
 const REGRAS = `REGRAS DO PROMPT QUE VOCÊ VAI ESCREVER
@@ -101,7 +108,7 @@ export const POST = rota(async (req) => {
       : `Reescreva o PROMPT abaixo para ficar completo e sem ambiguidade, mantendo a intenção original e tudo o que ele já especifica.`;
   const destino =
     c.destino === "claude-code"
-      ? `O prompt será colado no Claude Code (assistente de programação que lê e edita o projeto, roda comandos e testa no navegador). Peça que ele leia o projeto antes, siga o código existente e verifique no navegador antes de dizer que terminou.\n\n${CONTEXTO_VYNEXA}`
+      ? `O prompt será colado no Claude Code (assistente de programação que lê e edita o projeto, roda comandos e testa no navegador). Peça que ele leia o projeto antes, siga o código existente e verifique no navegador antes de dizer que terminou.\n\n${(await contaDoContexto()) ? CONTEXTO_GERAL : CONTEXTO_VYNEXA}`
       : `O prompt será usado em um assistente de IA qualquer. Não presuma acesso a arquivos ou terminal.`;
 
   const instrucao = `Você é especialista em escrever prompts para assistentes de IA.
@@ -138,4 +145,4 @@ ${c.entrada}
     saida: saida.slice(0, 20000),
     perguntas: (bruto?.perguntas ?? []).filter((p) => typeof p === "string" && p.trim()).slice(0, 3),
   });
-});
+}, { recurso: "prompts" });

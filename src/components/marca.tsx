@@ -10,7 +10,7 @@ export function Marca({
   className,
   logoUrl,
   nome = "Vynexa",
-  sufixo = "Dev",
+  sufixo = "Leads",
   mostrarTexto = true,
 }: {
   className?: string;

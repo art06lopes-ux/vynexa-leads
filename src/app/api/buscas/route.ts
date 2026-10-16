@@ -5,6 +5,7 @@ import { acharSegmento } from "@/lib/osm/segmentos";
 import { obterProvedor } from "@/integrations/leads";
 import { ErroApi, json, lerCorpo, limitar, rota } from "@/server/api";
 import { NovaBusca } from "@/server/esquemas";
+import { exigirRecursoNaConta, leadsRestantes } from "@/services/contas";
 import { usoGoogle } from "@/services/cota-google";
 import { ehLinkCurto, expandirLinkCurto, interpretarLinkMaps, type LinkMaps } from "@/services/link-maps";
 import { executarAgora } from "@/worker/fila";
@@ -41,11 +42,18 @@ export const POST = rota(async (req) => {
     b.pais = null;
   }
 
+  // Plano: Google só a partir do PRO; e não começa busca sem leads no mês.
+  if (b.provedor === "google_places") await exigirRecursoNaConta("radar_google");
+  const { restantes } = await leadsRestantes();
+  if (restantes === 0) {
+    throw new ErroApi("Os leads novos do seu plano neste mês acabaram. Eles renovam no dia 1º — ou mude de plano em Assinatura para continuar agora.", 409, "limite_plano");
+  }
+
   const provedor = obterProvedor(b.provedor);
   if (!(await provedor.disponivel())) {
     throw new ErroApi(
       b.provedor === "google_places"
-        ? "O Google Maps ainda não está ligado: falta a chave da Google Places API. Cole a chave em Configurações → Integrações."
+        ? "O Google Maps ainda não está ligado: falta a sua chave da Google Places API. Veja o passo a passo em Tutoriais e cole a chave em Configurações → Integrações."
         : "O provedor não está disponível.",
       409,
       "sem_configuracao",
@@ -75,6 +83,8 @@ export const POST = rota(async (req) => {
     if (!achado) {
       throw new ErroApi(`O OpenStreetMap só busca segmentos da lista (barbearia, estética, clínica…). Para "${b.termo}", use o Google Maps.`, 422);
     }
+    // Área desenhada no mapa: o círculo define o lugar; o país só formata telefone.
+    if (!b.pais && b.centro) b.pais = "BR";
     if (!b.pais) throw new ErroApi("Escolha o país para buscar no OpenStreetMap.", 422);
     tipoJob = "busca";
     segmento = achado.slug;

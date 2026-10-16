@@ -7,7 +7,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-import { TODOS_ITENS } from "./navegacao";
+import { useConta } from "./conta-contexto";
+import { TODOS_ITENS, visivel } from "./navegacao";
 
 /**
  * Paleta de comandos (Ctrl+K ou ⌘K): ir para qualquer tela, criar venda,
@@ -45,9 +46,10 @@ export function Paleta({ aberta, aoFechar }: { aberta: boolean; aoFechar: () => 
   const [indice, setIndice] = useState(0);
   const campo = useRef<HTMLInputElement>(null);
 
+  const { ehDono } = useConta();
   const navegacao: Opcao[] = useMemo(
-    () => TODOS_ITENS.map((i) => ({ id: `ir-${i.href}`, rotulo: i.rotulo, grupo: "Ir para", href: i.href, icone: i.icone })).concat([{ id: "ir-ao-vivo", rotulo: "Sala de vendas ao vivo", grupo: "Ir para", href: "/ao-vivo", icone: ArrowRight }]),
-    [],
+    () => TODOS_ITENS.filter((i) => visivel(i, ehDono)).map((i) => ({ id: `ir-${i.href}`, rotulo: i.rotulo, grupo: "Ir para", href: i.href, icone: i.icone })).concat([{ id: "ir-ao-vivo", rotulo: "Sala de vendas ao vivo", grupo: "Ir para", href: "/ao-vivo", icone: ArrowRight }]),
+    [ehDono],
   );
 
   // Busca de empresas, com uma pausa curta entre as teclas.

@@ -40,7 +40,7 @@ export function instrucaoLeadAnalyzer(d: DadosLead): { instrucao: string; numero
   const fatos = blocoFatos(d);
   return {
     numeros: fatos.numeros,
-    instrucao: `Você é analista comercial da Vynexa Dev, estúdio que vende sites, sistemas, aplicativos e SaaS.
+    instrucao: `Você é analista comercial de um estúdio que vende sites, sistemas, aplicativos e SaaS.
 Analise o lead abaixo para o vendedor decidir se aborda.
 
 ${fatos.texto}

@@ -7,6 +7,7 @@ import { EsculturaV } from "@/components/marca/escultura-v";
 import { Contador } from "@/components/motion/contador";
 import { lerIdentidade, vendasPagasDoAno } from "@/db/painel";
 import { formatarDinheiro } from "@/lib/pagamento/dinheiro";
+import { exigirRecursoNaPagina } from "@/server/sessao";
 
 export const metadata = { title: "Ao vivo" };
 
@@ -24,6 +25,7 @@ function partes(iso: string, fuso: string): { dia: string; hora: number } {
 }
 
 export default async function PaginaAoVivo() {
+  await exigirRecursoNaPagina("ao_vivo");
   const [identidade, vendas] = await Promise.all([lerIdentidade(), vendasPagasDoAno()]);
   const fuso = identidade.config.fuso || "America/Manaus";
   const agora = new Date();

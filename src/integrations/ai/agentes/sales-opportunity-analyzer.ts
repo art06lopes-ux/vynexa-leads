@@ -61,11 +61,11 @@ export function instrucaoOportunidade(d: DadosLead, catalogo: ProdutoCatalogo[])
 
   return {
     numeros: fatos.numeros,
-    instrucao: `Você decide o que a Vynexa Dev deve oferecer a este lead.
+    instrucao: `Você decide o que o vendedor (um estúdio de sites e sistemas) deve oferecer a este lead.
 
 ${fatos.texto}
 
-CATÁLOGO DA VYNEXA
+CATÁLOGO DO VENDEDOR
 ${lista}
 
 ${REGRAS_ABSOLUTAS}

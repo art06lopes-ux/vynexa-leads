@@ -7,7 +7,8 @@
  *
  *   npm run worker
  */
-import { agora, ehLimiteDiarioD1, getBanco } from "@/db/cliente";
+import { agora, ehLimiteDiarioD1, getBanco, getBancoPrincipal } from "@/db/cliente";
+import { comConta, CONTA_PRINCIPAL } from "@/db/contas-banco";
 import type { Job, PayloadBusca } from "@/db/tipos";
 import { ErroIA } from "@/integrations/ai/tipos";
 import { ErroProvedor } from "@/integrations/leads/tipos";
@@ -64,113 +65,142 @@ function msAteResetD1(): number {
   return proximaMeiaNoite.getTime() - agora.getTime() + 30_000;
 }
 
+/** Devolve à fila o que ficou preso com lease vencido (worker morto no meio). */
+async function recuperarLeases(banco: ReturnType<typeof getBanco>): Promise<number> {
+  const { rowsAffected } = await banco.execute({
+    sql: `UPDATE jobs SET status = 'pendente', atualizado_em = ?
+          WHERE status = 'em_andamento' AND (lease_ate IS NULL OR lease_ate < ?)`,
+    args: [agora(), agora()],
+  });
+  return rowsAffected;
+}
+
+/** Reserva e processa UM job do banco da conta do contexto. Falso = fila vazia. */
+async function rodarUm(banco: ReturnType<typeof getBanco>): Promise<boolean> {
+  const job = await reservarProximo(banco);
+  if (job === null) return false;
+
+  console.log(`[${job.tipo}] ${job.id} — tentativa ${job.tentativas}`);
+
+  try {
+    const resumo = await despachar(banco, job);
+    await banco.execute({
+      sql: `UPDATE jobs SET status = 'concluido', erro = NULL, atualizado_em = ? WHERE id = ?`,
+      args: [agora(), job.id],
+    });
+    console.log(`  ok — ${resumo}`);
+  } catch (erro) {
+    // Erro de job (Overpass fora do ar, cota do Gemini…) é tratado
+    // aqui, com retentativa. Se a ESCRITA que registra isso também
+    // falhar pela cota do D1, o erro sobe sem ser pego de novo — cai
+    // no catch de fora, que já sabe lidar com isso.
+    const mensagem = erro instanceof Error ? erro.message : String(erro);
+
+    // Cota do Gemini não é falha do job: é o dia acabando. Contar
+    // como tentativa faria a análise desistir de vez depois de seis
+    // esperas e a fila morreria até alguém caçar de novo. Espera meia
+    // hora e devolve a tentativa.
+    const cota = (erro instanceof ErroGemini || erro instanceof ErroIA || erro instanceof ErroProvedor) && erro.temporario;
+    const semConfiguracao = Boolean((erro as { semConfiguracao?: boolean }).semConfiguracao);
+    // Recusa definitiva do provedor (ex.: a cota diária que o operador
+    // definiu no Google Cloud acabou): tentar de novo só gasta tempo.
+    const definitivo = erro instanceof ErroProvedor && !erro.temporario;
+    const desiste = !cota && (semConfiguracao || definitivo || job.tentativas >= MAX_TENTATIVAS);
+
+    const espera = cota ? 30 : (ESPERA_MINUTOS[Math.min(job.tentativas - 1, ESPERA_MINUTOS.length - 1)] ?? 5);
+
+    await banco.execute({
+      sql: `UPDATE jobs SET status = ?, erro = ?, lease_ate = NULL, disponivel_em = ?, atualizado_em = ?,
+                            tentativas = tentativas - ?
+            WHERE id = ?`,
+      args: [
+        desiste ? "erro" : "pendente",
+        mensagem,
+        desiste ? null : emMinutos(espera),
+        agora(),
+        cota ? 1 : 0,
+        job.id,
+      ],
+    });
+
+    // A busca também precisa sair de 'em_andamento', senão a tela
+    // fica girando para sempre esperando um job que já desistiu. E
+    // enquanto ainda vai tentar, a tela mostra o motivo e a hora —
+    // "rastreando" por vinte minutos sem explicação parece travado.
+    if (job.tipo === "busca" || job.tipo === "busca_google") {
+      const { buscaId } = JSON.parse(job.payload) as PayloadBusca;
+      await banco.execute({
+        sql: desiste
+          ? `UPDATE buscas SET status = 'erro', erro = ? WHERE id = ?`
+          : `UPDATE buscas SET erro = ? WHERE id = ?`,
+        args: [desiste ? mensagem : `${mensagem} Nova tentativa em ~${espera} min (tentativa ${job.tentativas} de ${MAX_TENTATIVAS}).`, buscaId],
+      });
+    }
+
+    console.error(
+      `  ${desiste ? "desistiu" : `nova tentativa em ~${espera} min`} — ${mensagem}`,
+    );
+  }
+  return true;
+}
+
+/**
+ * Contas cuja fila o worker atende: a do dono e as de assinantes com
+ * banco criado e acesso liberado. Conta vencida não roda job (a busca
+ * dela já foi recusada na entrada; o que sobrou espera a regularização).
+ */
+async function contasDaFila(): Promise<string[]> {
+  try {
+    const { rows } = await getBancoPrincipal().execute(`SELECT * FROM contas WHERE banco_tipo <> 'pendente'`);
+    const { acessoDaConta } = await import("@/services/contas");
+    const ids = rows.filter((r) => acessoDaConta({ ...r } as never).liberado).map((r) => String(r.id));
+    return ids.includes(CONTA_PRINCIPAL) ? ids : [CONTA_PRINCIPAL, ...ids];
+  } catch {
+    // Banco principal ainda sem as tabelas do SaaS: só o dono.
+    return [CONTA_PRINCIPAL];
+  }
+}
+
 async function main() {
-  const banco = getBanco();
   const inicio = Date.now();
   let processados = 0;
 
   // Tudo — recuperar lease, reservar job, despachar, gravar o resultado —
   // é escrita no banco, e qualquer uma delas pode ser a que esbarra na
-  // cota diária do D1. Um try/catch por escrita já provou ser frágil: uma
-  // ficou de fora (a própria reserva do job, em `reservarProximo`) e o
-  // worker voltou a morrer e ser relançado sem parar. Um try/catch só,
-  // em volta do laço inteiro, cobre qualquer escrita futura também, sem
-  // precisar lembrar de proteger cada uma.
+  // cota diária do D1. Um try/catch só, em volta do laço inteiro, cobre
+  // qualquer escrita futura também, sem precisar lembrar de cada uma.
   try {
-    // Recupera o que ficou preso: um worker morto no meio (o Actions pode
-    // ser cancelado a qualquer momento) deixaria o job em 'em_andamento'
-    // para sempre sem esta linha.
-    const { rowsAffected: recuperados } = await banco.execute({
-      sql: `UPDATE jobs SET status = 'pendente', atualizado_em = ?
-            WHERE status = 'em_andamento' AND (lease_ate IS NULL OR lease_ate < ?)`,
-      args: [agora(), agora()],
-    });
-    if (recuperados > 0) console.log(`${recuperados} job(s) com lease vencido devolvidos à fila.`);
+    let contas = await contasDaFila();
+    for (const id of contas) {
+      const recuperados = await comConta(id, () => recuperarLeases(getBanco()));
+      if (recuperados > 0) console.log(`[${id}] ${recuperados} job(s) com lease vencido devolvidos à fila.`);
+    }
 
+    let volta = 0;
     while (Date.now() - inicio < ORCAMENTO_MS) {
-      // No plantão a recuperação de lease precisa ser contínua e a cada
-      // volta: um push derruba o plantão anterior no meio de um job, e
-      // esse job só volta à fila quando alguém olha o lease vencido. Olhar
-      // só com a fila vazia não bastou — a análise de IA se reenfileira
-      // sem parar e a fila nunca esvazia.
-      if (PLANTAO_MIN > 0) {
-        await banco.execute({
-          sql: `UPDATE jobs SET status = 'pendente', atualizado_em = ?
-                WHERE status = 'em_andamento' AND (lease_ate IS NULL OR lease_ate < ?)`,
-          args: [agora(), agora()],
+      // Revezamento: um job de cada conta por volta, para um assinante
+      // com caçada grande não segurar a fila de todos os outros.
+      if (volta++ % 15 === 0) contas = await contasDaFila();
+      let algum = false;
+      for (const id of contas) {
+        if (Date.now() - inicio >= ORCAMENTO_MS) break;
+        const fez = await comConta(id, async () => {
+          const banco = getBanco();
+          // No plantão a recuperação de lease é contínua: um push derruba
+          // o plantão anterior no meio de um job, e ele só volta à fila
+          // quando alguém olha o lease vencido.
+          if (PLANTAO_MIN > 0) await recuperarLeases(banco);
+          return rodarUm(banco);
         });
+        if (fez) {
+          algum = true;
+          processados += 1;
+        }
       }
-
-      const job = await reservarProximo(banco);
-      if (job === null) {
+      if (!algum) {
         if (PLANTAO_MIN === 0) break;
         await new Promise((r) => setTimeout(r, PAUSA_FILA_VAZIA_MS));
-        continue;
       }
-
-      console.log(`[${job.tipo}] ${job.id} — tentativa ${job.tentativas}`);
-
-      try {
-        const resumo = await despachar(banco, job);
-        await banco.execute({
-          sql: `UPDATE jobs SET status = 'concluido', erro = NULL, atualizado_em = ? WHERE id = ?`,
-          args: [agora(), job.id],
-        });
-        console.log(`  ok — ${resumo}`);
-      } catch (erro) {
-        // Erro de job (Overpass fora do ar, cota do Gemini…) é tratado
-        // aqui, com retentativa. Se a ESCRITA que registra isso também
-        // falhar pela cota do D1, o erro sobe sem ser pego de novo — cai
-        // no catch de fora, que já sabe lidar com isso.
-        const mensagem = erro instanceof Error ? erro.message : String(erro);
-
-        // Cota do Gemini não é falha do job: é o dia acabando. Contar
-        // como tentativa faria a análise desistir de vez depois de seis
-        // esperas e a fila morreria até alguém caçar de novo. Espera meia
-        // hora e devolve a tentativa.
-        const cota = (erro instanceof ErroGemini || erro instanceof ErroIA || erro instanceof ErroProvedor) && erro.temporario;
-        const semConfiguracao = Boolean((erro as { semConfiguracao?: boolean }).semConfiguracao);
-        // Recusa definitiva do provedor (ex.: a cota diária que o operador
-        // definiu no Google Cloud acabou): tentar de novo só gasta tempo.
-        const definitivo = erro instanceof ErroProvedor && !erro.temporario;
-        const desiste = !cota && (semConfiguracao || definitivo || job.tentativas >= MAX_TENTATIVAS);
-
-        const espera = cota ? 30 : (ESPERA_MINUTOS[Math.min(job.tentativas - 1, ESPERA_MINUTOS.length - 1)] ?? 5);
-
-        await banco.execute({
-          sql: `UPDATE jobs SET status = ?, erro = ?, lease_ate = NULL, disponivel_em = ?, atualizado_em = ?,
-                                tentativas = tentativas - ?
-                WHERE id = ?`,
-          args: [
-            desiste ? "erro" : "pendente",
-            mensagem,
-            desiste ? null : emMinutos(espera),
-            agora(),
-            cota ? 1 : 0,
-            job.id,
-          ],
-        });
-
-        // A busca também precisa sair de 'em_andamento', senão a tela
-        // fica girando para sempre esperando um job que já desistiu. E
-        // enquanto ainda vai tentar, a tela mostra o motivo e a hora —
-        // "rastreando" por vinte minutos sem explicação parece travado.
-        if (job.tipo === "busca" || job.tipo === "busca_google") {
-          const { buscaId } = JSON.parse(job.payload) as PayloadBusca;
-          await banco.execute({
-            sql: desiste
-              ? `UPDATE buscas SET status = 'erro', erro = ? WHERE id = ?`
-              : `UPDATE buscas SET erro = ? WHERE id = ?`,
-            args: [desiste ? mensagem : `${mensagem} Nova tentativa em ~${espera} min (tentativa ${job.tentativas} de ${MAX_TENTATIVAS}).`, buscaId],
-          });
-        }
-
-        console.error(
-          `  ${desiste ? "desistiu" : `nova tentativa em ~${espera} min`} — ${mensagem}`,
-        );
-      }
-
-      processados += 1;
     }
   } catch (erro) {
     if (!ehLimiteDiarioD1(erro)) throw erro;

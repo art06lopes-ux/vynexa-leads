@@ -10,6 +10,7 @@ import { abreWhatsapp } from "@/lib/leads/whatsapp";
 import { acharDuplicata, deduplicarLote, type ChavesEmpresa } from "@/services/duplicatas";
 import { eventoSql } from "@/services/eventos";
 import { chaveEndereco, chaveNome, dominioProprio, normalizarEmail, telefoneE164 } from "@/services/normalizacao";
+import { leadsRestantes, registrarUso } from "@/services/contas";
 import { calcularScore } from "@/services/score";
 
 /**
@@ -46,6 +47,8 @@ export type ResumoRegistro = {
   /** Todas as empresas que a fonte trouxe (novas + já conhecidas), na ordem. */
   empresaIds: string[];
   novosIds: string[];
+  /** Lugares novos que ficaram de fora porque o limite de leads do plano acabou. */
+  foraDoLimite: number;
 };
 
 function preparar(l: LugarEncontrado): Preparado {
@@ -134,6 +137,10 @@ export async function registrarLugares(
   const statements: InStatement[] = [];
   const empresaIds: string[] = [];
   const novosIds: string[] = [];
+  // Limite de leads novos do plano no mês (assinantes). Completar uma
+  // empresa que já existe não conta: só lead novo.
+  const { contaId, restantes } = await leadsRestantes();
+  let foraDoLimite = 0;
   let completados = 0;
   let suprimidos = 0;
   const instante = agora();
@@ -159,6 +166,11 @@ export async function registrarLugares(
       empresaIds.push(dup.registro.id);
       statements.push(sqlCompletar(dup.registro.id, item, statusSite, whatsapp, suprimir, instante));
       if (ctx.buscaId) statements.push(sqlResultado(ctx.buscaId, dup.registro.id, false));
+      continue;
+    }
+
+    if (restantes !== null && novosIds.length >= restantes) {
+      foraDoLimite += 1;
       continue;
     }
 
@@ -201,6 +213,8 @@ export async function registrarLugares(
     await banco.batch(statements.slice(i, i + 40), "write");
   }
 
+  if (novosIds.length > 0) await registrarUso(contaId, "leads", novosIds.length);
+
   // As completadas mudaram (nota, site, contato): o score acompanha.
   const completadosIds = empresaIds.filter((id) => !novosIds.includes(id));
   if (completadosIds.length > 0) await recalcularScores(banco, completadosIds);
@@ -213,6 +227,7 @@ export async function registrarLugares(
     suprimidos,
     empresaIds,
     novosIds,
+    foraDoLimite,
   };
 }
 

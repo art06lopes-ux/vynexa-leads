@@ -5,10 +5,12 @@ import { NovaCampanha } from "@/components/campanhas/nova-campanha";
 import { opcoesDeFiltro } from "@/db/leads";
 import { lerIdentidade } from "@/db/painel";
 import { estadoProvedoresEmail } from "@/integrations/email";
+import { exigirRecursoNaPagina } from "@/server/sessao";
 
 export const metadata = { title: "Nova campanha" };
 
 export default async function PaginaNovaCampanha() {
+  await exigirRecursoNaPagina("campanhas");
   const [provedores, identidade, opcoes] = await Promise.all([estadoProvedoresEmail(), lerIdentidade(), opcoesDeFiltro()]);
   return (
     <div>

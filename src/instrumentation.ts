@@ -5,8 +5,8 @@
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
-  const { getBanco } = await import("@/db/cliente");
+  const { getBancoPrincipal } = await import("@/db/cliente");
   const { garantirEsquema } = await import("@/db/esquema-auto");
-  const aplicadas = await garantirEsquema(getBanco());
+  const aplicadas = await garantirEsquema(getBancoPrincipal());
   if (aplicadas.length > 0) console.log("[esquema-auto] aplicadas:", aplicadas.join(", "));
 }

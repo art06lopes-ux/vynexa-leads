@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Archive, BadgeCheck, Ban, Check, Copy, CreditCard, KeyRound, LoaderCircle, Mail, Package, Plug, Plus, Send, SlidersHorizontal, Trash2, Upload } from "lucide-react";
+import { Archive, BadgeCheck, Ban, Check, Copy, CreditCard, KeyRound, LoaderCircle, Mail, Package, Plug, Plus, Send, SlidersHorizontal, Trash2, Upload, Users } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -34,7 +34,7 @@ function avisar(r: Resultado) {
 
 export const ABAS = [
   { chave: "identidade", rotulo: "Identidade", descricao: "Nome, logo e assinatura", icone: BadgeCheck },
-  { chave: "produtos", rotulo: "Produtos", descricao: "O que a Vynexa vende", icone: Package },
+  { chave: "produtos", rotulo: "Produtos", descricao: "O que você vende", icone: Package },
   { chave: "integracoes", rotulo: "Integrações", descricao: "Google Maps, IA, chaves", icone: Plug },
   { chave: "email", rotulo: "E-mail", descricao: "Envio e remetente", icone: Mail },
   { chave: "pagamentos", rotulo: "Pagamentos", descricao: "Asaas e notificações", icone: CreditCard },
@@ -42,7 +42,9 @@ export const ABAS = [
   { chave: "avancado", rotulo: "Avançado", descricao: "Limites, fuso e zerar", icone: SlidersHorizontal },
 ] as const;
 
-export function SeletorAbas() {
+const ABA_EQUIPE = { chave: "equipe", rotulo: "Equipe", descricao: "Quem entra na sua conta", icone: Users } as const;
+
+export function SeletorAbas({ ocultas = [], comEquipe = false }: { ocultas?: string[]; comEquipe?: boolean }) {
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -50,7 +52,7 @@ export function SeletorAbas() {
   return (
     <nav className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 lg:sticky lg:top-20 lg:flex-col lg:overflow-visible lg:rounded-2xl lg:border lg:border-fio lg:bg-placa lg:p-2" role="tablist" aria-orientation="vertical" aria-label="Seções das configurações">
       <p className="hidden px-3 pb-2 pt-2 text-xs font-semibold text-muted-foreground lg:block">Central da conta</p>
-      {ABAS.map((a) => {
+      {[...ABAS, ...(comEquipe ? [ABA_EQUIPE] : [])].filter((a) => !ocultas.includes(a.chave)).map((a) => {
         const ativo = atual === a.chave;
         return (
           <button

@@ -27,6 +27,8 @@ export function respostaDeErro(erro: unknown): Response {
     return json({ erro: "Alguns campos estão inválidos.", campos: erro.issues.map((i) => ({ campo: i.path.join("."), mensagem: i.message })) }, 422);
   }
   if (ehLimiteDiarioD1(erro)) return json({ erro: MENSAGEM_COTA_D1, codigo: "cota_banco" }, 503);
+  // ErroConta (plano, limite, cadastro): já vem com o status certo.
+  if (erro instanceof Error && erro.name === "ErroConta") return json({ erro: erro.message, codigo: "conta" }, (erro as Error & { status: number }).status);
   const semConfiguracao = Boolean((erro as { semConfiguracao?: boolean })?.semConfiguracao);
   const temporario = Boolean((erro as { temporario?: boolean })?.temporario);
   const mensagem = erro instanceof Error ? erro.message : String(erro);

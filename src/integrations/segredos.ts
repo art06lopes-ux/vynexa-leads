@@ -1,4 +1,5 @@
 import { agora, getBanco } from "@/db/cliente";
+import { contaDoContexto } from "@/db/contas-banco";
 import { cifrar, decifrar } from "@/lib/cofre";
 
 /**
@@ -32,32 +33,50 @@ export function ehNomeSegredo(nome: string): nome is NomeSegredo {
   return Object.hasOwn(SEGREDOS, nome);
 }
 
-/** Cache curto por processo: a mesma chave é lida várias vezes num job. */
-const cache = new Map<NomeSegredo, { valor: string | null; ate: number }>();
+/**
+ * Variáveis de ambiente são do DONO. Um assinante só herda a do Gemini
+ * (a IA "da Vynexa", com cota mensal por plano); a do Google Places,
+ * Asaas e e-mail ele configura com a chave dele — senão gastaria a do dono.
+ */
+const HERDAVEL_PELO_ASSINANTE: ReadonlySet<NomeSegredo> = new Set(["GEMINI_API_KEY"]);
+
+/** Cache curto por processo e por conta: a mesma chave é lida várias vezes num job. */
+const cache = new Map<string, { valor: string | null; origem: OrigemSegredo; ate: number }>();
 const CACHE_MS = 30_000;
 
-export async function obterSegredo(nome: NomeSegredo): Promise<string | null> {
-  const emCache = cache.get(nome);
-  if (emCache && emCache.ate > Date.now()) return emCache.valor;
+export type OrigemSegredo = "conta" | "compartilhada" | null;
+
+export async function obterSegredoComOrigem(nome: NomeSegredo): Promise<{ valor: string | null; origem: OrigemSegredo }> {
+  const conta = await contaDoContexto();
+  const chaveCache = `${conta ?? ""}:${nome}`;
+  const emCache = cache.get(chaveCache);
+  if (emCache && emCache.ate > Date.now()) return emCache;
 
   let valor: string | null = null;
+  let origem: OrigemSegredo = null;
   try {
     const { rows } = await getBanco().execute({
       sql: `SELECT valor_cifrado FROM integracoes WHERE chave = ?`,
       args: [nome],
     });
     if (rows[0]) valor = await decifrar(String(rows[0].valor_cifrado));
+    if (valor) origem = "conta";
   } catch {
     // Tabela ausente (banco antes da 0012) ou segredo trocado: cai no env.
     valor = null;
   }
-  if (!valor) {
+  if (!valor && (conta === null || HERDAVEL_PELO_ASSINANTE.has(nome))) {
     const env = (process.env[nome] ?? "").trim();
     valor = env === "" ? null : env;
+    if (valor) origem = conta === null ? "conta" : "compartilhada";
   }
 
-  cache.set(nome, { valor, ate: Date.now() + CACHE_MS });
-  return valor;
+  cache.set(chaveCache, { valor, origem, ate: Date.now() + CACHE_MS });
+  return { valor, origem };
+}
+
+export async function obterSegredo(nome: NomeSegredo): Promise<string | null> {
+  return (await obterSegredoComOrigem(nome)).valor;
 }
 
 export async function salvarSegredo(nome: NomeSegredo, valor: string): Promise<void> {
@@ -69,12 +88,12 @@ export async function salvarSegredo(nome: NomeSegredo, valor: string): Promise<v
                                            atualizado_em = excluded.atualizado_em`,
     args: [nome, await cifrar(limpo), limpo.slice(-4), agora()],
   });
-  cache.delete(nome);
+  cache.clear();
 }
 
 export async function removerSegredo(nome: NomeSegredo): Promise<void> {
   await getBanco().execute({ sql: `DELETE FROM integracoes WHERE chave = ?`, args: [nome] });
-  cache.delete(nome);
+  cache.clear();
 }
 
 export type EstadoSegredo = {
@@ -89,6 +108,7 @@ export type EstadoSegredo = {
 
 /** O que a tela pode saber: nunca o valor. */
 export async function estadoDosSegredos(): Promise<EstadoSegredo[]> {
+  const conta = await contaDoContexto();
   let salvos = new Map<string, { final: string | null; atualizado_em: string }>();
   try {
     const { rows } = await getBanco().execute(`SELECT chave, final, atualizado_em FROM integracoes`);
@@ -99,7 +119,8 @@ export async function estadoDosSegredos(): Promise<EstadoSegredo[]> {
 
   return (Object.keys(SEGREDOS) as NomeSegredo[]).map((nome) => {
     const salvo = salvos.get(nome);
-    const env = (process.env[nome] ?? "").trim();
+    // O assinante não vê (nem usa) as chaves do dono.
+    const env = conta === null ? (process.env[nome] ?? "").trim() : "";
     return {
       nome,
       rotulo: SEGREDOS[nome].rotulo,

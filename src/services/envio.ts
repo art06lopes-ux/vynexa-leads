@@ -1,4 +1,5 @@
 import type { Client, InStatement } from "@libsql/client";
+import { contaDoContexto, tokenPublico } from "@/db/contas-banco";
 
 import { agora, novoId } from "@/db/cliente";
 import { ErroEmail, provedorEmail, provedorEmailAtivo, ehProvedorEmail, type EmailProvider } from "@/integrations/email";
@@ -36,15 +37,15 @@ export async function carregarIdentidade(banco: Client): Promise<{ identidade: I
     base,
     config: c,
     identidade: {
-      empresaNome: c.empresa_nome || "Vynexa Dev",
-      responsavelNome: c.responsavel_nome || c.remetente_nome || "Artur",
+      empresaNome: c.empresa_nome || "",
+      responsavelNome: c.responsavel_nome || c.remetente_nome || "",
       assinatura: c.email_assinatura || null,
       site: c.empresa_site || null,
       whatsapp: c.empresa_whatsapp || null,
       instagram: c.empresa_instagram || null,
       // Logo enviado pela tela vive no banco; o e-mail aponta para a rota
       // pública que o serve. Sem logo, nada de imagem.
-      logoUrl: c.logo_data ? `${base}/api/marca/logo` : null,
+      logoUrl: c.logo_data ? `${base}/api/marca/logo${(await contaDoContexto()) ? `?c=${await contaDoContexto()}` : ""}` : null,
       corPrimaria: c.cor_primaria || "#c2410c",
     },
   };
@@ -114,7 +115,7 @@ export async function enviarUm(banco: Client, envio: EnvioParaSair, provedor?: E
       remetenteNome: `${identidade.responsavelNome} · ${identidade.empresaNome}`,
       responderPara: config.email_resposta || null,
       cabecalhos: {
-        "List-Unsubscribe": `<${base}/api/descadastro/${token}>, <${links.descadastro}>`,
+        "List-Unsubscribe": `<${base}/api/descadastro/${await tokenPublico(token)}>, <${links.descadastro}>`,
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       },
     });

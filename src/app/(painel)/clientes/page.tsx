@@ -6,10 +6,12 @@ import { TelaClientes } from "@/components/clientes/tela-clientes";
 import { Contador } from "@/components/motion/contador";
 import { carteira, receitaTotal } from "@/db/carteira";
 import { normalizarTelefone } from "@/lib/leads/whatsapp";
+import { exigirRecursoNaPagina } from "@/server/sessao";
 
 export const metadata = { title: "Clientes" };
 
 export default async function PaginaClientes() {
+  await exigirRecursoNaPagina("clientes");
   const [clientes, receita] = await Promise.all([carteira(), receitaTotal()]);
   const conta = (e: string) => clientes.filter((c) => c.etapa === e).length;
 

@@ -1,4 +1,4 @@
-import { obterSegredo } from "@/integrations/segredos";
+import { obterSegredoComOrigem } from "@/integrations/segredos";
 import { criarLimitador } from "@/lib/osm/limitador";
 
 /**
@@ -47,11 +47,26 @@ export type EsquemaResposta = {
 
 export async function getChaveGemini(): Promise<string> {
   // Configurada pela tela (cifrada no banco) ou pela variável de ambiente.
-  const chave = ((await obterSegredo("GEMINI_API_KEY")) ?? "").replace(/\s+/g, "");
+  const { valor, origem } = await obterSegredoComOrigem("GEMINI_API_KEY");
+  const chave = (valor ?? "").replace(/\s+/g, "");
   if (chave === "") {
     throw new ErroGemini(
       "A IA ainda não está configurada. Gere uma chave gratuita em https://aistudio.google.com/apikey e cole em Configurações → Integrações.",
     );
+  }
+  // Assinante usando a IA da Vynexa: conta no limite mensal do plano.
+  if (origem === "compartilhada") {
+    const { planoAtual, registrarUso, usoDoMes } = await import("@/services/contas");
+    const { contaId, plano, recursos } = await planoAtual();
+    if (!recursos.includes("ia")) throw Object.assign(new ErroGemini("A IA faz parte dos planos PRO e Agência."), { semConfiguracao: true });
+    const limite = plano.limites.ia_mes;
+    if (limite !== null && (await usoDoMes(contaId)).ia >= limite) {
+      throw Object.assign(
+        new ErroGemini(`As ${limite} análises de IA do mês acabaram. Para seguir sem limite, cole sua chave gratuita do Gemini em Configurações → Integrações (passo a passo em Tutoriais).`),
+        { semConfiguracao: true },
+      );
+    }
+    await registrarUso(contaId, "ia", 1);
   }
   return chave;
 }

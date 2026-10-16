@@ -1,13 +1,14 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Crosshair, Link2, LoaderCircle, LocateFixed, MapPin, Radar, Star, Trash2, X } from "lucide-react";
+import { Crosshair, Link2, LoaderCircle, LocateFixed, Lock, MapPin, Radar, Star, Trash2, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { ResultadoDaBusca, SUGESTOES, VAZIO, type EstadoBusca, type Formulario, type Resumo } from "@/components/busca/tela-busca";
+import { SEGMENTOS } from "@/lib/osm/segmentos";
 import { cn } from "@/lib/utils";
 import { interpretarConsulta, type FiltroSite } from "@/services/consulta-natural";
 import { pareceLinkMaps } from "@/services/link-maps";
@@ -76,11 +77,14 @@ function Segmentos<T extends string>({ valor, opcoes, aoMudar, rotulo }: { valor
 
 export function TelaRadar({
   googleOk,
+  planoGoogle = true,
   uso,
   tetoPadrao,
   buscasIniciais,
 }: {
   googleOk: boolean;
+  /** O plano libera o Google Maps? Sem ele, o Radar usa só o OpenStreetMap (grátis). */
+  planoGoogle?: boolean;
   uso: { usadas: number; limite: number; restantes: number };
   tetoPadrao: number;
   buscasIniciais: string[];
@@ -95,6 +99,10 @@ export function TelaRadar({
   const [localizando, setLocalizando] = useState(false);
   const [link, setLink] = useState("");
   const [comLink, setComLink] = useState(false);
+  // Fonte: Google Maps (chave da conta) ou OpenStreetMap (grátis, lista fixa de segmentos).
+  const [fonte, setFonte] = useState<"google" | "osm">(planoGoogle && googleOk ? "google" : "osm");
+  const [segmentoOsm, setSegmentoOsm] = useState<string>(SEGMENTOS[0]?.slug ?? "barbearia");
+  const osm = fonte === "osm";
   // 02 — qualificação
   const [site, setSite] = useState<FiltroSite>("sem");
   const [nota, setNota] = useState<"" | "4" | "4.5">("");
@@ -249,7 +257,7 @@ export function TelaRadar({
     maxRequisicoes: teto,
   };
 
-  const consumo = comLink ? teto : Math.max(areas.length, 1) * teto;
+  const consumo = osm ? 0 : comLink ? teto : Math.max(areas.length, 1) * teto;
 
   async function criarBusca(corpo: Record<string, unknown>): Promise<string | null> {
     const r = await fetch("/api/buscas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) });
@@ -261,7 +269,50 @@ export function TelaRadar({
     return d.id;
   }
 
+  /** OpenStreetMap: um segmento da lista, pelas áreas do mapa ou pela cidade digitada. */
+  async function mapearOsm() {
+    if (areas.length === 0 && onde.trim().length < 2) {
+      toast.error("Diga a cidade ou marque uma área no mapa.");
+      return;
+    }
+    setEnviando(true);
+    const rotuloSeg = SEGMENTOS.find((x) => x.slug === segmentoOsm)?.rotulo ?? segmentoOsm;
+    const filtros = { site, comWhatsapp, comEmail: false, avaliacoesMin: null, notaMin: null, scoreMin: null };
+    const novas: Execucao[] = [];
+    try {
+      if (areas.length > 0) {
+        for (const [i, a] of areas.entries()) {
+          const rotulo = `${rotuloSeg} · P${i + 1} (${a.raioKm} km${onde.trim() ? `, ${onde.trim()}` : ""})`;
+          const id = await criarBusca({ termo: segmentoOsm, consultaNatural: rotulo, provedor: "osm", pais: "BR", local: onde.trim() || rotulo, centro: { lat: a.lat, lng: a.lng }, raioKm: a.raioKm, filtros });
+          if (id) novas.push({ area: i, estado: { id, status: "pendente", etapa: "Na fila…", erro: null, resumo: null, rotulo } });
+        }
+      } else {
+        const c = interpretarConsulta(`${rotuloSeg} em ${onde.trim()}`);
+        const corpo: Record<string, unknown> = { termo: segmentoOsm, consultaNatural: `${rotuloSeg} em ${onde.trim()}`, provedor: "osm", pais: c.pais ?? "BR", filtros };
+        if (c.uf) corpo.estado = c.uf;
+        corpo.cidade = c.cidade ?? onde.trim();
+        const id = await criarBusca(corpo);
+        if (id) novas.push({ area: null, estado: { id, status: "pendente", etapa: "Na fila…", erro: null, resumo: null, rotulo: String(corpo.consultaNatural) } });
+      }
+    } catch {
+      toast.error("Falha de rede ao iniciar a varredura.");
+    } finally {
+      setEnviando(false);
+    }
+    if (novas.length > 0) {
+      setExecucoes(novas);
+      setAba(0);
+      router.replace(`/buscar?busca=${novas.map((n) => n.estado.id).join(",")}`, { scroll: false });
+      requestAnimationFrame(() => document.getElementById("resultado-radar")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    }
+  }
+
   async function mapear() {
+    if (!osm && !planoGoogle) {
+      router.push("/assinatura?recurso=radar_google");
+      return;
+    }
+    if (osm) return mapearOsm();
     if (!googleOk) {
       toast.error("Ligue o Google Maps em Configurações → Integrações para usar o Radar.", { action: { label: "Configurar", onClick: () => router.push("/configuracoes?aba=integracoes") } });
       return;
@@ -359,7 +410,77 @@ export function TelaRadar({
           className="placa flex flex-col gap-5 p-5 lg:col-span-5 xl:col-span-4"
         >
           <Passo n="01" titulo="Defina o alvo" descricao="O tipo de empresa e a região.">
-            {comLink ? (
+            <div className="grid grid-cols-2 gap-1 rounded-xl border border-fio bg-tinta/60 p-1" role="radiogroup" aria-label="Fonte dos dados">
+              {(
+                [
+                  ["google", "Google Maps", !planoGoogle],
+                  ["osm", "OpenStreetMap (grátis)", false],
+                ] as const
+              ).map(([valor, rotulo, travado]) => (
+                <button
+                  key={valor}
+                  type="button"
+                  role="radio"
+                  aria-checked={fonte === valor}
+                  onClick={() => {
+                    if (travado) {
+                      router.push("/assinatura?recurso=radar_google");
+                      return;
+                    }
+                    setFonte(valor);
+                    if (valor === "osm") setComLink(false);
+                  }}
+                  className={cn("inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg text-xs font-semibold transition-colors", fonte === valor ? "bg-azul text-sobre-brasa" : "text-muted-foreground hover:text-foreground")}
+                >
+                  {travado && <Lock className="size-3" aria-label="Disponível no PRO" />} {rotulo}
+                </button>
+              ))}
+            </div>
+            {osm ? (
+              <label className="block space-y-1.5">
+                <span className="text-xs font-semibold text-muted-foreground">Segmento</span>
+                <select value={segmentoOsm} onChange={(e) => setSegmentoOsm(e.target.value)} className={cn(campo, "cursor-pointer")}>
+                  {SEGMENTOS.map((sg) => (
+                    <option key={sg.slug} value={sg.slug}>
+                      {sg.rotulo}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            {osm && (
+              <>
+                <div className="space-y-1.5">
+                  <label htmlFor="radar-onde" className="text-xs font-semibold text-muted-foreground">
+                    Onde
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      id="radar-onde"
+                      value={onde}
+                      onChange={(e) => {
+                        setOnde(e.target.value);
+                        setLugar(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void irAoLocal();
+                        }
+                      }}
+                      placeholder="Manacapuru, AM"
+                      className={campo}
+                    />
+                    <button type="button" onClick={() => void irAoLocal()} disabled={localizando} className="inline-flex h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-fio bg-placa-2 px-3 text-sm font-semibold hover:border-brilho/40 disabled:opacity-60">
+                      {localizando ? <LoaderCircle className="size-4 animate-spin" /> : <LocateFixed className="size-4 text-brilho" />}
+                      Ir ao local
+                    </button>
+                  </div>
+                  {lugar && <p className="truncate text-[0.72rem] text-muted-foreground" title={lugar.rotulo}>{lugar.rotulo}</p>}
+                </div>
+              </>
+            )}
+            {osm ? null : comLink ? (
               <label className="block space-y-1.5">
                 <span className="text-xs font-semibold text-muted-foreground">Link da pesquisa no Google Maps</span>
                 <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://www.google.com/maps/search/…" className={campo} autoFocus />
@@ -405,9 +526,11 @@ export function TelaRadar({
                 </div>
               </>
             )}
-            <button type="button" onClick={() => setComLink((v) => !v)} className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-ciano hover:underline">
-              <Link2 className="size-3.5" /> {comLink ? "Voltar para segmento e região" : "Tenho um link do Google Maps"}
-            </button>
+            {!osm && (
+              <button type="button" onClick={() => setComLink((v) => !v)} className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-ciano hover:underline">
+                <Link2 className="size-3.5" /> {comLink ? "Voltar para segmento e região" : "Tenho um link do Google Maps"}
+              </button>
+            )}
           </Passo>
 
           <Passo n="02" titulo="Qualificação" descricao="O que conta como oportunidade para a Vynexa.">
@@ -512,6 +635,11 @@ export function TelaRadar({
           )}
 
           {/* Créditos: a cota gratuita do Google, que é o que de fato limita. */}
+          {osm ? (
+            <p className="rounded-2xl border border-fio bg-tinta/60 p-3.5 text-xs text-muted-foreground">
+              OpenStreetMap é grátis e sem limite de consultas. Traz menos telefones e sites que o Google Maps — cada lead novo conta no limite do seu plano.
+            </p>
+          ) : (
           <div className="rounded-2xl border border-fio bg-tinta/60 p-3.5">
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold">Consultas do mês</span>
@@ -532,6 +660,7 @@ export function TelaRadar({
               Esta varredura usa até <b className="text-foreground num">{consumo}</b> {consumo === 1 ? "consulta" : "consultas"} · cada uma traz até 20 empresas.
             </p>
           </div>
+          )}
 
           <motion.button
             whileTap={{ scale: 0.98 }}

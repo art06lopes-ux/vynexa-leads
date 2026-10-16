@@ -28,4 +28,4 @@ export const POST = rota(async (req) => {
   });
   after(() => executarAgora(getBanco(), jobId));
   return json({ enfileirados: c.leadIds.length }, 202);
-});
+}, { recurso: "ia" });

@@ -9,6 +9,7 @@ import { listarCampanhas } from "@/db/campanhas";
 import { formatarDinheiro } from "@/lib/pagamento/dinheiro";
 import { cn } from "@/lib/utils";
 import { haQuantoTempo, taxa } from "@/services/crm";
+import { exigirRecursoNaPagina } from "@/server/sessao";
 
 export const metadata = { title: "Campanhas" };
 
@@ -18,6 +19,7 @@ const ABAS_CAMPANHAS = [
 ];
 
 export default async function PaginaCampanhas() {
+  await exigirRecursoNaPagina("campanhas");
   const campanhas = await listarCampanhas();
   const novo = (
     <Link href="/campanhas/nova" className="inline-flex h-10 items-center gap-2 rounded-xl bg-azul px-4 text-sm font-semibold text-sobre-brasa hover:bg-brilho">

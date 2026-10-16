@@ -86,7 +86,8 @@ export class AsaasPaymentProvider implements PaymentProvider {
     return { ok: true, motivo: null, ambiente: amb };
   }
 
-  private async chamar<T>(metodo: "GET" | "POST", caminho: string, corpo?: unknown): Promise<T> {
+  /** Chamada crua à API (também usada pela cobrança das assinaturas do SaaS). */
+  async chamar<T>(metodo: "GET" | "POST" | "DELETE", caminho: string, corpo?: unknown): Promise<T> {
     const chave = await obterSegredo("ASAAS_API_KEY");
     if (!chave) throw new ErroPagamento("O Asaas não está configurado. Cole a chave em Configurações → Integrações.");
     const resposta = await this.http(`${URLS[await ambiente()]}${caminho}`, {

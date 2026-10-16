@@ -2,6 +2,8 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  BadgeCheck,
+  UserPlus,
   Bell,
   CheckCheck,
   CircleAlert,
@@ -92,7 +94,7 @@ export function ProvedorNotificacoes({ children, logoUrl, empresa }: { children:
           } catch {
             /* dados malformados: o sino ainda mostra */
           }
-        } else if (["resposta", "erro_campanha", "campanha_concluida", "oportunidade", "busca_concluida"].includes(n.tipo)) {
+        } else if (["resposta", "erro_campanha", "campanha_concluida", "oportunidade", "busca_concluida", "conta_nova", "assinatura"].includes(n.tipo)) {
           toast(n.titulo, {
             description: n.corpo ?? undefined,
             action: n.link ? { label: "Abrir", onClick: () => router.push(n.link!) } : undefined,
@@ -150,6 +152,8 @@ export const ICONE_NOTIFICACAO: Record<string, LucideIcon> = {
   oportunidade: Flame,
   campanha_concluida: Megaphone,
   busca_concluida: Search,
+  conta_nova: UserPlus,
+  assinatura: BadgeCheck,
 };
 
 export const COR_NOTIFICACAO: Record<string, string> = {
@@ -157,6 +161,8 @@ export const COR_NOTIFICACAO: Record<string, string> = {
   pagamento: "text-sucesso bg-sucesso/12",
   erro_campanha: "text-perigo bg-perigo/12",
   oportunidade: "text-aviso bg-aviso/12",
+  conta_nova: "text-aviso bg-aviso/12",
+  assinatura: "text-sucesso bg-sucesso/12",
 };
 
 export function ItemNotificacao({ n, aoClicar }: { n: Notificacao; aoClicar?: () => void }) {

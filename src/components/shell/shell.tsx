@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import { Marca } from "@/components/marca";
 import { cn } from "@/lib/utils";
 
+import { ProvedorConta, type ContaShell } from "./conta-contexto";
 import { BotaoDicas } from "./dicas";
 import { ProvedorNotificacoes, Sino } from "./notificacoes";
 import { Paleta, useAtalhoPaleta } from "./paleta";
@@ -29,6 +30,7 @@ type Props = {
   logoUrl: string | null;
   empresa: string;
   responsavel: string;
+  conta: ContaShell;
 };
 
 const CHAVE_PRIVADO = "vynexa:modo-privado";
@@ -65,7 +67,7 @@ function usePrivacidade(): [boolean, () => void] {
 
 const botaoTopo = "flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-fio bg-placa text-muted-foreground transition-colors hover:border-brilho/40 hover:text-foreground";
 
-export function Shell({ children, contadores, logoUrl, empresa, responsavel }: Props) {
+export function Shell({ children, contadores, logoUrl, empresa, responsavel, conta }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   // A gaveta guarda a página em que foi aberta: trocar de página a fecha.
@@ -80,6 +82,7 @@ export function Shell({ children, contadores, logoUrl, empresa, responsavel }: P
   const aoVivo = pathname.startsWith("/ao-vivo");
 
   return (
+    <ProvedorConta valor={conta}>
     <ProvedorNotificacoes logoUrl={logoUrl} empresa={empresa}>
       <div className="flex min-h-dvh">
         <aside className="sticky top-0 hidden h-dvh w-[5.75rem] shrink-0 border-r border-fio bg-sidebar lg:block">
@@ -130,7 +133,7 @@ export function Shell({ children, contadores, logoUrl, empresa, responsavel }: P
               <BotaoDicas />
 
               <div className="ml-auto flex items-center gap-2">
-                <Link
+                {conta.recursos.includes("ao_vivo") && <Link
                   href={aoVivo ? "/" : "/ao-vivo"}
                   className={cn(
                     "hidden h-10 items-center gap-2 rounded-xl px-3.5 text-xs font-bold sm:inline-flex",
@@ -143,7 +146,7 @@ export function Shell({ children, contadores, logoUrl, empresa, responsavel }: P
                     <span className="relative inline-flex size-2 rounded-full bg-current" />
                   </span>
                   AO VIVO
-                </Link>
+                </Link>}
                 <button type="button" onClick={alternarPrivado} aria-pressed={privado} title={privado ? "Mostrar valores" : "Esconder valores (modo privacidade)"} aria-label={privado ? "Mostrar valores em R$" : "Esconder valores em R$"} className={cn(botaoTopo, privado && "border-brilho/50 text-ciano")}>
                   {privado ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
@@ -161,6 +164,17 @@ export function Shell({ children, contadores, logoUrl, empresa, responsavel }: P
               </div>
             </div>
           </header>
+          {conta.aviso && (
+            <Link
+              href="/assinatura"
+              className={cn(
+                "block border-b px-4 py-2 text-center text-[0.8rem] font-medium sm:px-6",
+                conta.aviso.tom === "alerta" ? "border-perigo/30 bg-perigo/10 text-perigo" : "border-brilho/25 bg-azul/10 text-ciano",
+              )}
+            >
+              {conta.aviso.texto} <span className="underline underline-offset-2">Ver planos</span>
+            </Link>
+          )}
 
           <main className="w-full min-w-0 flex-1 px-4 pb-16 pt-5 sm:px-6 lg:px-8 lg:pt-7">
             <div className="mx-auto w-full max-w-[92rem]">{children}</div>
@@ -169,5 +183,6 @@ export function Shell({ children, contadores, logoUrl, empresa, responsavel }: P
       </div>
       <Paleta aberta={paleta} aoFechar={() => setPaleta(false)} />
     </ProvedorNotificacoes>
+    </ProvedorConta>
   );
 }

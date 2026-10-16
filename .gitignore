@@ -52,3 +52,6 @@ local.db-*
 
 .vercel
 .env*
+
+# Bancos locais das contas de assinantes (desenvolvimento)
+/dados/

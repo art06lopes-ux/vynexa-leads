@@ -65,4 +65,4 @@ export const POST = rota(async (req, ctx: { params: Promise<{ id: string }> }) =
       await editarEnvio(banco, c.envioId, c.assunto, c.corpo);
       return json({ ok: true });
   }
-});
+}, { recurso: "campanhas" });

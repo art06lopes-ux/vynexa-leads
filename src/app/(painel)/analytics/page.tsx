@@ -11,6 +11,7 @@ import { nomePaisPt } from "@/lib/geo/mundo";
 import { rotuloDia, rotuloMes } from "@/lib/datas";
 import { formatarDinheiro } from "@/lib/pagamento/dinheiro";
 import { taxa } from "@/services/crm";
+import { exigirRecursoNaPagina } from "@/server/sessao";
 
 export const metadata = { title: "Relatórios" };
 
@@ -22,6 +23,7 @@ const ABAS_VENDAS = [
 ];
 
 export default async function PaginaAnalytics() {
+  await exigirRecursoNaPagina("vendas");
   const banco = getBanco();
   const [kpis, leads30, semSite30, contatos30, respostas30, vendas30, mensal, categorias, paises, extra, roi] = await Promise.all([
     obterKpis(),

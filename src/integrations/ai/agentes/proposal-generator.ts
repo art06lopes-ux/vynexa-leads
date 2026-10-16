@@ -26,7 +26,7 @@ const ESQUEMA: EsquemaResposta = {
     titulo: { type: "string" },
     contexto: { type: "string", description: "O negócio do cliente, em 2 ou 3 frases, só com os fatos." },
     problema: { type: "string", description: "O problema de presença digital observado." },
-    solucao: { type: "string", description: "O que a Vynexa vai entregar e como isso resolve o problema." },
+    solucao: { type: "string", description: "O que será entregue e como isso resolve o problema." },
     entregaveis: { type: "array", items: { type: "string" } },
     proximos_passos: { type: "array", items: { type: "string" } },
   },
@@ -37,7 +37,7 @@ export function instrucaoProposta(d: DadosLead, r: Remetente, produto: ProdutoCa
   const fatos = blocoFatos(d);
   return {
     numeros: fatos.numeros,
-    instrucao: `Você redige uma proposta comercial da Vynexa Dev para o cliente abaixo.
+    instrucao: `Você redige uma proposta comercial da empresa de QUEM ESCREVE para o cliente abaixo.
 
 ${blocoRemetente(r)}
 

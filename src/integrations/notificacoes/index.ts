@@ -20,7 +20,10 @@ export type TipoNotificacao =
   | "erro_campanha"
   | "oportunidade"
   | "campanha_concluida"
-  | "busca_concluida";
+  | "busca_concluida"
+  // Só no banco do dono do SaaS:
+  | "conta_nova"
+  | "assinatura";
 
 export type NovaNotificacao = {
   tipo: TipoNotificacao;
@@ -68,4 +71,16 @@ export async function notificar(banco: Client, n: NovaNotificacao): Promise<void
       }),
     ),
   );
+}
+
+/**
+ * Aviso para o dono do SaaS (sino + push no celular dele), de onde quer
+ * que venha: cadastro de cliente, pagamento de assinatura, cancelamento.
+ */
+export async function avisarDono(n: NovaNotificacao): Promise<void> {
+  const { comConta, CONTA_PRINCIPAL } = await import("@/db/contas-banco");
+  const { getBanco } = await import("@/db/cliente");
+  await comConta(CONTA_PRINCIPAL, () => notificar(getBanco(), n)).catch((erro) => {
+    console.error("Aviso ao dono falhou:", erro instanceof Error ? erro.message : erro);
+  });
 }
